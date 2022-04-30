@@ -1,26 +1,26 @@
-use crate::{coordinate::Coordinate, num_check::NumCheck, zone::Zone};
+use crate::{coordinate::Coordinate, num_check::NumCheck, zone_set::ZoneSet, zone::Zone};
 
 pub struct Cell {
     pub chk: NumCheck,
-    zone: Zone,
+    zone: ZoneSet,
     coordi: Coordinate,
 }
 
 impl Cell {
     #[must_use]
-    pub fn new(size: usize, x: usize, y: usize, zone: &[usize]) -> Self {
+    pub fn new(size: usize, x: usize, y: usize, zone: &[Zone]) -> Self {
         let ret = Cell {
             chk: NumCheck::new(size),
-            zone: Zone::new_with_zone(zone),
+            zone: ZoneSet::new_with_zone(zone),
             coordi: Coordinate { x, y },
         };
         ret
     }
 
-    pub fn new_single_zone(size: usize, x: usize, y: usize, zone: usize) -> Self {
+    pub fn new_single_zone(size: usize, x: usize, y: usize, zone: Zone) -> Self {
         let ret = Cell {
             chk: NumCheck::new(size),
-            zone: Zone::new_single_zone(zone),
+            zone: ZoneSet::new_single_zone(zone),
             coordi: Coordinate { x, y },
         };
         ret
@@ -34,13 +34,13 @@ impl Cell {
     ///
     #[must_use]
     #[inline]
-    pub fn get_zone(&self) -> &Zone {
+    pub fn get_zone(&self) -> &ZoneSet {
         &self.zone
     }
 
     #[must_use]
     #[inline]
-    pub fn is_zone_contain(&self, zone: usize) -> bool {
+    pub fn is_zone_contain(&self, zone: Zone) -> bool {
         self.zone.is_contain(zone)
     }
 
