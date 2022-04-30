@@ -1,27 +1,8 @@
-use std::fs::File;
-use std::io::ErrorKind;
+pub mod cell;
+pub mod num_check;
+pub mod zone;
+pub mod coordinate;
+pub mod table;
 
 fn main() {
-    let f = File::open("hello.txt");
-
-    let f = match f {
-        Ok(file) => file,
-        Err(error) if error.kind() == ErrorKind::NotFound => {
-            match File::create("hello.txt") {
-                Ok(fc) => fc,
-                Err(e) => {
-                    panic!(
-                        "Tried to create file but there was a problem: {:?}",
-                        e
-                    )
-                },
-            }
-        },
-        Err(error) => {
-            panic!(
-                "There was a problem opening the file: {:?}",
-                error
-            )
-        },
-    };
 }
