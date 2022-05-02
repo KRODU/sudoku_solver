@@ -14,11 +14,9 @@ impl Zone {
 
 impl Clone for Zone {
     fn clone(&self) -> Self {
-        Self { z: self.z.clone() }
+        Self { z: self.z }
     }
 }
-
-impl Copy for Zone {}
 
 impl PartialEq for Zone {
     fn eq(&self, other: &Self) -> bool {

@@ -1,4 +1,4 @@
-use crate::{coordinate::Coordinate, num_check::NumCheck, zone_set::ZoneSet, zone::Zone};
+use crate::{coordinate::Coordinate, num_check::NumCheck, zone::Zone, zone_set::ZoneSet};
 
 pub struct Cell {
     pub chk: NumCheck,
@@ -9,21 +9,19 @@ pub struct Cell {
 impl Cell {
     #[must_use]
     pub fn new(size: usize, x: usize, y: usize, zone: &[Zone]) -> Self {
-        let ret = Cell {
+        Cell {
             chk: NumCheck::new(size),
             zone: ZoneSet::new_with_zone(zone),
             coordi: Coordinate { x, y },
-        };
-        ret
+        }
     }
 
     pub fn new_single_zone(size: usize, x: usize, y: usize, zone: Zone) -> Self {
-        let ret = Cell {
+        Cell {
             chk: NumCheck::new(size),
             zone: ZoneSet::new_single_zone(zone),
             coordi: Coordinate { x, y },
-        };
-        ret
+        }
     }
     #[must_use]
     #[inline]
@@ -49,5 +47,19 @@ impl Cell {
     #[inline]
     pub fn get_coordinate(&self) -> Coordinate {
         self.coordi
+    }
+}
+
+impl PartialEq for Cell {
+    fn eq(&self, other: &Self) -> bool {
+        self.coordi == other.coordi
+    }
+}
+
+impl Eq for Cell {}
+
+impl std::hash::Hash for Cell {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.coordi.hash(state);
     }
 }

@@ -1,5 +1,3 @@
-pub mod naked;
-
 use hashbrown::HashMap;
 
 use crate::cell::Cell;
@@ -9,8 +7,6 @@ use crate::zone::Zone;
 pub struct Table {
     cells: HashMap<Coordinate, Cell>,
     size: usize,
-    zone_list: Vec<Zone>,
-    zone_coordi: HashMap<Zone, Vec<Coordinate>>,
 }
 
 impl Table {
@@ -36,90 +32,18 @@ impl Table {
                 cells.insert(Coordinate { x, y }, cell);
             }
         }
-        let zone_list = Self::get_zone_list(&cells, 9);
-        let zone_coordi = Self::get_zone_coordi(&cells, 9);
-        Table {
-            cells,
-            size: 9,
-            zone_list,
-            zone_coordi,
-        }
-    }
-
-    fn get_zone_list(cells: &HashMap<Coordinate, Cell>, size: usize) -> Vec<Zone> {
-        let mut ret: Vec<Zone> = Vec::with_capacity(size);
-
-        for x in 0..size {
-            for y in 0..size {
-                let coordi = Coordinate { x, y };
-                let this_cell = &cells[&coordi];
-                for z in this_cell.get_zone() {
-                    if !ret.contains(&z) {
-                        ret.push(*z);
-                    }
-                }
-            }
-        }
-        ret
-    }
-
-    pub fn get_zone_coordi(
-        cells: &hashbrown::HashMap<Coordinate, Cell>,
-        size: usize,
-    ) -> HashMap<Zone, Vec<Coordinate>> {
-        let size: usize = size;
-        let mut zone_coordi: HashMap<Zone, Vec<Coordinate>> = HashMap::with_capacity(size * size);
-        for x in 0..size {
-            for y in 0..size {
-                let coordi = Coordinate { x, y };
-                let this_cell = &cells[&coordi];
-                for z in this_cell.get_zone() {
-                    let row: &mut Vec<Coordinate> = zone_coordi
-                        .entry(*z)
-                        .or_insert_with(|| Vec::with_capacity(size));
-                    row.push(coordi);
-                }
-            }
-        }
-
-        zone_coordi
-    }
-
-    pub fn get_zone_ref(&self) -> HashMap<Zone, Vec<&Cell>> {
-        let size: usize = self.size;
-        let mut zone_ref: HashMap<Zone, Vec<&Cell>> = HashMap::with_capacity(size * size);
-        for x in 0..size {
-            for y in 0..size {
-                let coordi = Coordinate { x, y };
-                let this_cell = &self.cells[&coordi];
-                for z in this_cell.get_zone() {
-                    let row: &mut Vec<&Cell> = zone_ref
-                        .entry(*z)
-                        .or_insert_with(|| Vec::with_capacity(size));
-                    row.push(this_cell);
-                }
-            }
-        }
-
-        zone_ref
+        Table { cells, size: 9 }
     }
 
     #[must_use]
     #[inline]
-    pub fn zone_list_iter(&self) -> std::slice::Iter<'_, Zone> {
-        self.zone_list.iter()
-    }
-
-    pub fn zone_iter(&self, zone: &Zone) -> ZoneIter {
-        ZoneIter {
-            coordi_iter: self.zone_coordi[zone].iter(),
-            cells: &self.cells,
-        }
+    pub fn get_cell(&self) -> &HashMap<Coordinate, Cell> {
+        &self.cells
     }
 
     #[must_use]
     #[inline]
-    pub fn get_cell(&self, x: usize, y: usize) -> &Cell {
+    pub fn get_cell_coordi(&self, x: usize, y: usize) -> &Cell {
         &self.cells[&Coordinate { x, y }]
     }
 
@@ -130,23 +54,9 @@ impl Table {
     }
 
     /// 스도쿠의 가로, 세로 길이입니다.
+    #[must_use]
+    #[inline]
     pub fn get_size(&self) -> usize {
         self.size
-    }
-}
-
-pub struct ZoneIter<'a> {
-    coordi_iter: std::slice::Iter<'a, Coordinate>,
-    cells: &'a HashMap<Coordinate, Cell>,
-}
-
-impl<'a> Iterator for ZoneIter<'a> {
-    type Item = &'a Cell;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.coordi_iter.next() {
-            Some(value) => Some(&self.cells[value]),
-            None => None,
-        }
     }
 }

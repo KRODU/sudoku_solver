@@ -6,8 +6,8 @@ pub struct Coordinate {
 impl Clone for Coordinate {
     fn clone(&self) -> Self {
         Self {
-            x: self.x.clone(),
-            y: self.y.clone(),
+            x: self.x,
+            y: self.y,
         }
     }
 }

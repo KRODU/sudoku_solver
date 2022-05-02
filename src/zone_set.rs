@@ -10,7 +10,7 @@ impl ZoneSet {
     pub fn new_with_zone(zone: &[Zone]) -> Self {
         let mut z: HashSet<Zone> = HashSet::with_capacity(zone.len());
         for item in zone {
-            z.insert(*item);
+            z.insert(item.clone());
         }
 
         ZoneSet { zone: z }
