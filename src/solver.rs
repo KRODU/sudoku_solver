@@ -3,22 +3,73 @@ use rusty_pool::ThreadPool;
 
 use crate::{cell::Cell, coordinate::Coordinate, table::Table, zone::Zone};
 
+use self::solver_history::{SolverHistory, SolverHistoryType};
+
 pub mod naked;
-pub mod solver_result;
+pub mod solver_history;
+pub mod validater;
 
 pub struct Solver<'a> {
     t: &'a Table,
     zone_list: Vec<&'a Zone>,
     ref_cache: HashMap<&'a Zone, Vec<&'a Cell>>,
     pool: ThreadPool,
+    solver_history_stack: Vec<SolverHistory<'a>>,
 }
 
 impl<'a> Solver<'a> {
-    pub fn solve(&mut self) {}
+    pub fn solve(&mut self) {
+        self.shutdown_solve_thread_pool();
 
-    fn shutdown_pool(&mut self) {
-        let old_pool: ThreadPool = std::mem::replace(&mut self.pool, ThreadPool::default());
+        if let Some(_) = self.find_error_cell() {
+            self.history_rollback_last_guess();
+        }
+    }
+
+    pub fn shutdown_solve_thread_pool(&mut self) {
+        let old_pool: ThreadPool = std::mem::take(&mut self.pool);
         old_pool.shutdown();
+    }
+
+    fn history_rollback_last_guess(&mut self) {
+        let mut no_guess: bool = true;
+        for history in &self.solver_history_stack {
+            if let SolverHistoryType::Guess { cell: _, num: _ } = history.history_type {
+                no_guess = false;
+                break;
+            }
+        }
+
+        // 만약 히스토리에 guess가 없는 경우 롤백할 의미가 없으므로 return
+        if no_guess {
+            return;
+        }
+
+        while let Some(history) = self.solver_history_stack.pop() {
+            for (c, backup) in history.backup_chk {
+                c.chk.borrow_mut().set_to_chk_list(&backup);
+            }
+
+            // 추측된 숫자를 실패로 간주하여 제외시킴
+            // Guess를 만난 경우 롤백 중단
+            if let SolverHistoryType::Guess { cell, num } = history.history_type {
+                let mut mut_chk = cell.chk.borrow_mut();
+
+                let backup_chk_list: Vec<usize> = mut_chk.clone_chk_list();
+                let mut backup: HashMap<&'a Cell, Vec<usize>> = HashMap::with_capacity(1);
+                backup.insert(cell, backup_chk_list);
+                mut_chk.set_chk(num, false);
+
+                self.solver_history_stack.push(SolverHistory {
+                    history_type: SolverHistoryType::GuessBacktrace {
+                        cell,
+                        except_num: num,
+                    },
+                    backup_chk: backup,
+                });
+                break;
+            }
+        }
     }
 
     #[must_use]
@@ -29,6 +80,7 @@ impl<'a> Solver<'a> {
             zone_list,
             ref_cache: Solver::get_zone_ref(t),
             pool: ThreadPool::default(),
+            solver_history_stack: Vec::new(),
         }
     }
 

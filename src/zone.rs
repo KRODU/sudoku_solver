@@ -1,20 +1,51 @@
+pub enum ZoneType {
+    Unique,
+    Sum { sum: usize },
+}
+
+impl Clone for ZoneType {
+    fn clone(&self) -> Self {
+        match self {
+            Self::Unique => Self::Unique,
+            Self::Sum { sum } => Self::Sum { sum: sum.clone() },
+        }
+    }
+}
+
+impl Default for ZoneType {
+    fn default() -> Self {
+        Self::Unique
+    }
+}
+
 pub struct Zone {
     z: usize,
+    zone_type: ZoneType,
 }
 
 impl Zone {
     pub fn new_from_num(z: usize) -> Zone {
-        Zone { z }
+        Zone {
+            z,
+            zone_type: ZoneType::Unique,
+        }
     }
 
     pub fn get_zone_num(&self) -> usize {
         self.z
     }
+
+    pub fn get_zone_type(&self) -> &ZoneType {
+        &self.zone_type
+    }
 }
 
 impl Clone for Zone {
     fn clone(&self) -> Self {
-        Self { z: self.z }
+        Self {
+            z: self.z,
+            zone_type: self.zone_type.clone(),
+        }
     }
 }
 

@@ -43,14 +43,8 @@ impl Table {
 
     #[must_use]
     #[inline]
-    pub fn get_cell_coordi(&self, x: usize, y: usize) -> &Cell {
-        &self.cells[&Coordinate { x, y }]
-    }
-
-    #[must_use]
-    #[inline]
-    pub fn get_mut_cell(&mut self, x: usize, y: usize) -> &mut Cell {
-        self.cells.get_mut(&Coordinate { x, y }).unwrap()
+    pub fn get_cell_coordi(&self, coordi: &Coordinate) -> &Cell {
+        &self.cells[coordi]
     }
 
     /// 스도쿠의 가로, 세로 길이입니다.
