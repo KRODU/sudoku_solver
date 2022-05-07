@@ -7,7 +7,7 @@ impl Clone for ZoneType {
     fn clone(&self) -> Self {
         match self {
             Self::Unique => Self::Unique,
-            Self::Sum { sum } => Self::Sum { sum: sum.clone() },
+            Self::Sum { sum } => Self::Sum { sum: *sum },
         }
     }
 }

@@ -15,22 +15,22 @@ use super::{
 };
 
 impl<'a> Solver<'a> {
-    pub fn naked(&'a self) {
+    pub fn naked(&self) {
         for i in 1..self.t.get_size() {
             self.naked_number(i);
         }
     }
 
-    pub fn naked_number(&'a self, i: usize) -> Option<SolverResult> {
+    pub fn naked_number(&self, i: usize) -> Option<SolverResult> {
         // i의 값이 유효하지 않은 경우 None
-        if i <= 0 || i >= self.t.get_size() {
+        if i == 0 || i >= self.t.get_size() {
             return None;
         }
 
         for z in self.get_zone_list() {
             if let ZoneType::Unique = z.get_zone_type() {
                 let result = self.naked_number_zone(i, z);
-                if let Some(_) = result {
+                if result.is_some() {
                     return result;
                 }
             }
@@ -38,7 +38,7 @@ impl<'a> Solver<'a> {
         None
     }
 
-    fn naked_number_zone(&'a self, i: usize, z: &&Zone) -> Option<SolverResult> {
+    fn naked_number_zone(&self, i: usize, z: &&Zone) -> Option<SolverResult> {
         let borrow_map = self.fill_and_get_borrow_map();
         let mut chk: Vec<&Cell> = Vec::with_capacity(self.t.get_size());
 
@@ -70,14 +70,14 @@ impl<'a> Solver<'a> {
                 let union: Vec<usize> = b.union_note(naked_value);
 
                 // 제거할 노트를 발견한 경우
-                if union.len() > 0 {
+                if !union.is_empty() {
                     effect_cells.insert(zone_cell, union);
                 }
             }
 
             // effect_cells에 값이 존재하는 경우 제거한 노트를 발견한 것임.
             // 해당 값을 return하고 종료
-            if effect_cells.len() > 0 {
+            if !effect_cells.is_empty() {
                 let mut found_cells: HashSet<&'a Cell> = HashSet::with_capacity(r.len());
                 for effect_cell in r {
                     found_cells.insert(*effect_cell);

@@ -1,7 +1,7 @@
 use hashbrown::HashMap;
 use rand::{thread_rng, Rng};
 
-use crate::cell::{Cell};
+use crate::cell::Cell;
 
 use super::{
     solver_history::{SolverHistory, SolverHistoryType},
@@ -38,30 +38,7 @@ impl<'a> Solver<'a> {
             (cell_pick, note_pick)
         };
 
-        // let cell_coordiname = cell_pick.get_coordinate();
-
-        self.clear_borrow_map();
-        let mut b = cell_pick.chk.borrow_mut();
-
-        // 만약 해당 cell이 이미 해당 값으로 확정된 경우 무시됨
-        if b.is_final_num() {
-            return;
-        }
-
-        let backup = b.clone_chk_list();
-        let mut backup_chk: HashMap<&'a Cell, Vec<usize>> = HashMap::with_capacity(1);
-        backup_chk.insert(cell_pick, backup);
-        b.set_to_value(note_pick);
-
-        let history: SolverHistory<'a> = SolverHistory {
-            history_type: SolverHistoryType::Guess {
-                cell: cell_pick,
-                final_num: note_pick,
-            },
-            backup_chk,
-        };
-
-        self.solver_history_stack.push(history);
+        self.guess_mut_something(cell_pick, note_pick);
     }
 
     /// 특정 Cell의 값을 가정합니다. 불가능한 값일 경우 panic이 발생합니다.

@@ -5,7 +5,7 @@ use rusty_pool::ThreadPool;
 
 use crate::{cell::Cell, coordinate::Coordinate, num_check::NumCheck, table::Table, zone::Zone};
 
-use self::solver_history::{SolverHistory, SolverHistoryType};
+use self::solver_history::{SolverHistory, SolverHistoryType, SolverResult};
 
 pub mod guess;
 pub mod naked;
@@ -23,12 +23,50 @@ pub struct Solver<'a> {
 
 impl<'a> Solver<'a> {
     pub fn solve(&mut self) {
+        let result = self.naked();
+
         self.shutdown_solve_thread_pool();
 
         // 오류가 있는지 체크하여 있을 경우 롤백
-        if let Some(_) = self.find_error_cell() {
+        if self.find_error_cell().is_some() {
             self.history_rollback_last_guess();
         }
+    }
+
+    /// 스도푸를 푼 경우 해당 결과를 적용합니다.
+    pub fn solve_result_commit(&mut self, result: Option<SolverResult<'a>>) -> bool {
+        if let Some(solver_result) = result {
+            let history = {
+                let borrow_map = self.fill_and_get_borrow_map();
+                let mut backup_chk: HashMap<&'a Cell, Vec<usize>> =
+                    HashMap::with_capacity(solver_result.get_effect_cells().len());
+
+                for c in solver_result.get_effect_cells().keys() {
+                    let backup = borrow_map.get(c).unwrap().clone_chk_list();
+                    backup_chk.insert(c, backup);
+                }
+
+                SolverHistory {
+                    history_type: SolverHistoryType::Solve { solver_result },
+                    backup_chk,
+                }
+            };
+
+            self.clear_borrow_map();
+
+            if let SolverHistoryType::Solve { solver_result } = history.history_type {
+                for (c, v) in solver_result.get_effect_cells() {
+                    c.chk.borrow_mut().set_to_false_list(v);
+                }
+            } else {
+                panic!("뭔가 잘못됨")
+            }
+            
+
+            return true;
+        }
+
+        false
     }
 
     pub fn shutdown_solve_thread_pool(&mut self) {
@@ -111,7 +149,7 @@ impl<'a> Solver<'a> {
         zone_ref
     }
 
-    fn fill_and_get_borrow_map<'b>(&'b self) -> Ref<HashMap<&'b Cell, Ref<'b, NumCheck>>> {
+    fn fill_and_get_borrow_map<'b>(&'b self) -> Ref<'b, HashMap<&'a Cell, Ref<'a, NumCheck>>> {
         if self.borrow_map.borrow().len() == 0 {
             let mut b_mut = self.borrow_map.borrow_mut();
             for (_, c) in self.t.get_cell() {
@@ -122,7 +160,7 @@ impl<'a> Solver<'a> {
         self.borrow_map.borrow()
     }
 
-    fn clear_borrow_map(&self) {
+    fn clear_borrow_map(&mut self) {
         self.borrow_map.borrow_mut().clear();
     }
 
@@ -149,7 +187,7 @@ impl<'a> Solver<'a> {
     #[must_use]
     #[inline]
     /// 지정된 Zone을 순회하는 Iterator를 반환합니다.
-    pub fn zone_iter(&self, zone: &Zone) -> std::slice::Iter<'_, &Cell> {
+    pub fn zone_iter<'b>(&'b self, zone: &'b Zone) -> std::slice::Iter<'_, &'a Cell> {
         self.ref_cache[zone].iter()
     }
 

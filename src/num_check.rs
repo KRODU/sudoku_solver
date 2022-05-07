@@ -92,6 +92,13 @@ impl NumCheck {
         self.set_to_final_num();
     }
 
+    /// 지정된 리스트의 값을 모두 false로 지정합니다.
+    pub fn set_to_false_list(&mut self, list: &[usize]) {
+        for i in list {
+            self.set_chk(*i, false);
+        }
+    }
+
     /// 값이 하나만 남은 경우 final_num으로 확정합니다.
     #[inline]
     fn set_to_final_num(&mut self) {
