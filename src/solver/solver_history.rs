@@ -13,6 +13,18 @@ pub struct SolverResult<'a> {
 }
 
 impl<'a> SolverResult<'a> {
+    pub fn new(
+        solver_type: SolverType,
+        found_cells: HashSet<&'a Cell>,
+        effect_cells: HashMap<&'a Cell, Vec<usize>>,
+    ) -> Self {
+        Self {
+            solver_type,
+            found_cells,
+            effect_cells,
+        }
+    }
+
     pub fn get_solver_type(&self) -> &SolverType {
         &self.solver_type
     }
@@ -31,7 +43,7 @@ pub enum SolverHistoryType<'a> {
     Solve { solver_result: SolverResult<'a> },
 
     /// 스도쿠에서 임의의 값을 추측한 경우입니다.
-    Guess { cell: &'a Cell, num: usize },
+    Guess { cell: &'a Cell, final_num: usize },
 
     /// Guess가 실패한 경우 실패항 guess 숫자를 제외하게 됩니다.
     /// 그것을 추적하기 위한 타입입니다.

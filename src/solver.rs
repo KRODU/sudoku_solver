@@ -1,10 +1,13 @@
+use std::cell::{Ref, RefCell};
+
 use hashbrown::HashMap;
 use rusty_pool::ThreadPool;
 
-use crate::{cell::Cell, coordinate::Coordinate, table::Table, zone::Zone};
+use crate::{cell::Cell, coordinate::Coordinate, num_check::NumCheck, table::Table, zone::Zone};
 
 use self::solver_history::{SolverHistory, SolverHistoryType};
 
+pub mod guess;
 pub mod naked;
 pub mod solver_history;
 pub mod validater;
@@ -15,12 +18,14 @@ pub struct Solver<'a> {
     ref_cache: HashMap<&'a Zone, Vec<&'a Cell>>,
     pool: ThreadPool,
     solver_history_stack: Vec<SolverHistory<'a>>,
+    borrow_map: RefCell<HashMap<&'a Cell, Ref<'a, NumCheck>>>,
 }
 
 impl<'a> Solver<'a> {
     pub fn solve(&mut self) {
         self.shutdown_solve_thread_pool();
 
+        // 오류가 있는지 체크하여 있을 경우 롤백
         if let Some(_) = self.find_error_cell() {
             self.history_rollback_last_guess();
         }
@@ -34,7 +39,11 @@ impl<'a> Solver<'a> {
     fn history_rollback_last_guess(&mut self) {
         let mut no_guess: bool = true;
         for history in &self.solver_history_stack {
-            if let SolverHistoryType::Guess { cell: _, num: _ } = history.history_type {
+            if let SolverHistoryType::Guess {
+                cell: _,
+                final_num: _,
+            } = history.history_type
+            {
                 no_guess = false;
                 break;
             }
@@ -52,18 +61,18 @@ impl<'a> Solver<'a> {
 
             // 추측된 숫자를 실패로 간주하여 제외시킴
             // Guess를 만난 경우 롤백 중단
-            if let SolverHistoryType::Guess { cell, num } = history.history_type {
+            if let SolverHistoryType::Guess { cell, final_num } = history.history_type {
                 let mut mut_chk = cell.chk.borrow_mut();
 
                 let backup_chk_list: Vec<usize> = mut_chk.clone_chk_list();
                 let mut backup: HashMap<&'a Cell, Vec<usize>> = HashMap::with_capacity(1);
                 backup.insert(cell, backup_chk_list);
-                mut_chk.set_chk(num, false);
+                mut_chk.set_chk(final_num, false);
 
                 self.solver_history_stack.push(SolverHistory {
                     history_type: SolverHistoryType::GuessBacktrace {
                         cell,
-                        except_num: num,
+                        except_num: final_num,
                     },
                     backup_chk: backup,
                 });
@@ -75,12 +84,14 @@ impl<'a> Solver<'a> {
     #[must_use]
     pub fn new(t: &'a Table) -> Self {
         let zone_list = Solver::get_zone_list_init(t.get_cell(), t.get_size());
+        let size = t.get_size();
         Solver {
             t,
             zone_list,
             ref_cache: Solver::get_zone_ref(t),
             pool: ThreadPool::default(),
             solver_history_stack: Vec::new(),
+            borrow_map: RefCell::new(HashMap::with_capacity(size * size)),
         }
     }
 
@@ -98,6 +109,21 @@ impl<'a> Solver<'a> {
         }
 
         zone_ref
+    }
+
+    fn fill_and_get_borrow_map<'b>(&'b self) -> Ref<HashMap<&'b Cell, Ref<'b, NumCheck>>> {
+        if self.borrow_map.borrow().len() == 0 {
+            let mut b_mut = self.borrow_map.borrow_mut();
+            for (_, c) in self.t.get_cell() {
+                b_mut.entry(c).or_insert(c.chk.borrow());
+            }
+        }
+
+        self.borrow_map.borrow()
+    }
+
+    fn clear_borrow_map(&self) {
+        self.borrow_map.borrow_mut().clear();
     }
 
     #[must_use]
@@ -122,6 +148,7 @@ impl<'a> Solver<'a> {
 
     #[must_use]
     #[inline]
+    /// 지정된 Zone을 순회하는 Iterator를 반환합니다.
     pub fn zone_iter(&self, zone: &Zone) -> std::slice::Iter<'_, &Cell> {
         self.ref_cache[zone].iter()
     }
