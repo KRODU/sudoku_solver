@@ -61,7 +61,6 @@ impl<'a> Solver<'a> {
             } else {
                 panic!("뭔가 잘못됨")
             }
-            
 
             return true;
         }
@@ -184,7 +183,6 @@ impl<'a> Solver<'a> {
         &self.zone_list
     }
 
-    #[must_use]
     #[inline]
     /// 지정된 Zone을 순회하는 Iterator를 반환합니다.
     pub fn zone_iter<'b>(&'b self, zone: &'b Zone) -> std::slice::Iter<'_, &'a Cell> {

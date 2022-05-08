@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub enum ZoneType {
     Unique,
     Sum { sum: usize },
@@ -18,6 +19,7 @@ impl Default for ZoneType {
     }
 }
 
+#[derive(Debug)]
 pub struct Zone {
     z: usize,
     zone_type: ZoneType,
@@ -31,10 +33,12 @@ impl Zone {
         }
     }
 
+    #[must_use]
     pub fn get_zone_num(&self) -> usize {
         self.z
     }
 
+    #[must_use]
     pub fn get_zone_type(&self) -> &ZoneType {
         &self.zone_type
     }

@@ -21,24 +21,29 @@ impl<'a> Solver<'a> {
         }
     }
 
-    pub fn naked_number(&self, i: usize) -> Option<SolverResult> {
+    pub fn naked_number<'b>(
+        &'b self,
+        i: usize,
+    ) -> Vec<Box<dyn FnOnce() -> Option<SolverResult<'a>> + 'b>> {
+        let mut task_list: Vec<Box<dyn FnOnce() -> Option<SolverResult<'a>> + 'b>> =
+            Vec::with_capacity(self.get_zone_list().len());
+
         // i의 값이 유효하지 않은 경우 None
         if i == 0 || i >= self.t.get_size() {
-            return None;
+            return task_list;
         }
 
         for z in self.get_zone_list() {
             if let ZoneType::Unique = z.get_zone_type() {
-                let result = self.naked_number_zone(i, z);
-                if result.is_some() {
-                    return result;
-                }
+                let f = move || self.naked_number_zone(i, z);
+                task_list.push(Box::new(f));
             }
         }
-        None
+
+        task_list
     }
 
-    fn naked_number_zone(&self, i: usize, z: &&Zone) -> Option<SolverResult> {
+    fn naked_number_zone(&self, i: usize, z: &&Zone) -> Option<SolverResult<'a>> {
         let borrow_map = self.fill_and_get_borrow_map();
         let mut chk: Vec<&Cell> = Vec::with_capacity(self.t.get_size());
 
