@@ -21,58 +21,50 @@ impl<'a> Solver<'a> {
         }
     }
 
-    pub fn naked_number<'b>(
-        &'b self,
-        i: usize,
-    ) -> Vec<Box<dyn FnOnce() -> Option<SolverResult<'a>> + 'b>> {
-        let mut task_list: Vec<Box<dyn FnOnce() -> Option<SolverResult<'a>> + 'b>> =
-            Vec::with_capacity(self.get_zone_list().len());
-
-        // i의 값이 유효하지 않은 경우 None
+    pub fn naked_number(&self, i: usize) {
+        // i의 값이 유효하지 않은 경우 return
         if i == 0 || i >= self.t.get_size() {
-            return task_list;
+            return;
         }
 
         for z in self.get_zone_list() {
             if let ZoneType::Unique = z.get_zone_type() {
-                let f = move || self.naked_number_zone(i, z);
-                task_list.push(Box::new(f));
+                let zone_iter = self.zone_iter(z);
+                let f = move || {Solver::naked_number_zone(zone_iter, i, z);};
+                // self.pool.execute(f);
             }
         }
-
-        task_list
     }
 
-    fn naked_number_zone(&self, i: usize, z: &&Zone) -> Option<SolverResult<'a>> {
-        let borrow_map = self.fill_and_get_borrow_map();
-        let mut chk: Vec<&Cell> = Vec::with_capacity(self.t.get_size());
+    fn naked_number_zone(iter: std::slice::Iter<&'a Cell>, i: usize, z: &&Zone) -> Option<SolverResult<'a>> {
+        let mut chk: Vec<&Cell> = Vec::new();
 
-        for c in self.zone_iter(z) {
-            let borrow: &Ref<NumCheck> = borrow_map.get(c).unwrap();
+        for c in iter.clone() {
+            let borrow: Ref<NumCheck> = c.chk.borrow();
             if borrow.get_true_cnt() == i {
                 chk.push(c);
             }
         }
 
         let com_result = combinations(&chk, i, |comb| {
-            let first_node = borrow_map.get(comb[0]).unwrap();
+            let first_node = comb[0].chk.borrow();
             comb.iter()
-                .all(|c| borrow_map.get(*c).unwrap().is_same_note(first_node))
+                .all(|c| c.chk.borrow().is_same_note(&*first_node))
         });
 
         let mut effect_cells: HashMap<&Cell, Vec<usize>> = HashMap::new();
 
         for r in com_result {
-            let naked_value: &Ref<NumCheck> = borrow_map.get(r[0]).unwrap();
+            let naked_value: Ref<NumCheck> = r[0].chk.borrow();
             // zone을 순회하며 삭제할 노트가 있는지 찾음
-            for zone_cell in self.zone_iter(z) {
+            for zone_cell in iter {
                 // 순회 대상에서 자기 자신은 제외
                 if r.contains(&zone_cell) {
                     continue;
                 }
 
-                let b = borrow_map.get(zone_cell).unwrap();
-                let union: Vec<usize> = b.union_note(naked_value);
+                let b = zone_cell.chk.borrow();
+                let union: Vec<usize> = b.union_note(&*naked_value);
 
                 // 제거할 노트를 발견한 경우
                 if !union.is_empty() {

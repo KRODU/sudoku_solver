@@ -1,9 +1,7 @@
-use std::cell::{Ref, RefCell};
-
 use hashbrown::HashMap;
 use rusty_pool::ThreadPool;
 
-use crate::{cell::Cell, coordinate::Coordinate, num_check::NumCheck, table::Table, zone::Zone};
+use crate::{cell::Cell, coordinate::Coordinate, table::Table, zone::Zone};
 
 use self::solver_history::{SolverHistory, SolverHistoryType, SolverResult};
 
@@ -18,7 +16,6 @@ pub struct Solver<'a> {
     ref_cache: HashMap<&'a Zone, Vec<&'a Cell>>,
     pool: ThreadPool,
     solver_history_stack: Vec<SolverHistory<'a>>,
-    borrow_map: RefCell<HashMap<&'a Cell, Ref<'a, NumCheck>>>,
 }
 
 impl<'a> Solver<'a> {
@@ -37,12 +34,11 @@ impl<'a> Solver<'a> {
     pub fn solve_result_commit(&mut self, result: Option<SolverResult<'a>>) -> bool {
         if let Some(solver_result) = result {
             let history = {
-                let borrow_map = self.fill_and_get_borrow_map();
                 let mut backup_chk: HashMap<&'a Cell, Vec<usize>> =
                     HashMap::with_capacity(solver_result.get_effect_cells().len());
 
                 for c in solver_result.get_effect_cells().keys() {
-                    let backup = borrow_map.get(c).unwrap().clone_chk_list();
+                    let backup = c.chk.borrow().clone_chk_list();
                     backup_chk.insert(c, backup);
                 }
 
@@ -51,8 +47,6 @@ impl<'a> Solver<'a> {
                     backup_chk,
                 }
             };
-
-            self.clear_borrow_map();
 
             if let SolverHistoryType::Solve { solver_result } = history.history_type {
                 for (c, v) in solver_result.get_effect_cells() {
@@ -121,14 +115,12 @@ impl<'a> Solver<'a> {
     #[must_use]
     pub fn new(t: &'a Table) -> Self {
         let zone_list = Solver::get_zone_list_init(t.get_cell(), t.get_size());
-        let size = t.get_size();
         Solver {
             t,
             zone_list,
             ref_cache: Solver::get_zone_ref(t),
             pool: ThreadPool::default(),
             solver_history_stack: Vec::new(),
-            borrow_map: RefCell::new(HashMap::with_capacity(size * size)),
         }
     }
 
@@ -146,21 +138,6 @@ impl<'a> Solver<'a> {
         }
 
         zone_ref
-    }
-
-    fn fill_and_get_borrow_map<'b>(&'b self) -> Ref<'b, HashMap<&'a Cell, Ref<'a, NumCheck>>> {
-        if self.borrow_map.borrow().len() == 0 {
-            let mut b_mut = self.borrow_map.borrow_mut();
-            for (_, c) in self.t.get_cell() {
-                b_mut.entry(c).or_insert(c.chk.borrow());
-            }
-        }
-
-        self.borrow_map.borrow()
-    }
-
-    fn clear_borrow_map(&mut self) {
-        self.borrow_map.borrow_mut().clear();
     }
 
     #[must_use]

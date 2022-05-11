@@ -12,12 +12,12 @@ impl<'a> Solver<'a> {
     /// 값이 확정되지 않은 cell중에 하나를 무작위로 guess하여 넣습니다.
     pub fn guess_random(&'a mut self) {
         let (cell_pick, note_pick) = {
-            let borrow_map = self.fill_and_get_borrow_map();
             let mut minimum_note_cnt = usize::MAX;
             let mut minimum_note_list: Vec<&Cell> = Vec::new();
 
-            for (c, n) in borrow_map.iter() {
-                let true_cnt = n.get_true_cnt();
+            for n in self.t.get_cell().values() {
+                let b = n.chk.borrow();
+                let true_cnt = b.get_true_cnt();
                 if true_cnt <= 1 || true_cnt > minimum_note_cnt {
                     continue;
                 }
@@ -27,7 +27,7 @@ impl<'a> Solver<'a> {
                     minimum_note_cnt = true_cnt;
                 }
 
-                minimum_note_list.push(c);
+                minimum_note_list.push(n);
             }
 
             let mut rng = thread_rng();
@@ -47,7 +47,6 @@ impl<'a> Solver<'a> {
     ///
     /// 히스토리에 Guess를 추가합니다.
     pub fn guess_mut_something(&mut self, cell: &'a Cell, final_num: usize) {
-        self.clear_borrow_map();
         let mut b = cell.chk.borrow_mut();
 
         // 불가능한 값으로 guess할 경우 panic 발생
