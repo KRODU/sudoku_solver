@@ -34,8 +34,11 @@ fn main() {
 
     println!("puzzle seed: {}", solver.get_random_seed());
     println!(
-        "solve: {}, guess: {}, guess_rollback: {}",
-        solver.solve_cnt(), solver.guess_cnt(), solver.guess_rollback_cnt()
+        "solve: {}, guess: {}, guess_rollback_cnt: {}, guess_backtrace_rollback_cnt: {}",
+        solver.solve_cnt(),
+        solver.guess_cnt(),
+        solver.guess_rollback_cnt(),
+        solver.guess_backtrace_rollback_cnt()
     );
     println!("duration time: {}ms", (end - start).as_millis());
 }

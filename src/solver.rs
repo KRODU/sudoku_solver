@@ -26,6 +26,7 @@ pub struct Solver<'a> {
     solve_cnt: u32,
     guess_cnt: u32,
     guess_rollback_cnt: u32,
+    guess_backtrace_rollback_cnt: u32,
 }
 
 impl<'a> Solver<'a> {
@@ -107,6 +108,7 @@ impl<'a> Solver<'a> {
             return false;
         }
 
+        self.guess_rollback_cnt += 1;
         while let Some(history) = self.solver_history_stack.pop() {
             for (c, backup) in history.backup_chk {
                 c.chk.borrow_mut().set_to_chk_list(&backup);
@@ -117,7 +119,7 @@ impl<'a> Solver<'a> {
                 except_num: _,
             } = history.history_type
             {
-                self.guess_rollback_cnt += 1;
+                self.guess_backtrace_rollback_cnt += 1;
             }
 
             // 추측된 숫자를 실패로 간주하여 제외시킴
@@ -169,6 +171,7 @@ impl<'a> Solver<'a> {
             rand_seed,
             guess_cnt: 0,
             guess_rollback_cnt: 0,
+            guess_backtrace_rollback_cnt: 0,
             solve_cnt: 0,
         }
     }
@@ -255,6 +258,13 @@ impl<'a> Solver<'a> {
     #[inline]
     pub fn guess_cnt(&self) -> u32 {
         self.guess_cnt
+    }
+
+    /// Get the solver's guess rollback cnt.
+    #[must_use]
+    #[inline]
+    pub fn guess_backtrace_rollback_cnt(&self) -> u32 {
+        self.guess_backtrace_rollback_cnt
     }
 
     /// Get the solver's guess rollback cnt.
