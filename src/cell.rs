@@ -2,6 +2,7 @@ use std::cell::RefCell;
 
 use crate::{coordinate::Coordinate, num_check::NumCheck, zone::Zone, zone_set::ZoneSet};
 
+#[derive(Debug)]
 pub struct Cell {
     pub chk: RefCell<NumCheck>,
     zone: ZoneSet,
@@ -10,18 +11,10 @@ pub struct Cell {
 
 impl Cell {
     #[must_use]
-    pub fn new(size: usize, x: usize, y: usize, zone: &[Zone]) -> Self {
+    pub fn new(size: usize, x: usize, y: usize, zone: Vec<Zone>) -> Self {
         Cell {
             chk: RefCell::new(NumCheck::new(size)),
-            zone: ZoneSet::new_with_zone(zone),
-            coordi: Coordinate { x, y },
-        }
-    }
-
-    pub fn new_single_zone(size: usize, x: usize, y: usize, zone: Zone) -> Self {
-        Cell {
-            chk: RefCell::new(NumCheck::new(size)),
-            zone: ZoneSet::new_single_zone(zone),
+            zone: ZoneSet { zone },
             coordi: Coordinate { x, y },
         }
     }
@@ -36,7 +29,7 @@ impl Cell {
     #[must_use]
     #[inline]
     pub fn is_zone_contain(&self, zone: Zone) -> bool {
-        self.zone.is_contain(zone)
+        self.zone.is_contain(&zone)
     }
 
     /// 현재 Cell의 x, y 좌표를 가져옵니다.

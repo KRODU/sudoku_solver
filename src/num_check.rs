@@ -1,5 +1,6 @@
 use hashbrown::HashSet;
 
+#[derive(Debug)]
 pub struct NumCheck {
     chk_list: Vec<bool>,
     /// 값은 1부터 들어갑니다.
@@ -24,8 +25,9 @@ impl NumCheck {
             final_num: None,
         };
 
-        for _ in 0..size {
+        for n in 1..=size {
             ret.chk_list.push(true);
+            ret.true_list.insert(n);
         }
         ret
     }

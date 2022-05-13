@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub struct Coordinate {
     pub x: usize,
     pub y: usize,

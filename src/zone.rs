@@ -21,8 +21,8 @@ impl Default for ZoneType {
 
 #[derive(Debug)]
 pub struct Zone {
-    z: usize,
-    zone_type: ZoneType,
+    pub z: usize,
+    pub zone_type: ZoneType,
 }
 
 impl Zone {

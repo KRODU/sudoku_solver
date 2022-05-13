@@ -1,10 +1,7 @@
-use std::cell::Ref;
-
 use hashbrown::{HashMap, HashSet};
 
 use crate::{
     cell::Cell,
-    num_check::NumCheck,
     util::combinations,
     zone::{Zone, ZoneType},
 };
@@ -15,32 +12,42 @@ use super::{
 };
 
 impl<'a> Solver<'a> {
-    pub fn naked(&self) {
+    pub fn naked(&self) -> Option<SolverResult<'a>> {
         for i in 1..self.t.get_size() {
-            self.naked_number(i);
+            let result = self.naked_number(i);
+
+            if result.is_some() {
+                return result;
+            }
         }
+
+        None
     }
 
-    pub fn naked_number(&self, i: usize) {
+    pub fn naked_number(&self, i: usize) -> Option<SolverResult<'a>> {
         // i의 값이 유효하지 않은 경우 return
         if i == 0 || i >= self.t.get_size() {
-            return;
+            return None;
         }
 
         for z in self.get_zone_list() {
             if let ZoneType::Unique = z.get_zone_type() {
-                let zone_iter = self.zone_iter(z);
-                let f = move || {Solver::naked_number_zone(zone_iter, i, z);};
-                // self.pool.execute(f);
+                let result = self.naked_number_zone(z, i);
+
+                if result.is_some() {
+                    return result;
+                }
             }
         }
+
+        None
     }
 
-    fn naked_number_zone(iter: std::slice::Iter<&'a Cell>, i: usize, z: &&Zone) -> Option<SolverResult<'a>> {
+    fn naked_number_zone(&self, z: &Zone, i: usize) -> Option<SolverResult<'a>> {
         let mut chk: Vec<&Cell> = Vec::new();
 
-        for c in iter.clone() {
-            let borrow: Ref<NumCheck> = c.chk.borrow();
+        for c in self.zone_iter(z) {
+            let borrow = c.chk.borrow();
             if borrow.get_true_cnt() == i {
                 chk.push(c);
             }
@@ -55,9 +62,9 @@ impl<'a> Solver<'a> {
         let mut effect_cells: HashMap<&Cell, Vec<usize>> = HashMap::new();
 
         for r in com_result {
-            let naked_value: Ref<NumCheck> = r[0].chk.borrow();
+            let naked_value = r[0].chk.borrow();
             // zone을 순회하며 삭제할 노트가 있는지 찾음
-            for zone_cell in iter {
+            for zone_cell in self.zone_iter(z) {
                 // 순회 대상에서 자기 자신은 제외
                 if r.contains(&zone_cell) {
                     continue;

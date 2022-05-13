@@ -22,15 +22,29 @@ impl Table {
             }
 
             for z in zone_row.iter_mut() {
-                *z += 1;
+                *z += 3;
             }
         }
 
         let mut cells: HashMap<Coordinate, Cell> = HashMap::with_capacity(81);
         for x in 0..9 {
             for y in 0..9 {
-                let index = x * 9 + y;
-                let cell = Cell::new_single_zone(9, x, y, Zone::new_from_num(zone[index]));
+                let index = zone[x * 9 + y];
+                let this_zone: Vec<Zone> = vec![
+                    Zone {
+                        z: index,
+                        zone_type: crate::zone::ZoneType::Unique,
+                    },
+                    Zone {
+                        z: x + 10,
+                        zone_type: crate::zone::ZoneType::Unique,
+                    },
+                    Zone {
+                        z: y + 19,
+                        zone_type: crate::zone::ZoneType::Unique,
+                    },
+                ];
+                let cell = Cell::new(9, x, y, this_zone);
                 cells.insert(Coordinate { x, y }, cell);
             }
         }

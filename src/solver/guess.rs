@@ -1,5 +1,5 @@
 use hashbrown::HashMap;
-use rand::{thread_rng, Rng};
+use rand::Rng;
 
 use crate::cell::Cell;
 
@@ -10,7 +10,7 @@ use super::{
 
 impl<'a> Solver<'a> {
     /// 값이 확정되지 않은 cell중에 하나를 무작위로 guess하여 넣습니다.
-    pub fn guess_random(&'a mut self) {
+    pub fn guess_random(&mut self) {
         let (cell_pick, note_pick) = {
             let mut minimum_note_cnt = usize::MAX;
             let mut minimum_note_list: Vec<&Cell> = Vec::new();
@@ -30,7 +30,12 @@ impl<'a> Solver<'a> {
                 minimum_note_list.push(n);
             }
 
-            let mut rng = thread_rng();
+            // 모든 스도쿠 퍼즐이 채워진 경우 return
+            if minimum_note_list.is_empty() {
+                return;
+            }
+
+            let mut rng = self.rng.borrow_mut();
             let cell_pick = minimum_note_list[rng.gen_range(0..minimum_note_list.len())];
             let cell_notes = cell_pick.chk.borrow().clone_chk_list();
             let note_pick = cell_notes[rng.gen_range(0..cell_notes.len())];

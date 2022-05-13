@@ -2,17 +2,19 @@ use hashbrown::{HashMap, HashSet};
 
 use crate::cell::Cell;
 
+#[derive(Debug)]
 pub enum SolverType {
     Naked { found_chks: Vec<usize> },
 }
 
+#[derive(Debug)]
 pub struct SolverResult<'a> {
     solver_type: SolverType,
     found_cells: HashSet<&'a Cell>,
     effect_cells: HashMap<&'a Cell, Vec<usize>>,
 }
 
-impl<'a> SolverResult<'a> {
+impl<'a, 'z> SolverResult<'a> {
     pub fn new(
         solver_type: SolverType,
         found_cells: HashSet<&'a Cell>,
@@ -38,6 +40,7 @@ impl<'a> SolverResult<'a> {
     }
 }
 
+#[derive(Debug)]
 pub enum SolverHistoryType<'a> {
     /// solver에 의해 스도쿠를 푼 경우입니다.
     Solve { solver_result: SolverResult<'a> },
@@ -50,6 +53,7 @@ pub enum SolverHistoryType<'a> {
     GuessBacktrace { cell: &'a Cell, except_num: usize },
 }
 
+#[derive(Debug)]
 pub struct SolverHistory<'a> {
     pub history_type: SolverHistoryType<'a>,
     pub backup_chk: HashMap<&'a Cell, Vec<usize>>,

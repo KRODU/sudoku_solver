@@ -7,15 +7,15 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'rest_test'",
+            "name": "Debug executable 'sudoku_solver'",
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=rest_test",
-                    "--package=rest_test"
+                    "--bin=sudoku_solver",
+                    "--package=sudoku_solver"
                 ],
                 "filter": {
-                    "name": "rest_test",
+                    "name": "sudoku_solver",
                     "kind": "bin"
                 }
             },
@@ -25,16 +25,16 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in executable 'rest_test'",
+            "name": "Debug unit tests in executable 'sudoku_solver'",
             "cargo": {
                 "args": [
                     "test",
                     "--no-run",
-                    "--bin=rest_test",
-                    "--package=rest_test"
+                    "--bin=sudoku_solver",
+                    "--package=sudoku_solver"
                 ],
                 "filter": {
-                    "name": "rest_test",
+                    "name": "sudoku_solver",
                     "kind": "bin"
                 }
             },

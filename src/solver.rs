@@ -1,7 +1,14 @@
-use hashbrown::HashMap;
-use rusty_pool::ThreadPool;
+use std::cell::RefCell;
 
-use crate::{cell::Cell, coordinate::Coordinate, table::Table, zone::Zone};
+use hashbrown::HashMap;
+use rand::prelude::ThreadRng;
+
+use crate::{
+    cell::Cell,
+    coordinate::Coordinate,
+    table::Table,
+    zone::{Zone, ZoneType},
+};
 
 use self::solver_history::{SolverHistory, SolverHistoryType, SolverResult};
 
@@ -14,20 +21,33 @@ pub struct Solver<'a> {
     t: &'a Table,
     zone_list: Vec<&'a Zone>,
     ref_cache: HashMap<&'a Zone, Vec<&'a Cell>>,
-    pool: ThreadPool,
     solver_history_stack: Vec<SolverHistory<'a>>,
+    rng: RefCell<ThreadRng>,
 }
 
 impl<'a> Solver<'a> {
-    pub fn solve(&mut self) {
-        let result = self.naked();
-
-        self.shutdown_solve_thread_pool();
-
-        // 오류가 있는지 체크하여 있을 경우 롤백
+    pub fn solve(&mut self) -> Result<&SolverHistory<'a>, ()> {
+        // 먼저 오류가 있는지 체크하여 있을 경우 롤백
         if self.find_error_cell().is_some() {
-            self.history_rollback_last_guess();
+            if self.history_rollback_last_guess() {
+                return self.ret_last_solver_history();
+            } else {
+                return Err(());
+            }
         }
+
+        let result = self.naked();
+        if self.solve_result_commit(result) {
+            return self.ret_last_solver_history();
+        }
+
+        // 푸는게 실패할 경우 guess를 적용
+        self.guess_random();
+        self.ret_last_solver_history()
+    }
+
+    fn ret_last_solver_history(&self) -> Result<&SolverHistory<'a>, ()> {
+        Ok(&self.solver_history_stack[self.solver_history_stack.len() - 1])
     }
 
     /// 스도푸를 푼 경우 해당 결과를 적용합니다.
@@ -48,7 +68,7 @@ impl<'a> Solver<'a> {
                 }
             };
 
-            if let SolverHistoryType::Solve { solver_result } = history.history_type {
+            if let SolverHistoryType::Solve { ref solver_result } = history.history_type {
                 for (c, v) in solver_result.get_effect_cells() {
                     c.chk.borrow_mut().set_to_false_list(v);
                 }
@@ -56,18 +76,15 @@ impl<'a> Solver<'a> {
                 panic!("뭔가 잘못됨")
             }
 
+            self.solver_history_stack.push(history);
             return true;
         }
 
         false
     }
 
-    pub fn shutdown_solve_thread_pool(&mut self) {
-        let old_pool: ThreadPool = std::mem::take(&mut self.pool);
-        old_pool.shutdown();
-    }
-
-    fn history_rollback_last_guess(&mut self) {
+    /// 가장 최근의 guess까지 롤백
+    fn history_rollback_last_guess(&mut self) -> bool {
         let mut no_guess: bool = true;
         for history in &self.solver_history_stack {
             if let SolverHistoryType::Guess {
@@ -82,7 +99,7 @@ impl<'a> Solver<'a> {
 
         // 만약 히스토리에 guess가 없는 경우 롤백할 의미가 없으므로 return
         if no_guess {
-            return;
+            return false;
         }
 
         while let Some(history) = self.solver_history_stack.pop() {
@@ -110,6 +127,20 @@ impl<'a> Solver<'a> {
                 break;
             }
         }
+
+        true
+    }
+
+    /// 이 스도쿠 퍼즐이 완성되었는지 여부를 반환
+    #[must_use]
+    pub fn is_complete_puzzle(&self) -> bool {
+        for c in self.t.get_cell().values() {
+            if !c.chk.borrow().is_final_num() {
+                return false;
+            }
+        }
+
+        true
     }
 
     #[must_use]
@@ -119,8 +150,8 @@ impl<'a> Solver<'a> {
             t,
             zone_list,
             ref_cache: Solver::get_zone_ref(t),
-            pool: ThreadPool::default(),
             solver_history_stack: Vec::new(),
+            rng: RefCell::new(rand::thread_rng()),
         }
     }
 
@@ -128,7 +159,7 @@ impl<'a> Solver<'a> {
     fn get_zone_ref(t: &'a Table) -> HashMap<&'a Zone, Vec<&'a Cell>> {
         let size: usize = t.get_size();
         let mut zone_ref: HashMap<&'a Zone, Vec<&'a Cell>> = HashMap::with_capacity(size * size);
-        for (_, this_cell) in t.get_cell() {
+        for this_cell in t.get_cell().values() {
             for z in this_cell.get_zone() {
                 let row: &mut Vec<&Cell> = zone_ref
                     .entry(z)
@@ -137,6 +168,13 @@ impl<'a> Solver<'a> {
             }
         }
 
+        for (z, c) in &zone_ref {
+            if let ZoneType::Unique = z.zone_type {
+                if c.len() != size {
+                    panic!("Unique 타입의 개수는 퍼즐 사이즈와 동일해야 함!")
+                }
+            }
+        }
         zone_ref
     }
 
