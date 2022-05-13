@@ -1,3 +1,10 @@
+/// combination 알고리즘을 구현합니다.
+///
+/// arr: 조합에 사용할 배열
+///
+/// len: 조합할 갯수
+///
+/// f: 조합된 항목이 이 함수로 전달됩니다. true를 반환하면 해당 조합이 결과 리스트에 포함됩니다.
 pub fn combinations<T, F>(arr: &[T], len: usize, f: F) -> Vec<Vec<&T>>
 where
     F: Fn(&Vec<&T>) -> bool,

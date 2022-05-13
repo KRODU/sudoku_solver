@@ -2,7 +2,7 @@ use hashbrown::{HashMap, HashSet};
 
 use crate::{
     cell::Cell,
-    util::combinations,
+    combinations::combinations,
     zone::{Zone, ZoneType},
 };
 
@@ -24,7 +24,7 @@ impl<'a> Solver<'a> {
         None
     }
 
-    pub fn naked_number(&self, i: usize) -> Option<SolverResult<'a>> {
+    pub fn naked_number(&self, i: u32) -> Option<SolverResult<'a>> {
         // i의 값이 유효하지 않은 경우 return
         if i == 0 || i >= self.t.get_size() {
             return None;
@@ -43,7 +43,7 @@ impl<'a> Solver<'a> {
         None
     }
 
-    fn naked_number_zone(&self, z: &Zone, i: usize) -> Option<SolverResult<'a>> {
+    fn naked_number_zone(&self, z: &Zone, i: u32) -> Option<SolverResult<'a>> {
         let mut chk: Vec<&Cell> = Vec::new();
 
         for c in self.zone_iter(z) {
@@ -53,13 +53,13 @@ impl<'a> Solver<'a> {
             }
         }
 
-        let com_result = combinations(&chk, i, |comb| {
+        let com_result = combinations(&chk, i as usize, |comb| {
             let first_node = comb[0].chk.borrow();
             comb.iter()
                 .all(|c| c.chk.borrow().is_same_note(&*first_node))
         });
 
-        let mut effect_cells: HashMap<&Cell, Vec<usize>> = HashMap::new();
+        let mut effect_cells: HashMap<&Cell, Vec<u32>> = HashMap::new();
 
         for r in com_result {
             let naked_value = r[0].chk.borrow();
@@ -71,7 +71,7 @@ impl<'a> Solver<'a> {
                 }
 
                 let b = zone_cell.chk.borrow();
-                let union: Vec<usize> = b.union_note(&*naked_value);
+                let union: Vec<u32> = b.union_note(&*naked_value);
 
                 // 제거할 노트를 발견한 경우
                 if !union.is_empty() {
@@ -86,13 +86,13 @@ impl<'a> Solver<'a> {
                 for effect_cell in r {
                     found_cells.insert(*effect_cell);
                 }
-                return Some(SolverResult::new(
-                    SolverType::Naked {
+                return Some(SolverResult {
+                    solver_type: SolverType::Naked {
                         found_chks: naked_value.clone_chk_list(),
                     },
                     found_cells,
                     effect_cells,
-                ));
+                });
             }
         }
 
