@@ -1,18 +1,26 @@
-use std::cell::RefCell;
+use std::{
+    cell::RefCell,
+    time::{Duration, Instant},
+};
 
-use hashbrown::HashMap;
+use hashbrown::{HashMap, HashSet};
 use rand::{prelude::StdRng, RngCore, SeedableRng};
 
 use crate::{
     cell::Cell,
     table::Table,
     zone::{Zone, ZoneType},
+    zone_set::ZoneSet,
 };
 
-use self::solver_history::{SolverHistory, SolverHistoryType, SolverResult};
+use self::{
+    solve_skip::SkipThis,
+    solver_history::{SolverHistory, SolverHistoryType, SolverResult},
+};
 
 pub mod guess;
 pub mod naked;
+pub mod solve_skip;
 pub mod solver_history;
 pub mod validater;
 
@@ -27,37 +35,66 @@ pub struct Solver<'a> {
     guess_cnt: u32,
     guess_rollback_cnt: u32,
     guess_backtrace_rollback_cnt: u32,
+    skip_this: HashSet<SkipThis>,
 }
 
 impl<'a> Solver<'a> {
+    /// 제한시간 내에 스도쿠를 모두 채우려고 시도합니다.
+    ///
+    /// 풀리지 않고 남은 cell의 개수를 반환합니다.
+    /// 제한시간을 초과했거나 풀 수 없는 문제인 경우 1이상일 수 있습니다.
+    pub fn fill_puzzle_with_timeout(&mut self, timeout: Duration) -> u32 {
+        let start = Instant::now();
+
+        while !self.is_complete_puzzle() {
+            // timeout 또는 모든 문제를 풀 수 없는 경우 return
+            if (Instant::now() - start) >= timeout || self.solve().is_none() {
+                return self
+                    .t
+                    .into_iter()
+                    .filter(|n| !n.chk.borrow().is_final_num())
+                    .count() as u32;
+            }
+        }
+
+        0
+    }
+
+    fn solve_history_rollback_last_guess(&self) -> Option<&SolverHistory<'a>> {
+        Some(&self.solver_history_stack[self.solver_history_stack.len() - 1])
+    }
+
     pub fn solve(&mut self) -> Option<&SolverHistory<'a>> {
         // 먼저 오류가 있는지 체크하여 있을 경우 롤백
         if self.find_error_cell().is_some() {
             if self.history_rollback_last_guess() {
-                return self.ret_last_solver_history();
+                return self.solve_history_rollback_last_guess();
             } else {
                 return None;
             }
         }
 
-        let result: Option<SolverResult> = self.naked();
+        let result = self.naked();
         if self.solve_result_commit(result) {
-            return self.ret_last_solver_history();
+            return self.solve_history_rollback_last_guess();
         }
 
         // 푸는게 실패할 경우 guess를 적용
         self.guess_random();
         self.guess_cnt += 1;
-        self.ret_last_solver_history()
-    }
-
-    fn ret_last_solver_history(&self) -> Option<&SolverHistory<'a>> {
-        Some(&self.solver_history_stack[self.solver_history_stack.len() - 1])
+        self.solve_history_rollback_last_guess()
     }
 
     /// 스도푸를 푼 경우 해당 결과를 적용합니다.
-    pub fn solve_result_commit(&mut self, result: Option<SolverResult<'a>>) -> bool {
-        if let Some(solver_result) = result {
+    pub fn solve_result_commit(
+        &mut self,
+        mut result: (Vec<SkipThis>, Option<SolverResult<'a>>),
+    ) -> bool {
+        while let Some(skip_this) = result.0.pop() {
+            self.skip_this.insert(skip_this);
+        }
+
+        if let Some(solver_result) = result.1 {
             let history = {
                 let mut backup_chk: HashMap<&'a Cell, Vec<u32>> =
                     HashMap::with_capacity(solver_result.effect_cells.len());
@@ -76,6 +113,7 @@ impl<'a> Solver<'a> {
             if let SolverHistoryType::Solve { ref solver_result } = history.history_type {
                 for (c, v) in &solver_result.effect_cells {
                     c.chk.borrow_mut().set_to_false_list(v);
+                    self.remove_skip_zone(c.get_zone());
                 }
             } else {
                 panic!("뭔가 잘못됨")
@@ -112,6 +150,7 @@ impl<'a> Solver<'a> {
         while let Some(history) = self.solver_history_stack.pop() {
             for (c, backup) in history.backup_chk {
                 c.chk.borrow_mut().set_to_chk_list(&backup);
+                self.remove_skip_zone(c.get_zone());
             }
 
             if let SolverHistoryType::GuessBacktrace {
@@ -146,16 +185,24 @@ impl<'a> Solver<'a> {
         true
     }
 
-    /// 이 스도쿠 퍼즐이 완성되었는지 여부를 반환
-    #[must_use]
-    pub fn is_complete_puzzle(&self) -> bool {
-        for c in self.t {
-            if !c.chk.borrow().is_final_num() {
-                return false;
+    fn remove_skip_zone(&mut self, zone: &ZoneSet) {
+        let mut found_delete: Vec<SkipThis> = Vec::new();
+
+        for skip in &self.skip_this {
+            if zone.is_contain(&skip.skip_zone) {
+                found_delete.push((*skip).clone());
             }
         }
 
-        true
+        for del in found_delete {
+            self.skip_this.remove(&del);
+        }
+    }
+
+    /// 이 스도쿠 퍼즐이 완성되었는지 여부를 반환
+    #[must_use]
+    pub fn is_complete_puzzle(&self) -> bool {
+        self.t.into_iter().all(|c| c.chk.borrow().is_final_num())
     }
 
     #[must_use]
@@ -173,6 +220,7 @@ impl<'a> Solver<'a> {
             guess_rollback_cnt: 0,
             guess_backtrace_rollback_cnt: 0,
             solve_cnt: 0,
+            skip_this: HashSet::new(),
         }
     }
 

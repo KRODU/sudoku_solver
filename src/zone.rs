@@ -19,6 +19,23 @@ impl Default for ZoneType {
     }
 }
 
+impl PartialEq for ZoneType {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Sum { sum: l_sum }, Self::Sum { sum: r_sum }) => l_sum == r_sum,
+            _ => core::mem::discriminant(self) == core::mem::discriminant(other),
+        }
+    }
+}
+
+impl Eq for ZoneType {}
+
+impl std::hash::Hash for ZoneType {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        core::mem::discriminant(self).hash(state);
+    }
+}
+
 #[derive(Debug)]
 pub struct Zone {
     pub z: u32,
@@ -55,7 +72,7 @@ impl Clone for Zone {
 
 impl PartialEq for Zone {
     fn eq(&self, other: &Self) -> bool {
-        self.z == other.z
+        self.z == other.z && self.zone_type == other.zone_type
     }
 }
 
@@ -64,5 +81,6 @@ impl Eq for Zone {}
 impl std::hash::Hash for Zone {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.z.hash(state);
+        self.zone_type.hash(state);
     }
 }

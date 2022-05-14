@@ -7,40 +7,56 @@ use crate::{
 };
 
 use super::{
+    solve_skip::{SkipThis, SkipType},
     solver_history::{SolverResult, SolverType},
     Solver,
 };
 
 impl<'a> Solver<'a> {
-    pub fn naked(&self) -> Option<SolverResult<'a>> {
-        for i in 1..self.t.get_size() {
-            let result = self.naked_number(i);
+    pub fn naked(&self) -> (Vec<SkipThis>, Option<SolverResult<'a>>) {
+        let mut total_skip_list: Vec<SkipThis> = Vec::new();
 
-            if result.is_some() {
-                return result;
+        for i in 1..self.t.get_size() {
+            let mut result = self.naked_number(i);
+
+            total_skip_list.append(&mut result.0);
+
+            if result.1.is_some() {
+                return (total_skip_list, result.1);
             }
         }
 
-        None
+        (total_skip_list, None)
     }
 
-    pub fn naked_number(&self, i: u32) -> Option<SolverResult<'a>> {
+    pub fn naked_number(&self, i: u32) -> (Vec<SkipThis>, Option<SolverResult<'a>>) {
+        let mut skip_this_list: Vec<SkipThis> = Vec::new();
+
         // i의 값이 유효하지 않은 경우 return
         if i == 0 || i >= self.t.get_size() {
-            return None;
+            return (skip_this_list, None);
         }
 
         for z in self.get_zone_list() {
             if let ZoneType::Unique = z.get_zone_type() {
+                let skip_this_chk = SkipThis {
+                    skip_type: SkipType::Naked,
+                    skip_zone: (*z).clone(),
+                };
+                if self.skip_this.contains(&skip_this_chk) {
+                    continue;
+                }
                 let result = self.naked_number_zone(z, i);
 
                 if result.is_some() {
-                    return result;
+                    return (skip_this_list, result);
+                } else {
+                    skip_this_list.push(skip_this_chk);
                 }
             }
         }
 
-        None
+        (skip_this_list, None)
     }
 
     fn naked_number_zone(&self, z: &Zone, i: u32) -> Option<SolverResult<'a>> {

@@ -65,6 +65,7 @@ impl<'a> Solver<'a> {
         let mut backup_chk: HashMap<&'a Cell, Vec<u32>> = HashMap::with_capacity(1);
         backup_chk.insert(cell, backup);
         b.set_to_value(final_num);
+        self.remove_skip_zone(cell.get_zone());
 
         let history: SolverHistory<'a> = SolverHistory {
             history_type: SolverHistoryType::Guess { cell, final_num },

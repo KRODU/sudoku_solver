@@ -13,22 +13,13 @@ pub mod zone_set;
 
 fn main() {
     std::env::set_var("RUST_BACKTRACE", "1");
+    
     let t = Table::new_default_16();
     let mut solver = Solver::new(&t);
-    // solver.set_random_seed(7331333875655129923);
+    // solver.set_random_seed(297982631672622005);
+
     let start = Instant::now();
-
-    while !solver.is_complete_puzzle() {
-        let result = solver.solve();
-        if let Some(_) = result {
-
-            // println!("{:?}", history);
-        } else {
-            panic!("오류!")
-        }
-        // println!("{}\n\n", t);
-        // std::thread::sleep(std::time::Duration::from_secs(1));
-    }
+    solver.fill_puzzle_with_timeout(std::time::Duration::MAX);
     println!("{}", t);
     let end = Instant::now();
 

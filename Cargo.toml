@@ -8,3 +8,7 @@ edition = "2021"
 [dependencies]
 hashbrown = "0.12.1"
 rand = { version = "0.8.5", features = ["std_rng"] }
+
+[profile.release]
+opt-level = 3
+strip = true
