@@ -14,13 +14,13 @@ use crate::{
 };
 
 use self::{
-    solve_skip::{SkipThis, SkipType},
-    solver_history::{SolverHistory, SolverHistoryType, SolverResult},
+    solver_final::{SolverSkipType, SovlerSkipResult},
+    solver_history::{SolverHistory, SolverHistoryType},
 };
 
 pub mod guess;
 pub mod naked;
-pub mod solve_skip;
+pub mod solver_final;
 pub mod solver_history;
 pub mod validater;
 
@@ -35,7 +35,7 @@ pub struct Solver<'a> {
     guess_cnt: u32,
     guess_rollback_cnt: u32,
     guess_backtrace_rollback_cnt: u32,
-    skip_this: HashMap<Zone, HashSet<SkipType>>,
+    skip_this: HashMap<Zone, HashSet<SolverSkipType>>,
 }
 
 impl<'a> Solver<'a> {
@@ -86,18 +86,15 @@ impl<'a> Solver<'a> {
     }
 
     /// 스도푸를 푼 경우 해당 결과를 적용합니다.
-    pub fn solve_result_commit(
-        &mut self,
-        mut result: (Vec<SkipThis>, Option<SolverResult<'a>>),
-    ) -> bool {
-        while let Some(skip_this) = result.0.pop() {
+    pub fn solve_result_commit(&mut self, mut result: SovlerSkipResult<'a>) -> bool {
+        while let Some(skip_this) = result.skip_zone.pop() {
             self.skip_this
-                .get_mut(&skip_this.skip_zone)
+                .get_mut(&skip_this)
                 .unwrap()
-                .insert(skip_this.skip_type);
+                .insert(result.skip_type.clone());
         }
 
-        if let Some(solver_result) = result.1 {
+        if let Some(solver_result) = result.solver_result {
             let history = {
                 let mut backup_chk: HashMap<&'a Cell, Vec<u32>> =
                     HashMap::with_capacity(solver_result.effect_cells.len());
@@ -204,7 +201,7 @@ impl<'a> Solver<'a> {
     pub fn new(t: &'a Table) -> Self {
         let rand_seed: u64 = StdRng::from_entropy().next_u64();
         let zone_list = Solver::get_zone_list_init(t, t.get_size());
-        let mut skip_this: HashMap<Zone, HashSet<SkipType>> = HashMap::new();
+        let mut skip_this: HashMap<Zone, HashSet<SolverSkipType>> = HashMap::new();
         for z in &zone_list {
             skip_this.insert((*z).clone(), HashSet::new());
         }

@@ -7,14 +7,14 @@ use crate::{
 };
 
 use super::{
-    solve_skip::{SkipThis, SkipType},
-    solver_history::{SolverResult, SolverType},
+    solver_final::{SolverSkipType, SovlerSkipResult},
+    solver_history::{SolverResult, SolverResultType},
     Solver,
 };
 
 impl<'a> Solver<'a> {
-    pub fn naked(&self) -> (Vec<SkipThis>, Option<SolverResult<'a>>) {
-        let mut total_skip_list: Vec<SkipThis> = Vec::new();
+    pub fn naked(&self) -> SovlerSkipResult<'a> {
+        let mut total_skip_list: Vec<Zone> = Vec::new();
 
         for i in 1..self.t.get_size() {
             let mut result = self.naked_number(i);
@@ -22,15 +22,23 @@ impl<'a> Solver<'a> {
             total_skip_list.append(&mut result.0);
 
             if result.1.is_some() {
-                return (total_skip_list, result.1);
+                return SovlerSkipResult {
+                    skip_type: SolverSkipType::Naked,
+                    skip_zone: total_skip_list,
+                    solver_result: result.1,
+                };
             }
         }
 
-        (total_skip_list, None)
+        SovlerSkipResult {
+            skip_type: SolverSkipType::Naked,
+            skip_zone: total_skip_list,
+            solver_result: None,
+        }
     }
 
-    pub fn naked_number(&self, i: u32) -> (Vec<SkipThis>, Option<SolverResult<'a>>) {
-        let mut skip_this_list: Vec<SkipThis> = Vec::new();
+    pub fn naked_number(&self, i: u32) -> (Vec<Zone>, Option<SolverResult<'a>>) {
+        let mut skip_this_list: Vec<Zone> = Vec::new();
 
         // i의 값이 유효하지 않은 경우 return
         if i == 0 || i >= self.t.get_size() {
@@ -39,7 +47,7 @@ impl<'a> Solver<'a> {
 
         for z in self.get_zone_list() {
             if let ZoneType::Unique = z.get_zone_type() {
-                if self.skip_this[z].contains(&SkipType::Naked) {
+                if self.skip_this[z].contains(&SolverSkipType::Naked) {
                     continue;
                 }
                 let result = self.naked_number_zone(z, i);
@@ -47,11 +55,7 @@ impl<'a> Solver<'a> {
                 if result.is_some() {
                     return (skip_this_list, result);
                 } else {
-                    let skip_this_chk = SkipThis {
-                        skip_type: SkipType::Naked,
-                        skip_zone: (*z).clone(),
-                    };
-                    skip_this_list.push(skip_this_chk);
+                    skip_this_list.push((*z).clone());
                 }
             }
         }
@@ -103,7 +107,7 @@ impl<'a> Solver<'a> {
                     found_cells.insert(*effect_cell);
                 }
                 return Some(SolverResult {
-                    solver_type: SolverType::Naked {
+                    solver_type: SolverResultType::Naked {
                         found_chks: naked_value.clone_chk_list(),
                     },
                     found_cells,
