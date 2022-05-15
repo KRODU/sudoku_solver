@@ -7,13 +7,13 @@ use crate::{
 };
 
 use super::{
-    solver_final::{SolverSkipType, SovlerSkipResult},
+    solver_skip_result::{SolverSkipType, SolverSkipResult},
     solver_history::{SolverResult, SolverResultType},
     Solver,
 };
 
 impl<'a> Solver<'a> {
-    pub fn naked(&self) -> SovlerSkipResult<'a> {
+    pub fn naked(&self) -> SolverSkipResult<'a> {
         let mut total_skip_list: Vec<Zone> = Vec::new();
 
         for i in 1..self.t.get_size() {
@@ -22,7 +22,7 @@ impl<'a> Solver<'a> {
             total_skip_list.append(&mut result.0);
 
             if result.1.is_some() {
-                return SovlerSkipResult {
+                return SolverSkipResult {
                     skip_type: SolverSkipType::Naked,
                     skip_zone: total_skip_list,
                     solver_result: result.1,
@@ -30,7 +30,7 @@ impl<'a> Solver<'a> {
             }
         }
 
-        SovlerSkipResult {
+        SolverSkipResult {
             skip_type: SolverSkipType::Naked,
             skip_zone: total_skip_list,
             solver_result: None,

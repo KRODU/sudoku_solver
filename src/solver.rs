@@ -14,13 +14,13 @@ use crate::{
 };
 
 use self::{
-    solver_final::{SolverSkipType, SovlerSkipResult},
+    solver_skip_result::{SolverSkipType, SolverSkipResult},
     solver_history::{SolverHistory, SolverHistoryType},
 };
 
 pub mod guess;
 pub mod naked;
-pub mod solver_final;
+pub mod solver_skip_result;
 pub mod solver_history;
 pub mod validater;
 
@@ -86,7 +86,7 @@ impl<'a> Solver<'a> {
     }
 
     /// 스도푸를 푼 경우 해당 결과를 적용합니다.
-    pub fn solve_result_commit(&mut self, mut result: SovlerSkipResult<'a>) -> bool {
+    pub fn solve_result_commit(&mut self, mut result: SolverSkipResult<'a>) -> bool {
         while let Some(skip_this) = result.skip_zone.pop() {
             self.skip_this
                 .get_mut(&skip_this)

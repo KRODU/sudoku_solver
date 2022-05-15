@@ -28,7 +28,7 @@ impl Clone for SolverSkipType {
     }
 }
 
-pub struct SovlerSkipResult<'a> {
+pub struct SolverSkipResult<'a> {
     pub skip_type: SolverSkipType,
     pub skip_zone: Vec<Zone>,
     pub solver_result: Option<SolverResult<'a>>,
