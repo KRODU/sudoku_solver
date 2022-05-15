@@ -13,7 +13,7 @@ pub mod zone_set;
 
 fn main() {
     std::env::set_var("RUST_BACKTRACE", "1");
-    
+
     let t = Table::new_default_16();
     let mut solver = Solver::new(&t);
     // solver.set_random_seed(297982631672622005);

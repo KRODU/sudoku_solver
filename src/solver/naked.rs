@@ -39,11 +39,7 @@ impl<'a> Solver<'a> {
 
         for z in self.get_zone_list() {
             if let ZoneType::Unique = z.get_zone_type() {
-                let skip_this_chk = SkipThis {
-                    skip_type: SkipType::Naked,
-                    skip_zone: (*z).clone(),
-                };
-                if self.skip_this.contains(&skip_this_chk) {
+                if self.skip_this[z].contains(&SkipType::Naked) {
                     continue;
                 }
                 let result = self.naked_number_zone(z, i);
@@ -51,6 +47,10 @@ impl<'a> Solver<'a> {
                 if result.is_some() {
                     return (skip_this_list, result);
                 } else {
+                    let skip_this_chk = SkipThis {
+                        skip_type: SkipType::Naked,
+                        skip_zone: (*z).clone(),
+                    };
                     skip_this_list.push(skip_this_chk);
                 }
             }

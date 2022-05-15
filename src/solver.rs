@@ -14,7 +14,7 @@ use crate::{
 };
 
 use self::{
-    solve_skip::SkipThis,
+    solve_skip::{SkipThis, SkipType},
     solver_history::{SolverHistory, SolverHistoryType, SolverResult},
 };
 
@@ -35,7 +35,7 @@ pub struct Solver<'a> {
     guess_cnt: u32,
     guess_rollback_cnt: u32,
     guess_backtrace_rollback_cnt: u32,
-    skip_this: HashSet<SkipThis>,
+    skip_this: HashMap<Zone, HashSet<SkipType>>,
 }
 
 impl<'a> Solver<'a> {
@@ -91,7 +91,10 @@ impl<'a> Solver<'a> {
         mut result: (Vec<SkipThis>, Option<SolverResult<'a>>),
     ) -> bool {
         while let Some(skip_this) = result.0.pop() {
-            self.skip_this.insert(skip_this);
+            self.skip_this
+                .get_mut(&skip_this.skip_zone)
+                .unwrap()
+                .insert(skip_this.skip_type);
         }
 
         if let Some(solver_result) = result.1 {
@@ -186,16 +189,8 @@ impl<'a> Solver<'a> {
     }
 
     fn remove_skip_zone(&mut self, zone: &ZoneSet) {
-        let mut found_delete: Vec<SkipThis> = Vec::new();
-
-        for skip in &self.skip_this {
-            if zone.is_contain(&skip.skip_zone) {
-                found_delete.push((*skip).clone());
-            }
-        }
-
-        for del in found_delete {
-            self.skip_this.remove(&del);
+        for del_z in zone {
+            self.skip_this.get_mut(del_z).unwrap().clear();
         }
     }
 
@@ -209,6 +204,10 @@ impl<'a> Solver<'a> {
     pub fn new(t: &'a Table) -> Self {
         let rand_seed: u64 = StdRng::from_entropy().next_u64();
         let zone_list = Solver::get_zone_list_init(t, t.get_size());
+        let mut skip_this: HashMap<Zone, HashSet<SkipType>> = HashMap::new();
+        for z in &zone_list {
+            skip_this.insert((*z).clone(), HashSet::new());
+        }
         Solver {
             t,
             zone_list,
@@ -220,7 +219,7 @@ impl<'a> Solver<'a> {
             guess_rollback_cnt: 0,
             guess_backtrace_rollback_cnt: 0,
             solve_cnt: 0,
-            skip_this: HashSet::new(),
+            skip_this,
         }
     }
 
