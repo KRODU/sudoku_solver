@@ -12,7 +12,7 @@ pub mod zone;
 pub mod zone_set;
 
 fn main() {
-    std::env::set_var("RUST_BACKTRACE", "1");
+    std::env::set_var("RUST_BACKTRACE", "full");
 
     let t = Table::new_default_16();
     let mut solver = Solver::new(&t);

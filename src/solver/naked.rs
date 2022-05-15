@@ -7,8 +7,8 @@ use crate::{
 };
 
 use super::{
-    solver_skip_result::{SolverSkipType, SolverSkipResult},
     solver_history::{SolverResult, SolverResultType},
+    solver_skip_result::{SolverSkipResult, SolverSkipType},
     Solver,
 };
 
@@ -16,17 +16,25 @@ impl<'a> Solver<'a> {
     pub fn naked(&self) -> SolverSkipResult<'a> {
         let mut total_skip_list: Vec<Zone> = Vec::new();
 
-        for i in 1..self.t.get_size() {
-            let mut result = self.naked_number(i);
+        for z in self.get_zone_list() {
+            if let ZoneType::Unique = z.get_zone_type() {
+                if self.skip_this[z].contains(&SolverSkipType::Naked) {
+                    continue;
+                }
 
-            total_skip_list.append(&mut result.0);
+                for i in 1..self.t.get_size() {
+                    let result = self.naked_number_zone(z, i);
 
-            if result.1.is_some() {
-                return SolverSkipResult {
-                    skip_type: SolverSkipType::Naked,
-                    skip_zone: total_skip_list,
-                    solver_result: result.1,
-                };
+                    if result.is_some() {
+                        return SolverSkipResult {
+                            skip_type: SolverSkipType::Naked,
+                            skip_zone: total_skip_list,
+                            solver_result: result,
+                        };
+                    }
+                }
+
+                total_skip_list.push((*z).clone());
             }
         }
 
@@ -35,32 +43,6 @@ impl<'a> Solver<'a> {
             skip_zone: total_skip_list,
             solver_result: None,
         }
-    }
-
-    pub fn naked_number(&self, i: u32) -> (Vec<Zone>, Option<SolverResult<'a>>) {
-        let mut skip_this_list: Vec<Zone> = Vec::new();
-
-        // i의 값이 유효하지 않은 경우 return
-        if i == 0 || i >= self.t.get_size() {
-            return (skip_this_list, None);
-        }
-
-        for z in self.get_zone_list() {
-            if let ZoneType::Unique = z.get_zone_type() {
-                if self.skip_this[z].contains(&SolverSkipType::Naked) {
-                    continue;
-                }
-                let result = self.naked_number_zone(z, i);
-
-                if result.is_some() {
-                    return (skip_this_list, result);
-                } else {
-                    skip_this_list.push((*z).clone());
-                }
-            }
-        }
-
-        (skip_this_list, None)
     }
 
     fn naked_number_zone(&self, z: &Zone, i: u32) -> Option<SolverResult<'a>> {

@@ -14,14 +14,14 @@ use crate::{
 };
 
 use self::{
-    solver_skip_result::{SolverSkipType, SolverSkipResult},
     solver_history::{SolverHistory, SolverHistoryType},
+    solver_skip_result::{SolverSkipResult, SolverSkipType},
 };
 
 pub mod guess;
 pub mod naked;
-pub mod solver_skip_result;
 pub mod solver_history;
+pub mod solver_skip_result;
 pub mod validater;
 
 pub struct Solver<'a> {

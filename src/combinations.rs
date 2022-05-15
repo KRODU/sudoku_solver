@@ -11,7 +11,7 @@ where
 {
     let mut result_list: Vec<Vec<&T>> = Vec::new();
 
-    if arr.len() < len {
+    if arr.len() < len || len == 0 {
         return result_list;
     }
 
