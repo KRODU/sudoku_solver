@@ -19,6 +19,7 @@ use self::{
 };
 
 pub mod guess;
+pub mod hidden;
 pub mod naked;
 pub mod solver_history;
 pub mod solver_skip_result;

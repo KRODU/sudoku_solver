@@ -4,6 +4,7 @@ use super::solver_history::SolverResult;
 
 pub enum SolverSkipType {
     Naked,
+    Hidden,
 }
 
 impl PartialEq for SolverSkipType {
@@ -24,6 +25,7 @@ impl Clone for SolverSkipType {
     fn clone(&self) -> Self {
         match self {
             Self::Naked => Self::Naked,
+            Self::Hidden => Self::Hidden,
         }
     }
 }
