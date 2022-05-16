@@ -14,7 +14,7 @@ impl<'a> Solver<'a> {
         let mut minimum_note_cnt = u32::MAX;
         let mut minimum_note_list: Vec<&Cell> = Vec::new();
 
-        for n in self.t {
+        for n in self.t.into_iter() {
             let b = n.chk.borrow();
             let true_cnt = b.get_true_cnt();
             if true_cnt <= 1 || true_cnt > minimum_note_cnt {

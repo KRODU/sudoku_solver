@@ -199,7 +199,7 @@ impl<'a> Solver<'a> {
     }
 
     #[must_use]
-    pub fn new(t: &'a Table) -> Self {
+    pub fn new(t: &'a mut Table) -> Self {
         let rand_seed: u64 = StdRng::from_entropy().next_u64();
         let zone_list = Solver::get_zone_list_init(t, t.get_size());
         let mut skip_this: HashMap<Zone, HashSet<SolverSkipType>> = HashMap::new();
@@ -274,6 +274,10 @@ impl<'a> Solver<'a> {
     /// 지정된 Zone을 순회하는 Iterator를 반환합니다.
     pub fn zone_iter<'b>(&'b self, zone: &'b Zone) -> std::slice::Iter<'_, &'a Cell> {
         self.ref_cache[zone].iter()
+    }
+
+    pub fn get_table(&self) -> &Table {
+        self.t
     }
 
     #[must_use]

@@ -9,7 +9,7 @@ impl<'a> Solver<'a> {
     /// 에러셀이 없다면 None
     pub fn find_error_cell(&self) -> Option<&Cell> {
         // 가능한 숫자가 하나도 없는 cell이 존재하는지 확인
-        for cell in self.t {
+        for cell in self.t.into_iter() {
             let chk_borr = cell.chk.borrow();
             if chk_borr.get_true_cnt() == 0 {
                 return Some(cell);

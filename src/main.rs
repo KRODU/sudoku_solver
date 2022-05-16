@@ -14,13 +14,13 @@ pub mod zone_set;
 fn main() {
     std::env::set_var("RUST_BACKTRACE", "full");
 
-    let t = Table::new_default_16();
-    let mut solver = Solver::new(&t);
+    let mut t = Table::new_default_16();
+    let mut solver = Solver::new(&mut t);
     // solver.set_random_seed(297982631672622005);
 
     let start = Instant::now();
     solver.fill_puzzle_with_timeout(std::time::Duration::MAX);
-    println!("{}", t);
+    println!("{}", solver.get_table());
     let end = Instant::now();
 
     println!("puzzle seed: {}", solver.get_random_seed());
