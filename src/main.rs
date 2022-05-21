@@ -1,9 +1,11 @@
+use enum_iterator::IntoEnumIterator;
 use solver::Solver;
 use std::time::Instant;
 use table::Table;
 
+use crate::solver::solver_skip_result::SolverResultSimple;
+
 pub mod cell;
-pub mod combinations;
 pub mod coordinate;
 pub mod num_check;
 pub mod solver;
@@ -24,9 +26,12 @@ fn main() {
     let end = Instant::now();
 
     println!("puzzle seed: {}", solver.get_random_seed());
+    for n in SolverResultSimple::into_enum_iter() {
+        println!("{:?}: {}", n, solver.solve_cnt(&n));
+    }
+
     println!(
-        "solve: {}, guess: {}, guess_rollback_cnt: {}, guess_backtrace_rollback_cnt: {}",
-        solver.solve_cnt(),
+        "guess: {}, guess_rollback_cnt: {}, guess_backtrace_rollback_cnt: {}",
         solver.guess_cnt(),
         solver.guess_rollback_cnt(),
         solver.guess_backtrace_rollback_cnt()

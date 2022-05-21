@@ -3,13 +3,15 @@ use hashbrown::{HashMap, HashSet};
 use crate::cell::Cell;
 
 #[derive(Debug)]
-pub enum SolverResultType {
+pub enum SolverResultDetail {
+    Single { found_chk: u32 },
     Naked { found_chks: Vec<u32> },
+    Hidden { found_chks: Vec<u32> },
 }
 
 #[derive(Debug)]
 pub struct SolverResult<'a> {
-    pub solver_type: SolverResultType,
+    pub solver_type: SolverResultDetail,
     pub found_cells: HashSet<&'a Cell>,
     pub effect_cells: HashMap<&'a Cell, Vec<u32>>,
 }

@@ -1,14 +1,14 @@
 use hashbrown::{HashMap, HashSet};
+use itertools::Itertools;
 
 use crate::{
     cell::Cell,
-    combinations::combinations,
     zone::{Zone, ZoneType},
 };
 
 use super::{
-    solver_history::{SolverResult, SolverResultType},
-    solver_skip_result::{SolverSkipResult, SolverSkipType},
+    solver_history::{SolverResult, SolverResultDetail},
+    solver_skip_result::{SolverResultSimple, SolverSkipResult},
     Solver,
 };
 
@@ -18,16 +18,16 @@ impl<'a> Solver<'a> {
 
         for z in self.get_zone_list() {
             if let ZoneType::Unique = z.get_zone_type() {
-                if self.skip_this[z].contains(&SolverSkipType::Hidden) {
+                if self.skip_this[z].contains(&SolverResultSimple::Hidden) {
                     continue;
                 }
 
-                for i in 1..self.t.get_size() {
+                for i in 2..=self.t.get_size() / 2 {
                     let result = self.hidden_number_zone(z, i);
 
                     if result.is_some() {
                         return SolverSkipResult {
-                            skip_type: SolverSkipType::Hidden,
+                            skip_type: SolverResultSimple::Hidden,
                             skip_zone: total_skip_list,
                             solver_result: result,
                         };
@@ -39,7 +39,7 @@ impl<'a> Solver<'a> {
         }
 
         SolverSkipResult {
-            skip_type: SolverSkipType::Hidden,
+            skip_type: SolverResultSimple::Hidden,
             skip_zone: total_skip_list,
             solver_result: None,
         }
@@ -55,15 +55,9 @@ impl<'a> Solver<'a> {
             }
         }
 
-        let com_result = combinations(&chk, i as usize, |comb| {
-            let first_node = comb[0].chk.borrow();
-            comb.iter()
-                .all(|c| c.chk.borrow().is_same_note(&*first_node))
-        });
-
         let mut effect_cells: HashMap<&Cell, Vec<u32>> = HashMap::new();
 
-        for r in com_result {
+        for r in chk.iter().combinations(i as usize) {
             let naked_value = r[0].chk.borrow();
             // zone을 순회하며 삭제할 노트가 있는지 찾음
             for zone_cell in self.zone_iter(z) {
@@ -73,7 +67,7 @@ impl<'a> Solver<'a> {
                 }
 
                 let b = zone_cell.chk.borrow();
-                let union: Vec<u32> = b.union_note(&*naked_value);
+                let union: Vec<u32> = b.intersection_note(&naked_value.clone_chk_list());
 
                 // 제거할 노트를 발견한 경우
                 if !union.is_empty() {
@@ -89,7 +83,7 @@ impl<'a> Solver<'a> {
                     found_cells.insert(*effect_cell);
                 }
                 return Some(SolverResult {
-                    solver_type: SolverResultType::Naked {
+                    solver_type: SolverResultDetail::Hidden {
                         found_chks: naked_value.clone_chk_list(),
                     },
                     found_cells,

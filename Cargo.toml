@@ -8,6 +8,8 @@ edition = "2021"
 [dependencies]
 hashbrown = "0.12.1"
 rand = { version = "0.8.5", features = ["std_rng"] }
+enum-iterator = "0.8.1"
+itertools = "0.10.3"
 
 [profile.release]
 opt-level = 3

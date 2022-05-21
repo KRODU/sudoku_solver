@@ -3,6 +3,7 @@ use std::{
     time::{Duration, Instant},
 };
 
+use enum_iterator::IntoEnumIterator;
 use hashbrown::{HashMap, HashSet};
 use rand::{prelude::StdRng, RngCore, SeedableRng};
 
@@ -15,12 +16,13 @@ use crate::{
 
 use self::{
     solver_history::{SolverHistory, SolverHistoryType},
-    solver_skip_result::{SolverSkipResult, SolverSkipType},
+    solver_skip_result::{SolverResultSimple, SolverSkipResult},
 };
 
 pub mod guess;
 pub mod hidden;
 pub mod naked;
+pub mod single;
 pub mod solver_history;
 pub mod solver_skip_result;
 pub mod validater;
@@ -32,11 +34,11 @@ pub struct Solver<'a> {
     solver_history_stack: Vec<SolverHistory<'a>>,
     rng: RefCell<StdRng>,
     rand_seed: u64,
-    solve_cnt: u32,
+    solve_cnt: HashMap<SolverResultSimple, u32>,
     guess_cnt: u32,
     guess_rollback_cnt: u32,
     guess_backtrace_rollback_cnt: u32,
-    skip_this: HashMap<Zone, HashSet<SolverSkipType>>,
+    skip_this: HashMap<Zone, HashSet<SolverResultSimple>>,
 }
 
 impl<'a> Solver<'a> {
@@ -48,6 +50,7 @@ impl<'a> Solver<'a> {
         let start = Instant::now();
 
         while !self.is_complete_puzzle() {
+            println!("{}", self.t);
             // timeout 또는 모든 문제를 풀 수 없는 경우 return
             if (Instant::now() - start) >= timeout || self.solve().is_none() {
                 return self
@@ -75,7 +78,14 @@ impl<'a> Solver<'a> {
             }
         }
 
-        let result = self.naked();
+        // Single Solver 적용
+        let mut result = self.single();
+        if self.solve_result_commit(result) {
+            return self.solve_history_rollback_last_guess();
+        }
+
+        // Naked Solver 적용
+        result = self.naked();
         if self.solve_result_commit(result) {
             return self.solve_history_rollback_last_guess();
         }
@@ -121,7 +131,7 @@ impl<'a> Solver<'a> {
             }
 
             self.solver_history_stack.push(history);
-            self.solve_cnt += 1;
+            *self.solve_cnt.get_mut(&result.skip_type).unwrap() += 1;
             return true;
         }
 
@@ -202,10 +212,15 @@ impl<'a> Solver<'a> {
     pub fn new(t: &'a mut Table) -> Self {
         let rand_seed: u64 = StdRng::from_entropy().next_u64();
         let zone_list = Solver::get_zone_list_init(t, t.get_size());
-        let mut skip_this: HashMap<Zone, HashSet<SolverSkipType>> = HashMap::new();
+        let mut skip_this: HashMap<Zone, HashSet<SolverResultSimple>> = HashMap::new();
         for z in &zone_list {
             skip_this.insert((*z).clone(), HashSet::new());
         }
+        let mut solve_cnt: HashMap<SolverResultSimple, u32> = HashMap::new();
+        for n in SolverResultSimple::into_enum_iter() {
+            solve_cnt.insert(n, 0u32);
+        }
+
         Solver {
             t,
             zone_list,
@@ -216,7 +231,7 @@ impl<'a> Solver<'a> {
             guess_cnt: 0,
             guess_rollback_cnt: 0,
             guess_backtrace_rollback_cnt: 0,
-            solve_cnt: 0,
+            solve_cnt,
             skip_this,
         }
     }
@@ -298,8 +313,8 @@ impl<'a> Solver<'a> {
     /// Get the solver's solve cnt.
     #[must_use]
     #[inline]
-    pub fn solve_cnt(&self) -> u32 {
-        self.solve_cnt
+    pub fn solve_cnt(&self, result_simple: &SolverResultSimple) -> u32 {
+        self.solve_cnt[result_simple]
     }
 
     /// Get the solver's guess cnt.

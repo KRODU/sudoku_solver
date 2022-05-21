@@ -38,8 +38,8 @@ impl NumCheck {
 
     #[must_use]
     #[inline]
-    pub fn get_chk(&self, num: u32) -> &bool {
-        &self.chk_list[(num - 1) as usize]
+    pub fn get_chk(&self, num: u32) -> bool {
+        self.chk_list[(num - 1) as usize]
     }
 
     pub fn set_chk(&mut self, num: u32, chk: bool) {
@@ -143,15 +143,24 @@ impl NumCheck {
     }
 
     /// 이 노트와 다른 노트를 비교하여 서로 겹치는 노트만 반환합니다.
-    pub fn union_note(&self, num_check: &NumCheck) -> Vec<u32> {
+    pub fn intersection_note(&self, num_check: &[u32]) -> Vec<u32> {
         let mut ret: Vec<u32> = Vec::with_capacity(self.true_cnt as usize);
         for true_value in &self.true_list {
-            if num_check.true_list.contains(true_value) {
+            if num_check.contains(true_value) {
                 ret.push(*true_value);
             }
         }
 
         ret
+    }
+
+    /// 이 노트와 다른 노트를 비교하여 합집합 노트를 만듭니다.
+    pub fn union_note(&self, num_check: &mut Vec<u32>) {
+        for true_value in &self.true_list {
+            if !num_check.contains(true_value) {
+                num_check.push(*true_value);
+            }
+        }
     }
 
     #[must_use]
