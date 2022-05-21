@@ -1,8 +1,10 @@
+use hashbrown::HashSet;
+
 #[derive(Debug)]
 pub struct NumCheck {
     chk_list: Vec<bool>,
     /// 값은 1부터 들어갑니다.
-    true_list: Vec<u32>,
+    true_list: HashSet<u32>,
     true_cnt: u32,
     size: u32,
     final_num: Option<u32>,
@@ -17,7 +19,7 @@ impl NumCheck {
 
         let mut ret = NumCheck {
             chk_list: Vec::with_capacity(size as usize),
-            true_list: Vec::with_capacity(size as usize),
+            true_list: HashSet::with_capacity(size as usize),
             true_cnt: size,
             size,
             final_num: None,
@@ -25,7 +27,7 @@ impl NumCheck {
 
         for n in 1..=size {
             ret.chk_list.push(true);
-            ret.true_list.push(n);
+            ret.true_list.insert(n);
         }
         ret
     }
@@ -49,11 +51,10 @@ impl NumCheck {
 
         if chk {
             self.true_cnt += 1;
-            self.true_list.push(num);
+            self.true_list.insert(num);
         } else {
             self.true_cnt -= 1;
-            let index = self.true_list.iter().position(|n| *n == num).unwrap();
-            self.true_list.swap_remove(index);
+            self.true_list.remove(&num);
         }
 
         self.chk_list[(num - 1) as usize] = chk;
@@ -61,7 +62,7 @@ impl NumCheck {
     }
 
     /// chk_list에 포함된 노트만 true이며 그 외엔 false입니다.
-    pub fn set_to_chk_list(&mut self, chk_list: &[u32]) {
+    pub fn set_to_chk_list(&mut self, chk_list: &HashSet<u32>) {
         self.true_cnt = 0;
         self.chk_list.fill(false);
         self.true_list.clear();
@@ -72,7 +73,7 @@ impl NumCheck {
 
         for (i, b) in self.chk_list.iter().enumerate() {
             if *b {
-                self.true_list.push((i + 1) as u32);
+                self.true_list.insert((i + 1) as u32);
                 self.true_cnt += 1;
             }
         }
@@ -86,7 +87,7 @@ impl NumCheck {
         self.chk_list[(value - 1) as usize] = true;
 
         self.true_list.clear();
-        self.true_list.push(value);
+        self.true_list.insert(value);
 
         self.true_cnt = 1;
 
@@ -94,7 +95,7 @@ impl NumCheck {
     }
 
     /// 지정된 리스트의 값을 모두 false로 지정합니다.
-    pub fn set_to_false_list(&mut self, list: &[u32]) {
+    pub fn set_to_false_list(&mut self, list: &HashSet<u32>) {
         for i in list {
             self.set_chk(*i, false);
         }
@@ -104,7 +105,7 @@ impl NumCheck {
     #[inline]
     fn set_to_final_num(&mut self) {
         self.final_num = if self.true_cnt == 1 {
-            Some(self.true_list[0])
+            Some(*self.true_list.iter().next().unwrap())
         } else {
             None
         };
@@ -116,12 +117,23 @@ impl NumCheck {
     }
 
     /// true인 목록을 복사하여 반환합니다.
-    pub fn clone_chk_list(&self) -> Vec<u32> {
+    pub fn clone_chk_list(&self) -> HashSet<u32> {
+        let mut ret: HashSet<u32> = HashSet::with_capacity(self.size as usize);
+        for n in &self.true_list {
+            ret.insert(*n);
+        }
+
+        ret
+    }
+
+    /// true인 목록을 복사한 뒤 소팅하여 반환합니다.
+    pub fn clone_chk_list_sort(&self) -> Vec<u32> {
         let mut ret: Vec<u32> = Vec::with_capacity(self.size as usize);
         for n in &self.true_list {
             ret.push(*n);
         }
 
+        ret.sort();
         ret
     }
 
@@ -143,11 +155,11 @@ impl NumCheck {
     }
 
     /// 이 노트와 다른 노트를 비교하여 서로 겹치는 노트만 반환합니다.
-    pub fn intersection_note(&self, num_check: &[u32]) -> Vec<u32> {
-        let mut ret: Vec<u32> = Vec::with_capacity(self.true_cnt as usize);
+    pub fn intersection_note(&self, num_check: &HashSet<u32>) -> HashSet<u32> {
+        let mut ret: HashSet<u32> = HashSet::with_capacity(self.true_cnt as usize);
         for true_value in &self.true_list {
             if num_check.contains(true_value) {
-                ret.push(*true_value);
+                ret.insert(*true_value);
             }
         }
 
@@ -155,17 +167,15 @@ impl NumCheck {
     }
 
     /// 이 노트와 다른 노트를 비교하여 합집합 노트를 만듭니다.
-    pub fn union_note(&self, num_check: &mut Vec<u32>) {
+    pub fn union_note(&self, num_check: &mut HashSet<u32>) {
         for true_value in &self.true_list {
-            if !num_check.contains(true_value) {
-                num_check.push(*true_value);
-            }
+             num_check.insert(*true_value);
         }
     }
 
     #[must_use]
     #[inline]
-    pub fn get_true_list(&self) -> &Vec<u32> {
+    pub fn get_true_list(&self) -> &HashSet<u32> {
         &self.true_list
     }
 

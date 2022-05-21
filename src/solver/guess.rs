@@ -1,4 +1,4 @@
-use hashbrown::HashMap;
+use hashbrown::{HashMap, HashSet};
 use rand::Rng;
 
 use crate::cell::Cell;
@@ -36,7 +36,7 @@ impl<'a> Solver<'a> {
 
         let mut rng = self.rng.borrow_mut();
         let cell_pick = minimum_note_list[rng.gen_range(0..minimum_note_list.len())];
-        let cell_notes = cell_pick.chk.borrow().clone_chk_list();
+        let cell_notes = cell_pick.chk.borrow().clone_chk_list_sort();
         let note_pick = cell_notes[rng.gen_range(0..cell_notes.len())];
         std::mem::drop(rng);
 
@@ -62,7 +62,7 @@ impl<'a> Solver<'a> {
         }
 
         let backup = b.clone_chk_list();
-        let mut backup_chk: HashMap<&'a Cell, Vec<u32>> = HashMap::with_capacity(1);
+        let mut backup_chk: HashMap<&'a Cell, HashSet<u32>> = HashMap::with_capacity(1);
         backup_chk.insert(cell, backup);
         b.set_to_value(final_num);
         self.remove_skip_zone(cell.get_zone());

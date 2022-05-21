@@ -46,17 +46,12 @@ impl<'a> Solver<'a> {
     }
 
     fn naked_number_zone(&self, z: &Zone, i: u32) -> Option<SolverResult<'a>> {
-        let mut effect_cells: HashMap<&Cell, Vec<u32>> = HashMap::new();
-
+        let mut effect_cells: HashMap<&Cell, HashSet<u32>> = HashMap::new();
+        let mut union_node: HashSet<u32> = HashSet::new();
+        let mut l: u32 = 0;
         'comb: for r in self.ref_cache[z].iter().combinations(i as usize) {
-            let b = r[0].chk.borrow();
-
-            if b.get_true_cnt() > i {
-                continue 'comb;
-            }
-
-            let mut union_node = b.clone_chk_list();
-
+            l += 1;
+            union_node.clear();
             for c in &r {
                 c.chk.borrow().union_note(&mut union_node);
                 if union_node.len() > i as usize {
@@ -76,7 +71,7 @@ impl<'a> Solver<'a> {
                 }
 
                 let b = zone_cell.chk.borrow();
-                let inter: Vec<u32> = b.intersection_note(&union_node);
+                let inter = b.intersection_note(&union_node);
 
                 // 제거할 노트를 발견한 경우
                 if !inter.is_empty() {
@@ -100,6 +95,7 @@ impl<'a> Solver<'a> {
                 });
             }
         }
+        println!("i:{}, l:{}", i, l);
 
         None
     }

@@ -50,7 +50,7 @@ impl<'a> Solver<'a> {
         let start = Instant::now();
 
         while !self.is_complete_puzzle() {
-            println!("{}", self.t);
+            println!("{}", self.t); // FIXME
             // timeout 또는 모든 문제를 풀 수 없는 경우 return
             if (Instant::now() - start) >= timeout || self.solve().is_none() {
                 return self
@@ -107,7 +107,7 @@ impl<'a> Solver<'a> {
 
         if let Some(solver_result) = result.solver_result {
             let history = {
-                let mut backup_chk: HashMap<&'a Cell, Vec<u32>> =
+                let mut backup_chk: HashMap<&'a Cell, HashSet<u32>> =
                     HashMap::with_capacity(solver_result.effect_cells.len());
 
                 for c in solver_result.effect_cells.keys() {
@@ -177,8 +177,8 @@ impl<'a> Solver<'a> {
             if let SolverHistoryType::Guess { cell, final_num } = history.history_type {
                 let mut mut_chk = cell.chk.borrow_mut();
 
-                let backup_chk_list: Vec<u32> = mut_chk.clone_chk_list();
-                let mut backup: HashMap<&'a Cell, Vec<u32>> = HashMap::with_capacity(1);
+                let backup_chk_list: HashSet<u32> = mut_chk.clone_chk_list();
+                let mut backup: HashMap<&'a Cell, HashSet<u32>> = HashMap::with_capacity(1);
                 backup.insert(cell, backup_chk_list);
                 mut_chk.set_chk(final_num, false);
 

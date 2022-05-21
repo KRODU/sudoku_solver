@@ -26,7 +26,7 @@ impl<'a> Solver<'a> {
 
                     // 노트가 확정된 경우 Zone을 순회하면서 해당 노트를 가진 cell이 있나 찾음
                     if let Some(final_num) = b.get_final_num() {
-                        let mut effect_cells: HashMap<&Cell, Vec<u32>> = HashMap::new();
+                        let mut effect_cells: HashMap<&Cell, HashSet<u32>> = HashMap::new();
 
                         for c_comp in self.zone_iter(z) {
                             // 나 자신은 비교 대상에서 제외
@@ -36,7 +36,8 @@ impl<'a> Solver<'a> {
 
                             // 찾음
                             if c_comp.chk.borrow().get_chk(final_num) {
-                                let v: Vec<u32> = vec![final_num];
+                                let mut v: HashSet<u32> = HashSet::with_capacity(1);
+                                v.insert(final_num);
                                 effect_cells.insert(c_comp, v);
                             }
                         }

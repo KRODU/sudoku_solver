@@ -55,7 +55,7 @@ impl<'a> Solver<'a> {
             }
         }
 
-        let mut effect_cells: HashMap<&Cell, Vec<u32>> = HashMap::new();
+        let mut effect_cells: HashMap<&Cell, HashSet<u32>> = HashMap::new();
 
         for r in chk.iter().combinations(i as usize) {
             let naked_value = r[0].chk.borrow();
@@ -67,7 +67,7 @@ impl<'a> Solver<'a> {
                 }
 
                 let b = zone_cell.chk.borrow();
-                let union: Vec<u32> = b.intersection_note(&naked_value.clone_chk_list());
+                let union: HashSet<u32> = b.intersection_note(&naked_value.clone_chk_list());
 
                 // 제거할 노트를 발견한 경우
                 if !union.is_empty() {
