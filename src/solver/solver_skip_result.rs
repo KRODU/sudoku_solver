@@ -1,14 +1,22 @@
 use enum_iterator::IntoEnumIterator;
 
-use crate::zone::Zone;
-
-use super::solver_history::SolverResult;
+use super::solver_history::SolverResultDetail;
 
 #[derive(IntoEnumIterator, Debug)]
 pub enum SolverResultSimple {
     Single,
     Naked,
     Hidden,
+}
+
+impl SolverResultSimple {
+    pub fn convert_detail_to_simple(detail: &SolverResultDetail) -> Self {
+        match detail {
+            SolverResultDetail::Single { .. } => SolverResultSimple::Single,
+            SolverResultDetail::Naked { .. } => SolverResultSimple::Naked,
+            SolverResultDetail::Hidden { .. } => SolverResultSimple::Hidden,
+        }
+    }
 }
 
 impl PartialEq for SolverResultSimple {
@@ -33,10 +41,4 @@ impl Clone for SolverResultSimple {
             Self::Hidden => Self::Hidden,
         }
     }
-}
-
-pub struct SolverSkipResult<'a> {
-    pub skip_type: SolverResultSimple,
-    pub skip_zone: Vec<Zone>,
-    pub solver_result: Option<SolverResult<'a>>,
 }

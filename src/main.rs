@@ -6,6 +6,7 @@ use table::Table;
 use crate::solver::solver_skip_result::SolverResultSimple;
 
 pub mod cell;
+pub mod combinations;
 pub mod coordinate;
 pub mod num_check;
 pub mod solver;

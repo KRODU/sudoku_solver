@@ -1,66 +1,66 @@
 use hashbrown::{HashMap, HashSet};
-use itertools::Itertools;
 
 use crate::{
     cell::Cell,
+    combinations::combinations,
     zone::{Zone, ZoneType},
 };
 
 use super::{
     solver_history::{SolverResult, SolverResultDetail},
-    solver_skip_result::{SolverResultSimple, SolverSkipResult},
     Solver,
 };
 
 impl<'a> Solver<'a> {
-    pub fn naked(&self) -> SolverSkipResult<'a> {
-        let mut total_skip_list: Vec<Zone> = Vec::new();
-
-        for z in self.get_zone_list() {
+    pub fn naked(&self, changed_zone: &HashSet<&'a Zone>) -> Option<SolverResult<'a>> {
+        for z in changed_zone {
             if let ZoneType::Unique = z.get_zone_type() {
-                if self.skip_this[z].contains(&SolverResultSimple::Naked) {
-                    continue;
-                }
-
                 for i in 2..=self.t.get_size() / 2 {
-                    let result = self.naked_number_zone(z, i);
+                    let result = self.naked_number_zone(z, i as usize);
 
                     if result.is_some() {
-                        return SolverSkipResult {
-                            skip_type: SolverResultSimple::Naked,
-                            skip_zone: total_skip_list,
-                            solver_result: result,
-                        };
+                        return result;
                     }
                 }
-
-                total_skip_list.push((*z).clone());
             }
         }
 
-        SolverSkipResult {
-            skip_type: SolverResultSimple::Naked,
-            skip_zone: total_skip_list,
-            solver_result: None,
-        }
+        None
     }
 
-    fn naked_number_zone(&self, z: &Zone, i: u32) -> Option<SolverResult<'a>> {
-        let mut effect_cells: HashMap<&Cell, HashSet<u32>> = HashMap::new();
+    fn naked_number_zone(&self, z: &Zone, i: usize) -> Option<SolverResult<'a>> {
         let mut union_node: HashSet<u32> = HashSet::new();
-        let mut l: u32 = 0;
-        'comb: for r in self.ref_cache[z].iter().combinations(i as usize) {
-            l += 1;
+        let comblist = combinations(&self.ref_cache[z], i as usize, |arr| {
+            if !arr.iter().any(|c| self.changed_cell.contains(*c)) {
+                return false;
+            }
+
             union_node.clear();
-            for c in &r {
-                c.chk.borrow().union_note(&mut union_node);
+            for c in arr {
+                let b = c.chk.borrow();
+                if b.is_final_num() {
+                    return false;
+                }
+
+                b.union_note(&mut union_node);
                 if union_node.len() > i as usize {
-                    continue 'comb;
+                    return false;
                 }
             }
 
             if union_node.len() != i as usize {
-                continue 'comb;
+                return false;
+            }
+
+            true
+        });
+
+        
+        let mut effect_cells: HashMap<&Cell, HashSet<u32>> = HashMap::new();
+        for r in &comblist {
+            union_node.clear();
+            for c in r {
+                c.chk.borrow().union_note(&mut union_node);
             }
 
             // zone을 순회하며 삭제할 노트가 있는지 찾음
@@ -84,7 +84,7 @@ impl<'a> Solver<'a> {
             if !effect_cells.is_empty() {
                 let mut found_cells: HashSet<&'a Cell> = HashSet::with_capacity(r.len());
                 for effect_cell in r {
-                    found_cells.insert(*effect_cell);
+                    found_cells.insert(effect_cell);
                 }
                 return Some(SolverResult {
                     solver_type: SolverResultDetail::Naked {
@@ -95,7 +95,9 @@ impl<'a> Solver<'a> {
                 });
             }
         }
-        println!("i:{}, l:{}", i, l);
+        if !comblist.is_empty() {
+            println!("i:{}, l:{}", i, comblist.len());
+        }
 
         None
     }

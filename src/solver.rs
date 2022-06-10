@@ -11,12 +11,11 @@ use crate::{
     cell::Cell,
     table::Table,
     zone::{Zone, ZoneType},
-    zone_set::ZoneSet,
 };
 
 use self::{
-    solver_history::{SolverHistory, SolverHistoryType},
-    solver_skip_result::{SolverResultSimple, SolverSkipResult},
+    solver_history::{SolverHistory, SolverHistoryType, SolverResult},
+    solver_skip_result::SolverResultSimple,
 };
 
 pub mod guess;
@@ -29,7 +28,7 @@ pub mod validater;
 
 pub struct Solver<'a> {
     t: &'a Table,
-    zone_list: Vec<&'a Zone>,
+    zone_list: HashSet<&'a Zone>,
     ref_cache: HashMap<&'a Zone, Vec<&'a Cell>>,
     solver_history_stack: Vec<SolverHistory<'a>>,
     rng: RefCell<StdRng>,
@@ -38,7 +37,8 @@ pub struct Solver<'a> {
     guess_cnt: u32,
     guess_rollback_cnt: u32,
     guess_backtrace_rollback_cnt: u32,
-    skip_this: HashMap<Zone, HashSet<SolverResultSimple>>,
+    changed_cell: HashSet<&'a Cell>,
+    init: bool,
 }
 
 impl<'a> Solver<'a> {
@@ -51,6 +51,7 @@ impl<'a> Solver<'a> {
 
         while !self.is_complete_puzzle() {
             println!("{}", self.t); // FIXME
+            println!("-----------------------------");
             // timeout 또는 모든 문제를 풀 수 없는 경우 return
             if (Instant::now() - start) >= timeout || self.solve().is_none() {
                 return self
@@ -69,6 +70,13 @@ impl<'a> Solver<'a> {
     }
 
     pub fn solve(&mut self) -> Option<&SolverHistory<'a>> {
+        let mut changed_zone: HashSet<&'a Zone> = HashSet::new();
+        for c in &self.changed_cell {
+            for z in c.get_zone() {
+                changed_zone.insert(z);
+            }
+        }
+
         // 먼저 오류가 있는지 체크하여 있을 경우 롤백
         if self.find_error_cell().is_some() {
             if self.history_rollback_last_guess() {
@@ -85,27 +93,21 @@ impl<'a> Solver<'a> {
         }
 
         // Naked Solver 적용
-        result = self.naked();
+        result = self.naked(&changed_zone);
         if self.solve_result_commit(result) {
             return self.solve_history_rollback_last_guess();
         }
 
         // 푸는게 실패할 경우 guess를 적용
+        self.changed_cell.clear();
         self.guess_random();
         self.guess_cnt += 1;
         self.solve_history_rollback_last_guess()
     }
 
     /// 스도푸를 푼 경우 해당 결과를 적용합니다.
-    pub fn solve_result_commit(&mut self, mut result: SolverSkipResult<'a>) -> bool {
-        while let Some(skip_this) = result.skip_zone.pop() {
-            self.skip_this
-                .get_mut(&skip_this)
-                .unwrap()
-                .insert(result.skip_type.clone());
-        }
-
-        if let Some(solver_result) = result.solver_result {
+    pub fn solve_result_commit(&mut self, result: Option<SolverResult<'a>>) -> bool {
+        if let Some(solver_result) = result {
             let history = {
                 let mut backup_chk: HashMap<&'a Cell, HashSet<u32>> =
                     HashMap::with_capacity(solver_result.effect_cells.len());
@@ -124,14 +126,21 @@ impl<'a> Solver<'a> {
             if let SolverHistoryType::Solve { ref solver_result } = history.history_type {
                 for (c, v) in &solver_result.effect_cells {
                     c.chk.borrow_mut().set_to_false_list(v);
-                    self.remove_skip_zone(c.get_zone());
+                    self.changed_cell.insert(c);
                 }
+
+                *self
+                    .solve_cnt
+                    .get_mut(&SolverResultSimple::convert_detail_to_simple(
+                        &solver_result.solver_type,
+                    ))
+                    .unwrap() += 1;
             } else {
                 panic!("뭔가 잘못됨")
             }
 
             self.solver_history_stack.push(history);
-            *self.solve_cnt.get_mut(&result.skip_type).unwrap() += 1;
+
             return true;
         }
 
@@ -161,7 +170,7 @@ impl<'a> Solver<'a> {
         while let Some(history) = self.solver_history_stack.pop() {
             for (c, backup) in history.backup_chk {
                 c.chk.borrow_mut().set_to_chk_list(&backup);
-                self.remove_skip_zone(c.get_zone());
+                self.changed_cell.insert(c);
             }
 
             if let SolverHistoryType::GuessBacktrace {
@@ -196,12 +205,6 @@ impl<'a> Solver<'a> {
         true
     }
 
-    fn remove_skip_zone(&mut self, zone: &ZoneSet) {
-        for del_z in zone {
-            self.skip_this.get_mut(del_z).unwrap().clear();
-        }
-    }
-
     /// 이 스도쿠 퍼즐이 완성되었는지 여부를 반환
     #[must_use]
     pub fn is_complete_puzzle(&self) -> bool {
@@ -210,15 +213,17 @@ impl<'a> Solver<'a> {
 
     #[must_use]
     pub fn new(t: &'a mut Table) -> Self {
+        let size = t.get_size();
         let rand_seed: u64 = StdRng::from_entropy().next_u64();
-        let zone_list = Solver::get_zone_list_init(t, t.get_size());
-        let mut skip_this: HashMap<Zone, HashSet<SolverResultSimple>> = HashMap::new();
-        for z in &zone_list {
-            skip_this.insert((*z).clone(), HashSet::new());
-        }
+        let zone_list = Solver::get_zone_list_init(t, size);
         let mut solve_cnt: HashMap<SolverResultSimple, u32> = HashMap::new();
         for n in SolverResultSimple::into_enum_iter() {
             solve_cnt.insert(n, 0u32);
+        }
+
+        let mut changed_cell = HashSet::with_capacity((size * size) as usize);
+        for c in t.into_iter() {
+            changed_cell.insert(c);
         }
 
         Solver {
@@ -232,7 +237,8 @@ impl<'a> Solver<'a> {
             guess_rollback_cnt: 0,
             guess_backtrace_rollback_cnt: 0,
             solve_cnt,
-            skip_this,
+            changed_cell,
+            init: true,
         }
     }
 
@@ -266,13 +272,13 @@ impl<'a> Solver<'a> {
     }
 
     #[must_use]
-    fn get_zone_list_init(cells: &'a Table, size: u32) -> Vec<&'a Zone> {
-        let mut ret: Vec<&'a Zone> = Vec::with_capacity(size as usize);
+    fn get_zone_list_init(cells: &'a Table, size: u32) -> HashSet<&'a Zone> {
+        let mut ret: HashSet<&'a Zone> = HashSet::with_capacity(size as usize);
 
         for this_cell in cells {
             for z in this_cell.get_zone() {
                 if !ret.contains(&z) {
-                    ret.push(z);
+                    ret.insert(z);
                 }
             }
         }
@@ -281,13 +287,13 @@ impl<'a> Solver<'a> {
 
     #[must_use]
     #[inline]
-    pub fn get_zone_list(&self) -> &Vec<&Zone> {
+    pub fn get_zone_list(&self) -> &HashSet<&Zone> {
         &self.zone_list
     }
 
     #[inline]
     /// 지정된 Zone을 순회하는 Iterator를 반환합니다.
-    pub fn zone_iter<'b>(&'b self, zone: &'b Zone) -> std::slice::Iter<'_, &'a Cell> {
+    pub fn zone_iter<'b>(&'b self, zone: &'b Zone) -> std::slice::Iter<&'a Cell> {
         self.ref_cache[zone].iter()
     }
 

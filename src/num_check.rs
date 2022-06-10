@@ -169,7 +169,7 @@ impl NumCheck {
     /// 이 노트와 다른 노트를 비교하여 합집합 노트를 만듭니다.
     pub fn union_note(&self, num_check: &mut HashSet<u32>) {
         for true_value in &self.true_list {
-             num_check.insert(*true_value);
+            num_check.insert(*true_value);
         }
     }
 

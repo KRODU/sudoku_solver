@@ -8,41 +8,24 @@ use crate::{
 
 use super::{
     solver_history::{SolverResult, SolverResultDetail},
-    solver_skip_result::{SolverResultSimple, SolverSkipResult},
     Solver,
 };
 
 impl<'a> Solver<'a> {
-    pub fn hidden(&self) -> SolverSkipResult<'a> {
-        let mut total_skip_list: Vec<Zone> = Vec::new();
-
-        for z in self.get_zone_list() {
+    pub fn hidden(&self, changed_zone: &HashSet<&'a Zone>) -> Option<SolverResult<'a>> {
+        for z in changed_zone {
             if let ZoneType::Unique = z.get_zone_type() {
-                if self.skip_this[z].contains(&SolverResultSimple::Hidden) {
-                    continue;
-                }
-
                 for i in 2..=self.t.get_size() / 2 {
                     let result = self.hidden_number_zone(z, i);
 
                     if result.is_some() {
-                        return SolverSkipResult {
-                            skip_type: SolverResultSimple::Hidden,
-                            skip_zone: total_skip_list,
-                            solver_result: result,
-                        };
+                        return result;
                     }
                 }
-
-                total_skip_list.push((*z).clone());
             }
         }
 
-        SolverSkipResult {
-            skip_type: SolverResultSimple::Hidden,
-            skip_zone: total_skip_list,
-            solver_result: None,
-        }
+        None
     }
 
     fn hidden_number_zone(&self, z: &Zone, i: u32) -> Option<SolverResult<'a>> {
@@ -57,12 +40,12 @@ impl<'a> Solver<'a> {
 
         let mut effect_cells: HashMap<&Cell, HashSet<u32>> = HashMap::new();
 
-        for r in chk.iter().combinations(i as usize) {
+        for r in chk.into_iter().combinations(i as usize) {
             let naked_value = r[0].chk.borrow();
             // zone을 순회하며 삭제할 노트가 있는지 찾음
             for zone_cell in self.zone_iter(z) {
                 // 순회 대상에서 자기 자신은 제외
-                if r.contains(&zone_cell) {
+                if r.contains(zone_cell) {
                     continue;
                 }
 
@@ -80,7 +63,7 @@ impl<'a> Solver<'a> {
             if !effect_cells.is_empty() {
                 let mut found_cells: HashSet<&'a Cell> = HashSet::with_capacity(r.len());
                 for effect_cell in r {
-                    found_cells.insert(*effect_cell);
+                    found_cells.insert(effect_cell);
                 }
                 return Some(SolverResult {
                     solver_type: SolverResultDetail::Hidden {
