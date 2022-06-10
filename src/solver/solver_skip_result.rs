@@ -1,8 +1,8 @@
-use enum_iterator::IntoEnumIterator;
+use enum_iterator::Sequence;
 
 use super::solver_history::SolverResultDetail;
 
-#[derive(IntoEnumIterator, Debug)]
+#[derive(Sequence, Debug)]
 pub enum SolverResultSimple {
     Single,
     Naked,

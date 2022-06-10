@@ -5,11 +5,11 @@
 /// len: 조합할 갯수
 ///
 /// f: 조합된 항목이 이 함수로 전달됩니다. true를 반환하면 해당 조합이 결과 리스트에 포함됩니다.
-pub fn combinations<T, F>(arr: &[T], len: usize, mut f: F) -> Vec<Vec<&T>>
+pub fn combinations<T, F, V>(arr: &[T], len: usize, mut f: F) -> Vec<(Vec<&T>, V)>
 where
-    F: FnMut(&Vec<&T>) -> bool,
+    F: FnMut(&Vec<&T>) -> Option<V>,
 {
-    let mut result_list: Vec<Vec<&T>> = Vec::new();
+    let mut result_list: Vec<(Vec<&T>, V)> = Vec::new();
 
     if arr.len() < len || len == 0 {
         return result_list;
@@ -21,23 +21,23 @@ where
     result_list
 }
 
-fn combinations_recur<'a, 'b, T, F>(
+fn combinations_recur<'a, 'b, T, F, V>(
     arr: &'a [T],
     len: usize,
     start_position: usize,
     result: &mut Vec<&'a T>,
     f: &mut F,
-    result_list: &'b mut Vec<Vec<&'a T>>,
+    result_list: &'b mut Vec<(Vec<&'a T>, V)>,
 ) where
-    F: FnMut(&Vec<&T>) -> bool,
+    F: FnMut(&Vec<&T>) -> Option<V>,
 {
     if len == 0 {
-        if f(result) {
+        if let Some(value) = f(result) {
             let mut r_list: Vec<&T> = Vec::new();
             for r in result {
                 r_list.push(r);
             }
-            result_list.push(r_list);
+            result_list.push((r_list, value));
         }
         return;
     }
@@ -52,8 +52,8 @@ fn combinations_recur<'a, 'b, T, F>(
 fn combination_test() {
     let v = vec![1, 2, 3, 4, 5];
 
-    let m = combinations(&v, 3, |_| true);
-    for comb in m {
+    let m = combinations(&v, 3, |_| Some(()));
+    for (comb, _) in m {
         let mut print_str: String = String::new();
         for c in comb {
             print_str.push_str(c.to_string().as_str());

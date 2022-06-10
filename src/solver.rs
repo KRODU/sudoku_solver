@@ -3,7 +3,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use enum_iterator::IntoEnumIterator;
+use enum_iterator::all;
 use hashbrown::{HashMap, HashSet};
 use rand::{prelude::StdRng, RngCore, SeedableRng};
 
@@ -217,7 +217,7 @@ impl<'a> Solver<'a> {
         let rand_seed: u64 = StdRng::from_entropy().next_u64();
         let zone_list = Solver::get_zone_list_init(t, size);
         let mut solve_cnt: HashMap<SolverResultSimple, u32> = HashMap::new();
-        for n in SolverResultSimple::into_enum_iter() {
+        for n in all::<SolverResultSimple>() {
             solve_cnt.insert(n, 0u32);
         }
 

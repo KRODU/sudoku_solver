@@ -1,8 +1,8 @@
 use hashbrown::{HashMap, HashSet};
-use itertools::Itertools;
 
 use crate::{
     cell::Cell,
+    combinations::combinations,
     zone::{Zone, ZoneType},
 };
 
@@ -16,7 +16,7 @@ impl<'a> Solver<'a> {
         for z in changed_zone {
             if let ZoneType::Unique = z.get_zone_type() {
                 for i in 2..=self.t.get_size() / 2 {
-                    let result = self.hidden_number_zone(z, i);
+                    let result = self.hidden_number_zone(z, i as usize);
 
                     if result.is_some() {
                         return result;
@@ -28,46 +28,66 @@ impl<'a> Solver<'a> {
         None
     }
 
-    fn hidden_number_zone(&self, z: &Zone, i: u32) -> Option<SolverResult<'a>> {
-        let mut chk: Vec<&Cell> = Vec::new();
+    fn hidden_number_zone(&self, z: &Zone, i: usize) -> Option<SolverResult<'a>> {
+        let mut union_node: HashSet<u32> = HashSet::new();
 
-        for c in self.zone_iter(z) {
-            let borrow = c.chk.borrow();
-            if borrow.get_true_cnt() == i {
-                chk.push(c);
+        let comblist = combinations(&self.ref_cache[z], i as usize, |arr| {
+            if !arr.iter().any(|c| self.changed_cell.contains(*c)) {
+                return None;
             }
+
+            union_node.clear();
+            for c in arr {
+                let b = c.chk.borrow();
+                if b.is_final_num() {
+                    return None;
+                }
+
+                b.union_note(&mut union_node);
+                if union_node.len() > i as usize {
+                    return None;
+                }
+            }
+
+            if union_node.len() != i as usize {
+                return None;
+            }
+
+            Some(union_node.clone())
+        });
+        std::mem::drop(union_node);
+
+        if !comblist.is_empty() {
+            println!("i:{}, l:{}", i, comblist.len());
         }
-
         let mut effect_cells: HashMap<&Cell, HashSet<u32>> = HashMap::new();
-
-        for r in chk.into_iter().combinations(i as usize) {
-            let naked_value = r[0].chk.borrow();
+        for (cells, union_node) in comblist {
             // zone을 순회하며 삭제할 노트가 있는지 찾음
             for zone_cell in self.zone_iter(z) {
                 // 순회 대상에서 자기 자신은 제외
-                if r.contains(zone_cell) {
+                if cells.contains(&zone_cell) {
                     continue;
                 }
 
                 let b = zone_cell.chk.borrow();
-                let union: HashSet<u32> = b.intersection_note(&naked_value.clone_chk_list());
+                let inter = b.intersection_note(&union_node);
 
                 // 제거할 노트를 발견한 경우
-                if !union.is_empty() {
-                    effect_cells.insert(zone_cell, union);
+                if !inter.is_empty() {
+                    effect_cells.insert(zone_cell, inter);
                 }
             }
 
             // effect_cells에 값이 존재하는 경우 제거한 노트를 발견한 것임.
             // 해당 값을 return하고 종료
             if !effect_cells.is_empty() {
-                let mut found_cells: HashSet<&'a Cell> = HashSet::with_capacity(r.len());
-                for effect_cell in r {
+                let mut found_cells: HashSet<&'a Cell> = HashSet::with_capacity(cells.len());
+                for effect_cell in cells {
                     found_cells.insert(effect_cell);
                 }
                 return Some(SolverResult {
                     solver_type: SolverResultDetail::Hidden {
-                        found_chks: naked_value.clone_chk_list(),
+                        found_chks: union_node,
                     },
                     found_cells,
                     effect_cells,

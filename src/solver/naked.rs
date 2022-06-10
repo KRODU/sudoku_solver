@@ -30,43 +30,42 @@ impl<'a> Solver<'a> {
 
     fn naked_number_zone(&self, z: &Zone, i: usize) -> Option<SolverResult<'a>> {
         let mut union_node: HashSet<u32> = HashSet::new();
+
         let comblist = combinations(&self.ref_cache[z], i as usize, |arr| {
             if !arr.iter().any(|c| self.changed_cell.contains(*c)) {
-                return false;
+                return None;
             }
 
             union_node.clear();
             for c in arr {
                 let b = c.chk.borrow();
                 if b.is_final_num() {
-                    return false;
+                    return None;
                 }
 
                 b.union_note(&mut union_node);
                 if union_node.len() > i as usize {
-                    return false;
+                    return None;
                 }
             }
 
             if union_node.len() != i as usize {
-                return false;
+                return None;
             }
 
-            true
+            Some(union_node.clone())
         });
+        std::mem::drop(union_node);
 
-        
+        if !comblist.is_empty() {
+            println!("i:{}, l:{}", i, comblist.len());
+        }
         let mut effect_cells: HashMap<&Cell, HashSet<u32>> = HashMap::new();
-        for r in &comblist {
-            union_node.clear();
-            for c in r {
-                c.chk.borrow().union_note(&mut union_node);
-            }
-
+        for (cells, union_node) in comblist {
             // zone을 순회하며 삭제할 노트가 있는지 찾음
             for zone_cell in self.zone_iter(z) {
                 // 순회 대상에서 자기 자신은 제외
-                if r.contains(&zone_cell) {
+                if cells.contains(&zone_cell) {
                     continue;
                 }
 
@@ -82,8 +81,8 @@ impl<'a> Solver<'a> {
             // effect_cells에 값이 존재하는 경우 제거한 노트를 발견한 것임.
             // 해당 값을 return하고 종료
             if !effect_cells.is_empty() {
-                let mut found_cells: HashSet<&'a Cell> = HashSet::with_capacity(r.len());
-                for effect_cell in r {
+                let mut found_cells: HashSet<&'a Cell> = HashSet::with_capacity(cells.len());
+                for effect_cell in cells {
                     found_cells.insert(effect_cell);
                 }
                 return Some(SolverResult {
@@ -94,9 +93,6 @@ impl<'a> Solver<'a> {
                     effect_cells,
                 });
             }
-        }
-        if !comblist.is_empty() {
-            println!("i:{}, l:{}", i, comblist.len());
         }
 
         None

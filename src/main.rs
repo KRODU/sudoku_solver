@@ -1,4 +1,4 @@
-use enum_iterator::IntoEnumIterator;
+use enum_iterator::all;
 use solver::Solver;
 use std::time::Instant;
 use table::Table;
@@ -27,7 +27,7 @@ fn main() {
     let end = Instant::now();
 
     println!("puzzle seed: {}", solver.get_random_seed());
-    for n in SolverResultSimple::into_enum_iter() {
+    for n in all::<SolverResultSimple>() {
         println!("{:?}: {}", n, solver.solve_cnt(&n));
     }
 
