@@ -1,7 +1,7 @@
 #[derive(Debug)]
 pub enum ZoneType {
     Unique,
-    Sum { sum: u32 },
+    Sum { sum: usize },
 }
 
 impl Clone for ZoneType {
@@ -38,12 +38,12 @@ impl std::hash::Hash for ZoneType {
 
 #[derive(Debug)]
 pub struct Zone {
-    pub z: u32,
+    pub z: usize,
     pub zone_type: ZoneType,
 }
 
 impl Zone {
-    pub fn new_from_num(z: u32) -> Zone {
+    pub fn new_from_num(z: usize) -> Zone {
         Zone {
             z,
             zone_type: ZoneType::Unique,
@@ -51,7 +51,7 @@ impl Zone {
     }
 
     #[must_use]
-    pub fn get_zone_num(&self) -> u32 {
+    pub fn get_zone_num(&self) -> usize {
         self.z
     }
 

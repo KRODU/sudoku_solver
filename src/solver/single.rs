@@ -9,7 +9,7 @@ use super::{
 
 impl<'a> Solver<'a> {
     pub fn single(&self) -> Option<SolverResult<'a>> {
-        let mut effect_cells: HashMap<&Cell, HashSet<u32>> = HashMap::new();
+        let mut effect_cells: HashMap<&Cell, HashSet<usize>> = HashMap::new();
 
         for c in &self.changed_cell {
             let b = c.chk.borrow();
@@ -26,7 +26,7 @@ impl<'a> Solver<'a> {
 
                             // 찾음
                             if c_comp.chk.borrow().get_chk(final_num) {
-                                let mut v: HashSet<u32> = HashSet::with_capacity(1);
+                                let mut v = HashSet::with_capacity(1);
                                 v.insert(final_num);
                                 effect_cells.insert(c_comp, v);
                             }

@@ -6,13 +6,13 @@ use crate::zone::Zone;
 
 pub struct Table {
     cells: Vec<Vec<Cell>>,
-    size: u32,
+    size: usize,
 }
 
 impl Table {
     /// 9X9 기본 스도쿠 구조입니다.
     pub fn new_default_9() -> Self {
-        let mut zone: Vec<u32> = Vec::with_capacity(81);
+        let mut zone: Vec<usize> = Vec::with_capacity(81);
         let mut zone_row = [1, 1, 1, 2, 2, 2, 3, 3, 3];
         for _ in 0..3 {
             for _ in 0..3 {
@@ -25,10 +25,10 @@ impl Table {
         }
 
         let mut cells: Vec<Vec<Cell>> = Vec::with_capacity(9);
-        for x in 0..9u32 {
+        for x in 0..9 {
             let mut row: Vec<Cell> = Vec::with_capacity(9);
-            for y in 0..9u32 {
-                let index = zone[(x * 9 + y) as usize];
+            for y in 0..9 {
+                let index = zone[x * 9 + y];
                 let this_zone: Vec<Zone> = vec![
                     Zone {
                         z: index,
@@ -53,7 +53,7 @@ impl Table {
 
     /// 16X16 스도쿠 구조입니다.
     pub fn new_default_16() -> Self {
-        let mut zone: Vec<u32> = Vec::with_capacity(256);
+        let mut zone: Vec<usize> = Vec::with_capacity(256);
         let mut zone_row = [1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4];
         for _ in 0..4 {
             for _ in 0..4 {
@@ -66,10 +66,10 @@ impl Table {
         }
 
         let mut cells: Vec<Vec<Cell>> = Vec::with_capacity(16);
-        for x in 0..16u32 {
+        for x in 0..16 {
             let mut row: Vec<Cell> = Vec::with_capacity(16);
-            for y in 0..16u32 {
-                let index = zone[(x * 16 + y) as usize] as u32;
+            for y in 0..16 {
+                let index = zone[x * 16 + y];
                 let this_zone: Vec<Zone> = vec![
                     Zone {
                         z: index,
@@ -101,13 +101,13 @@ impl Table {
     #[must_use]
     #[inline]
     pub fn get_cell_coordi(&self, coordi: &Coordinate) -> &Cell {
-        &self.cells[coordi.x as usize][coordi.y as usize]
+        &self.cells[coordi.x][coordi.y]
     }
 
     /// 스도쿠의 가로, 세로 길이입니다.
     #[must_use]
     #[inline]
-    pub fn get_size(&self) -> u32 {
+    pub fn get_size(&self) -> usize {
         self.size
     }
 }
@@ -127,9 +127,9 @@ impl<'a> IntoIterator for &'a Table {
 }
 
 pub struct CellIter<'a> {
-    x: u32,
-    y: u32,
-    size: u32,
+    x: usize,
+    y: usize,
+    size: usize,
     t: &'a Vec<Vec<Cell>>,
 }
 
@@ -145,7 +145,7 @@ impl<'a> Iterator for CellIter<'a> {
         let ret = if self.y >= self.size {
             None
         } else {
-            Some(&self.t[self.x as usize][self.y as usize])
+            Some(&self.t[self.x][self.y])
         };
 
         self.x += 1;

@@ -16,7 +16,7 @@ impl<'a> Solver<'a> {
         for z in changed_zone {
             if let ZoneType::Unique = z.get_zone_type() {
                 for i in 2..=self.t.get_size() / 2 {
-                    let result = self.hidden_number_zone(z, i as usize);
+                    let result = self.hidden_number_zone(z, i);
 
                     if result.is_some() {
                         return result;
@@ -29,9 +29,9 @@ impl<'a> Solver<'a> {
     }
 
     fn hidden_number_zone(&self, z: &Zone, i: usize) -> Option<SolverResult<'a>> {
-        let mut union_node: HashSet<u32> = HashSet::new();
+        let mut union_node = HashSet::new();
 
-        let comblist = combinations(&self.ref_cache[z], i as usize, |arr| {
+        let comblist = combinations(&self.ref_cache[z], i, |arr| {
             if !arr.iter().any(|c| self.changed_cell.contains(*c)) {
                 return None;
             }
@@ -44,12 +44,12 @@ impl<'a> Solver<'a> {
                 }
 
                 b.union_note(&mut union_node);
-                if union_node.len() > i as usize {
+                if union_node.len() > i {
                     return None;
                 }
             }
 
-            if union_node.len() != i as usize {
+            if union_node.len() != i {
                 return None;
             }
 
@@ -60,7 +60,7 @@ impl<'a> Solver<'a> {
         if !comblist.is_empty() {
             println!("i:{}, l:{}", i, comblist.len());
         }
-        let mut effect_cells: HashMap<&Cell, HashSet<u32>> = HashMap::new();
+        let mut effect_cells: HashMap<&Cell, HashSet<usize>> = HashMap::new();
         for (cells, union_node) in comblist {
             // zone을 순회하며 삭제할 노트가 있는지 찾음
             for zone_cell in self.zone_iter(z) {

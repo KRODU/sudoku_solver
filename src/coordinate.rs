@@ -1,7 +1,7 @@
 #[derive(Debug)]
 pub struct Coordinate {
-    pub x: u32,
-    pub y: u32,
+    pub x: usize,
+    pub y: usize,
 }
 
 impl Clone for Coordinate {

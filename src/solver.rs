@@ -46,19 +46,19 @@ impl<'a> Solver<'a> {
     ///
     /// 풀리지 않고 남은 cell의 개수를 반환합니다.
     /// 제한시간을 초과했거나 풀 수 없는 문제인 경우 1이상일 수 있습니다.
-    pub fn fill_puzzle_with_timeout(&mut self, timeout: Duration) -> u32 {
+    pub fn fill_puzzle_with_timeout(&mut self, timeout: Duration) -> usize {
         let start = Instant::now();
 
         while !self.is_complete_puzzle() {
-            println!("{}", self.t); // FIXME
-            println!("-----------------------------");
+            // println!("{}", self.t);
+            // println!("-----------------------------");
             // timeout 또는 모든 문제를 풀 수 없는 경우 return
             if (Instant::now() - start) >= timeout || self.solve().is_none() {
                 return self
                     .t
                     .into_iter()
                     .filter(|n| !n.chk.borrow().is_final_num())
-                    .count() as u32;
+                    .count();
             }
         }
 
@@ -109,7 +109,7 @@ impl<'a> Solver<'a> {
     pub fn solve_result_commit(&mut self, result: Option<SolverResult<'a>>) -> bool {
         if let Some(solver_result) = result {
             let history = {
-                let mut backup_chk: HashMap<&'a Cell, HashSet<u32>> =
+                let mut backup_chk: HashMap<&'a Cell, HashSet<usize>> =
                     HashMap::with_capacity(solver_result.effect_cells.len());
 
                 for c in solver_result.effect_cells.keys() {
@@ -151,11 +151,7 @@ impl<'a> Solver<'a> {
     fn history_rollback_last_guess(&mut self) -> bool {
         let mut no_guess: bool = true;
         for history in &self.solver_history_stack {
-            if let SolverHistoryType::Guess {
-                cell: _,
-                final_num: _,
-            } = history.history_type
-            {
+            if let SolverHistoryType::Guess { .. } = history.history_type {
                 no_guess = false;
                 break;
             }
@@ -173,11 +169,7 @@ impl<'a> Solver<'a> {
                 self.changed_cell.insert(c);
             }
 
-            if let SolverHistoryType::GuessBacktrace {
-                cell: _,
-                except_num: _,
-            } = history.history_type
-            {
+            if let SolverHistoryType::GuessBacktrace { .. } = history.history_type {
                 self.guess_backtrace_rollback_cnt += 1;
             }
 
@@ -186,8 +178,8 @@ impl<'a> Solver<'a> {
             if let SolverHistoryType::Guess { cell, final_num } = history.history_type {
                 let mut mut_chk = cell.chk.borrow_mut();
 
-                let backup_chk_list: HashSet<u32> = mut_chk.clone_chk_list();
-                let mut backup: HashMap<&'a Cell, HashSet<u32>> = HashMap::with_capacity(1);
+                let backup_chk_list = mut_chk.clone_chk_list();
+                let mut backup: HashMap<&'a Cell, HashSet<usize>> = HashMap::with_capacity(1);
                 backup.insert(cell, backup_chk_list);
                 mut_chk.set_chk(final_num, false);
 
@@ -221,7 +213,7 @@ impl<'a> Solver<'a> {
             solve_cnt.insert(n, 0u32);
         }
 
-        let mut changed_cell = HashSet::with_capacity((size * size) as usize);
+        let mut changed_cell = HashSet::with_capacity(size * size);
         for c in t.into_iter() {
             changed_cell.insert(c);
         }
@@ -245,13 +237,12 @@ impl<'a> Solver<'a> {
     #[must_use]
     fn get_zone_ref(t: &'a Table) -> HashMap<&'a Zone, Vec<&'a Cell>> {
         let size = t.get_size();
-        let mut zone_ref: HashMap<&'a Zone, Vec<&'a Cell>> =
-            HashMap::with_capacity((size * size) as usize);
+        let mut zone_ref: HashMap<&'a Zone, Vec<&'a Cell>> = HashMap::with_capacity(size * size);
         for this_cell in t {
             for z in this_cell.get_zone() {
                 let row: &mut Vec<&Cell> = zone_ref
                     .entry(z)
-                    .or_insert_with(|| Vec::with_capacity(size as usize));
+                    .or_insert_with(|| Vec::with_capacity(size));
                 row.push(this_cell);
             }
         }
@@ -259,7 +250,7 @@ impl<'a> Solver<'a> {
         // 퍼즐 유효성 체크
         for (z, c) in &zone_ref {
             if let ZoneType::Unique = z.zone_type {
-                if c.len() != size as usize {
+                if c.len() != size {
                     panic!(
                         "Unique 타입의 개수는 퍼즐 사이즈와 동일해야 함! 사이즈:{}, 실제 갯수: {}",
                         size,
@@ -272,8 +263,8 @@ impl<'a> Solver<'a> {
     }
 
     #[must_use]
-    fn get_zone_list_init(cells: &'a Table, size: u32) -> HashSet<&'a Zone> {
-        let mut ret: HashSet<&'a Zone> = HashSet::with_capacity(size as usize);
+    fn get_zone_list_init(cells: &'a Table, size: usize) -> HashSet<&'a Zone> {
+        let mut ret: HashSet<&'a Zone> = HashSet::with_capacity(size);
 
         for this_cell in cells {
             for z in this_cell.get_zone() {

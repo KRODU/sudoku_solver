@@ -11,7 +11,7 @@ pub struct Cell {
 
 impl Cell {
     #[must_use]
-    pub fn new(size: u32, x: u32, y: u32, zone: Vec<Zone>) -> Self {
+    pub fn new(size: usize, x: usize, y: usize, zone: Vec<Zone>) -> Self {
         Cell {
             chk: RefCell::new(NumCheck::new(size)),
             zone: ZoneSet { zone },

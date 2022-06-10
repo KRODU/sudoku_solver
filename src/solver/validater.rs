@@ -20,11 +20,11 @@ impl<'a> Solver<'a> {
             match zone.get_zone_type() {
                 // 파라미터의 모든 Cell이 고유값을 가지고 있는지 확인
                 ZoneType::Unique => {
-                    let mut unique_chk_map: HashSet<u32> = HashSet::with_capacity(vec.len());
+                    let mut unique_chk_map = HashSet::with_capacity(vec.len());
 
                     for c in vec {
                         let chk_borr = c.chk.borrow();
-                        let final_num: Option<u32> = chk_borr.get_final_num();
+                        let final_num = chk_borr.get_final_num();
                         if let Some(num) = final_num {
                             if !unique_chk_map.insert(num) {
                                 return Some(c);
@@ -34,11 +34,11 @@ impl<'a> Solver<'a> {
                 }
                 // 파라미터의 모든 Cell의 합이 일치하는지 여부 확인
                 ZoneType::Sum { sum } => {
-                    let mut total_sum: u32 = 0;
+                    let mut total_sum = 0;
 
                     for c in vec {
                         let chk_borr = c.chk.borrow();
-                        let final_num: Option<u32> = chk_borr.get_final_num();
+                        let final_num = chk_borr.get_final_num();
                         if let Some(num) = final_num {
                             total_sum += num;
                         }

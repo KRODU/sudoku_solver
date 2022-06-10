@@ -1,4 +1,4 @@
-use hashbrown::{HashMap, HashSet};
+use hashbrown::HashMap;
 use rand::Rng;
 
 use crate::cell::Cell;
@@ -11,7 +11,7 @@ use super::{
 impl<'a> Solver<'a> {
     /// 값이 확정되지 않은 cell중에 하나를 무작위로 guess하여 넣습니다.
     pub fn guess_random(&mut self) {
-        let mut minimum_note_cnt = u32::MAX;
+        let mut minimum_note_cnt = usize::MAX;
         let mut minimum_note_list: Vec<&Cell> = Vec::new();
 
         for n in self.t.into_iter() {
@@ -48,7 +48,7 @@ impl<'a> Solver<'a> {
     /// 이 함수는 노트의 값을 변경시키기에 다른 스레드에서 값을 읽는중이면 안됩니다.
     ///
     /// 히스토리에 Guess를 추가합니다.
-    pub fn guess_mut_something(&mut self, cell: &'a Cell, final_num: u32) {
+    pub fn guess_mut_something(&mut self, cell: &'a Cell, final_num: usize) {
         let mut b = cell.chk.borrow_mut();
 
         // 불가능한 값으로 guess할 경우 panic 발생
@@ -62,7 +62,7 @@ impl<'a> Solver<'a> {
         }
 
         let backup = b.clone_chk_list();
-        let mut backup_chk: HashMap<&'a Cell, HashSet<u32>> = HashMap::with_capacity(1);
+        let mut backup_chk = HashMap::with_capacity(1);
         backup_chk.insert(cell, backup);
         b.set_to_value(final_num);
         self.changed_cell.insert(cell);
