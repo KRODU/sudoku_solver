@@ -15,7 +15,7 @@ impl<'a> Solver<'a> {
         let mut minimum_note_list: Vec<&Cell> = Vec::new();
 
         for n in self.t.into_iter() {
-            let b = n.chk.borrow();
+            let b = n.chk.read().unwrap();
             let true_cnt = b.get_true_cnt();
             if true_cnt <= 1 || true_cnt > minimum_note_cnt {
                 continue;
@@ -36,7 +36,7 @@ impl<'a> Solver<'a> {
 
         let mut rng = self.rng.borrow_mut();
         let cell_pick = minimum_note_list[rng.gen_range(0..minimum_note_list.len())];
-        let cell_notes = cell_pick.chk.borrow().clone_chk_list_sort();
+        let cell_notes = cell_pick.chk.read().unwrap().clone_chk_list_sort();
         let note_pick = cell_notes[rng.gen_range(0..cell_notes.len())];
         std::mem::drop(rng);
 
@@ -49,7 +49,7 @@ impl<'a> Solver<'a> {
     ///
     /// 히스토리에 Guess를 추가합니다.
     pub fn guess_mut_something(&mut self, cell: &'a Cell, final_num: usize) {
-        let mut b = cell.chk.borrow_mut();
+        let mut b = cell.chk.write().unwrap();
 
         // 불가능한 값으로 guess할 경우 panic 발생
         if !b.get_chk(final_num) {

@@ -57,7 +57,7 @@ impl<'a> Solver<'a> {
                 return self
                     .t
                     .into_iter()
-                    .filter(|n| !n.chk.borrow().is_final_num())
+                    .filter(|n| !n.chk.read().unwrap().is_final_num())
                     .count();
             }
         }
@@ -113,7 +113,7 @@ impl<'a> Solver<'a> {
                     HashMap::with_capacity(solver_result.effect_cells.len());
 
                 for c in solver_result.effect_cells.keys() {
-                    let backup = c.chk.borrow().clone_chk_list();
+                    let backup = c.chk.read().unwrap().clone_chk_list();
                     backup_chk.insert(c, backup);
                 }
 
@@ -125,7 +125,7 @@ impl<'a> Solver<'a> {
 
             if let SolverHistoryType::Solve { ref solver_result } = history.history_type {
                 for (c, v) in &solver_result.effect_cells {
-                    c.chk.borrow_mut().set_to_false_list(v);
+                    c.chk.write().unwrap().set_to_false_list(v);
                     self.changed_cell.insert(c);
                 }
 
@@ -165,7 +165,7 @@ impl<'a> Solver<'a> {
         self.guess_rollback_cnt += 1;
         while let Some(history) = self.solver_history_stack.pop() {
             for (c, backup) in history.backup_chk {
-                c.chk.borrow_mut().set_to_chk_list(&backup);
+                c.chk.write().unwrap().set_to_chk_list(&backup);
                 self.changed_cell.insert(c);
             }
 
@@ -176,7 +176,7 @@ impl<'a> Solver<'a> {
             // 추측된 숫자를 실패로 간주하여 제외시킴
             // Guess를 만난 경우 롤백 중단
             if let SolverHistoryType::Guess { cell, final_num } = history.history_type {
-                let mut mut_chk = cell.chk.borrow_mut();
+                let mut mut_chk = cell.chk.write().unwrap();
 
                 let backup_chk_list = mut_chk.clone_chk_list();
                 let mut backup: HashMap<&'a Cell, HashSet<usize>> = HashMap::with_capacity(1);
@@ -200,7 +200,7 @@ impl<'a> Solver<'a> {
     /// 이 스도쿠 퍼즐이 완성되었는지 여부를 반환
     #[must_use]
     pub fn is_complete_puzzle(&self) -> bool {
-        self.t.into_iter().all(|c| c.chk.borrow().is_final_num())
+        self.t.into_iter().all(|c| c.chk.read().unwrap().is_final_num())
     }
 
     #[must_use]

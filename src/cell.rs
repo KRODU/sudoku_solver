@@ -1,10 +1,10 @@
-use std::cell::RefCell;
+use std::sync::RwLock;
 
 use crate::{coordinate::Coordinate, num_check::NumCheck, zone::Zone, zone_set::ZoneSet};
 
 #[derive(Debug)]
 pub struct Cell {
-    pub chk: RefCell<NumCheck>,
+    pub chk: RwLock<NumCheck>,
     zone: ZoneSet,
     coordi: Coordinate,
 }
@@ -13,7 +13,7 @@ impl Cell {
     #[must_use]
     pub fn new(size: usize, x: usize, y: usize, zone: Vec<Zone>) -> Self {
         Cell {
-            chk: RefCell::new(NumCheck::new(size)),
+            chk: RwLock::new(NumCheck::new(size)),
             zone: ZoneSet { zone },
             coordi: Coordinate { x, y },
         }

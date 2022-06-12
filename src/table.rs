@@ -160,7 +160,7 @@ impl Display for Table {
         for x in 0..self.size {
             for y in 0..self.size {
                 let cell = self.get_cell_coordi(&Coordinate { x, y });
-                let final_num = cell.chk.borrow().get_final_num();
+                let final_num = cell.chk.read().unwrap().get_final_num();
                 if let Some(num) = final_num {
                     ret.push_str(num.to_string().as_str());
                 } else {

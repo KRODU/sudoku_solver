@@ -38,7 +38,7 @@ impl<'a> Solver<'a> {
 
             union_node.clear();
             for c in arr {
-                let b = c.chk.borrow();
+                let b = c.chk.read().unwrap();
                 if b.is_final_num() {
                     return None;
                 }
@@ -69,7 +69,7 @@ impl<'a> Solver<'a> {
                     continue;
                 }
 
-                let b = zone_cell.chk.borrow();
+                let b = zone_cell.chk.read().unwrap();
                 let inter = b.intersection_note(&union_node);
 
                 // 제거할 노트를 발견한 경우

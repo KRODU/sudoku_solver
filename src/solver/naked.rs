@@ -38,7 +38,7 @@ impl<'a> Solver<'a> {
 
             union_node.clear();
             for c in arr {
-                let b = c.chk.borrow();
+                let b = c.chk.read().unwrap();
                 let note_cnt = b.get_true_cnt();
 
                 if note_cnt == 1 {
@@ -62,9 +62,9 @@ impl<'a> Solver<'a> {
         });
         std::mem::drop(union_node);
 
-        if !comblist.is_empty() {
-            println!("i:{}, l:{}", i, comblist.len());
-        }
+        // if !comblist.is_empty() {
+        //     println!("i:{}, l:{}", i, comblist.len());
+        // }
         let mut effect_cells: HashMap<&Cell, HashSet<usize>> = HashMap::new();
         for (cells, union_node) in comblist {
             // zone을 순회하며 삭제할 노트가 있는지 찾음
@@ -74,7 +74,7 @@ impl<'a> Solver<'a> {
                     continue;
                 }
 
-                let b = zone_cell.chk.borrow();
+                let b = zone_cell.chk.read().unwrap();
                 let inter = b.intersection_note(&union_node);
 
                 // 제거할 노트를 발견한 경우

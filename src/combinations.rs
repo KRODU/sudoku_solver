@@ -33,7 +33,7 @@ fn combinations_recur<'a, 'b, T, F, V>(
 {
     if len == 0 {
         if let Some(value) = f(result) {
-            let mut r_list: Vec<&T> = Vec::new();
+            let mut r_list: Vec<&T> = Vec::with_capacity(len);
             for r in result {
                 r_list.push(r);
             }

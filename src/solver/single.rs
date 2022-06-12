@@ -12,7 +12,7 @@ impl<'a> Solver<'a> {
         let mut effect_cells: HashMap<&Cell, HashSet<usize>> = HashMap::new();
 
         for c in &self.changed_cell {
-            let b = c.chk.borrow();
+            let b = c.chk.read().unwrap();
 
             // 노트가 확정된 경우 Zone을 순회하면서 해당 노트를 가진 cell이 있나 찾음
             if let Some(final_num) = b.get_final_num() {
@@ -25,7 +25,7 @@ impl<'a> Solver<'a> {
                             }
 
                             // 찾음
-                            if c_comp.chk.borrow().get_chk(final_num) {
+                            if c_comp.chk.read().unwrap().get_chk(final_num) {
                                 let mut v = HashSet::with_capacity(1);
                                 v.insert(final_num);
                                 effect_cells.insert(c_comp, v);
