@@ -41,11 +41,11 @@ impl NumCheck {
     #[must_use]
     #[inline]
     pub fn get_chk(&self, num: usize) -> bool {
-        self.chk_list[(num - 1)]
+        self.chk_list[num - 1]
     }
 
     pub fn set_chk(&mut self, num: usize, chk: bool) {
-        if self.chk_list[(num - 1)] == chk {
+        if self.chk_list[num - 1] == chk {
             return;
         }
 
@@ -133,7 +133,7 @@ impl NumCheck {
             ret.push(*n);
         }
 
-        ret.sort();
+        ret.sort_unstable();
         ret
     }
 

@@ -34,11 +34,9 @@ impl<'a> Solver<'a> {
             return;
         }
 
-        let mut rng = self.rng.borrow_mut();
-        let cell_pick = minimum_note_list[rng.gen_range(0..minimum_note_list.len())];
+        let cell_pick = minimum_note_list[self.rng.gen_range(0..minimum_note_list.len())];
         let cell_notes = cell_pick.chk.read().unwrap().clone_chk_list_sort();
-        let note_pick = cell_notes[rng.gen_range(0..cell_notes.len())];
-        std::mem::drop(rng);
+        let note_pick = cell_notes[self.rng.gen_range(0..cell_notes.len())];
 
         self.guess_mut_something(cell_pick, note_pick);
     }

@@ -1,12 +1,11 @@
 use std::fmt::Display;
 
 use crate::cell::Cell;
-use crate::coordinate::Coordinate;
 use crate::zone::Zone;
 
 pub struct Table {
-    cells: Vec<Vec<Cell>>,
-    size: usize,
+    pub cells: Vec<Vec<Cell>>,
+    pub size: usize,
 }
 
 impl Table {
@@ -91,25 +90,6 @@ impl Table {
         }
         Table { cells, size: 16 }
     }
-
-    #[must_use]
-    #[inline]
-    pub fn get_cell(&self) -> &Vec<Vec<Cell>> {
-        &self.cells
-    }
-
-    #[must_use]
-    #[inline]
-    pub fn get_cell_coordi(&self, coordi: &Coordinate) -> &Cell {
-        &self.cells[coordi.x][coordi.y]
-    }
-
-    /// 스도쿠의 가로, 세로 길이입니다.
-    #[must_use]
-    #[inline]
-    pub fn get_size(&self) -> usize {
-        self.size
-    }
 }
 
 impl<'a> IntoIterator for &'a Table {
@@ -159,7 +139,7 @@ impl Display for Table {
         let mut ret = String::new();
         for x in 0..self.size {
             for y in 0..self.size {
-                let cell = self.get_cell_coordi(&Coordinate { x, y });
+                let cell = &self.cells[x][y];
                 let final_num = cell.chk.read().unwrap().get_final_num();
                 if let Some(num) = final_num {
                     ret.push_str(num.to_string().as_str());

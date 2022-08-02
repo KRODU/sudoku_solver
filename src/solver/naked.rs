@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use hashbrown::{HashMap, HashSet};
 
 use crate::{
@@ -12,22 +14,31 @@ use super::{
 };
 
 impl<'a> Solver<'a> {
-    pub fn naked(&self, changed_zone: &HashSet<&'a Zone>) -> Option<SolverResult<'a>> {
-        for z in changed_zone {
-            if let ZoneType::Unique = z.get_zone_type() {
-                for i in 2..=self.t.get_size() / 2 {
-                    let result = self.naked_number_zone(z, i);
+    pub fn naked(&self, changed_zone: &HashSet<&'a Zone>) -> VecDeque<SolverResult<'a>> {
+        std::thread::scope(|s| {
+            let mut join_handle_list = Vec::new();
 
-                    if result.is_some() {
-                        return result;
+            for z in changed_zone {
+                if let ZoneType::Unique = z.get_zone_type() {
+                    for i in 2..=self.t.size / 2 {
+                        let join_handle = s.spawn(move || self.naked_number_zone(z, i));
+                        join_handle_list.push(join_handle);
                     }
                 }
             }
-        }
 
-        None
+            let mut result_list = VecDeque::new();
+            for join_handle in join_handle_list {
+                if let Some(result) = join_handle.join().unwrap() {
+                    result_list.push_back(result);
+                }
+            }
+
+            result_list
+        })
     }
 
+    #[inline]
     fn naked_number_zone(&self, z: &Zone, i: usize) -> Option<SolverResult<'a>> {
         let mut union_node: HashSet<usize> = HashSet::new();
 

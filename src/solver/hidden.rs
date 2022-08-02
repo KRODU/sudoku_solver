@@ -12,11 +12,11 @@ use super::{
 };
 
 impl<'a> Solver<'a> {
-    pub fn hidden(&self, changed_zone: &HashSet<&'a Zone>) -> Option<SolverResult<'a>> {
+    pub async fn hidden(&self, changed_zone: &HashSet<&'a Zone>) -> Option<SolverResult<'a>> {
         for z in changed_zone {
             if let ZoneType::Unique = z.get_zone_type() {
-                for i in 2..=self.t.get_size() / 2 {
-                    let result = self.hidden_number_zone(z, i);
+                for i in 2..=self.t.size / 2 {
+                    let result = self.hidden_number_zone(z, i).await;
 
                     if result.is_some() {
                         return result;
@@ -28,7 +28,7 @@ impl<'a> Solver<'a> {
         None
     }
 
-    fn hidden_number_zone(&self, z: &Zone, i: usize) -> Option<SolverResult<'a>> {
+    async fn hidden_number_zone(&self, z: &Zone, i: usize) -> Option<SolverResult<'a>> {
         let mut union_node = HashSet::new();
 
         let comblist = combinations(&self.ref_cache[z], i, |arr| {

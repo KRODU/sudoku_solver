@@ -1,5 +1,5 @@
 use std::{
-    cell::RefCell,
+    collections::VecDeque,
     time::{Duration, Instant},
 };
 
@@ -31,7 +31,7 @@ pub struct Solver<'a> {
     zone_list: HashSet<&'a Zone>,
     ref_cache: HashMap<&'a Zone, Vec<&'a Cell>>,
     solver_history_stack: Vec<SolverHistory<'a>>,
-    rng: RefCell<StdRng>,
+    rng: StdRng,
     rand_seed: u64,
     solve_cnt: HashMap<SolverResultSimple, u32>,
     guess_cnt: u32,
@@ -72,7 +72,7 @@ impl<'a> Solver<'a> {
     pub fn solve(&mut self) -> Option<&SolverHistory<'a>> {
         let mut changed_zone: HashSet<&'a Zone> = HashSet::new();
         for c in &self.changed_cell {
-            for z in c.get_zone() {
+            for z in &c.zone {
                 changed_zone.insert(z);
             }
         }
@@ -106,8 +106,9 @@ impl<'a> Solver<'a> {
     }
 
     /// 스도푸를 푼 경우 해당 결과를 적용합니다.
-    pub fn solve_result_commit(&mut self, result: Option<SolverResult<'a>>) -> bool {
-        if let Some(solver_result) = result {
+    fn solve_result_commit(&mut self, mut result: VecDeque<SolverResult<'a>>) -> bool {
+        let mut commit_flag = false;
+        while let Some(solver_result) = result.pop_front() {
             let history = {
                 let mut backup_chk: HashMap<&'a Cell, HashSet<usize>> =
                     HashMap::with_capacity(solver_result.effect_cells.len());
@@ -136,15 +137,15 @@ impl<'a> Solver<'a> {
                     ))
                     .unwrap() += 1;
             } else {
-                panic!("뭔가 잘못됨")
+                unreachable!()
             }
 
             self.solver_history_stack.push(history);
 
-            return true;
+            commit_flag = true;
         }
 
-        false
+        commit_flag
     }
 
     /// 가장 최근의 guess까지 롤백
@@ -200,12 +201,14 @@ impl<'a> Solver<'a> {
     /// 이 스도쿠 퍼즐이 완성되었는지 여부를 반환
     #[must_use]
     pub fn is_complete_puzzle(&self) -> bool {
-        self.t.into_iter().all(|c| c.chk.read().unwrap().is_final_num())
+        self.t
+            .into_iter()
+            .all(|c| c.chk.read().unwrap().is_final_num())
     }
 
     #[must_use]
     pub fn new(t: &'a mut Table) -> Self {
-        let size = t.get_size();
+        let size = t.size;
         let rand_seed: u64 = StdRng::from_entropy().next_u64();
         let zone_list = Solver::get_zone_list_init(t, size);
         let mut solve_cnt: HashMap<SolverResultSimple, u32> = HashMap::new();
@@ -223,7 +226,7 @@ impl<'a> Solver<'a> {
             zone_list,
             ref_cache: Solver::get_zone_ref(t),
             solver_history_stack: Vec::new(),
-            rng: RefCell::new(rand::prelude::StdRng::seed_from_u64(rand_seed)),
+            rng: rand::prelude::StdRng::seed_from_u64(rand_seed),
             rand_seed,
             guess_cnt: 0,
             guess_rollback_cnt: 0,
@@ -236,10 +239,10 @@ impl<'a> Solver<'a> {
 
     #[must_use]
     fn get_zone_ref(t: &'a Table) -> HashMap<&'a Zone, Vec<&'a Cell>> {
-        let size = t.get_size();
+        let size = t.size;
         let mut zone_ref: HashMap<&'a Zone, Vec<&'a Cell>> = HashMap::with_capacity(size * size);
         for this_cell in t {
-            for z in this_cell.get_zone() {
+            for z in &this_cell.zone {
                 let row: &mut Vec<&Cell> = zone_ref
                     .entry(z)
                     .or_insert_with(|| Vec::with_capacity(size));
@@ -266,8 +269,8 @@ impl<'a> Solver<'a> {
     fn get_zone_list_init(cells: &'a Table, size: usize) -> HashSet<&'a Zone> {
         let mut ret: HashSet<&'a Zone> = HashSet::with_capacity(size);
 
-        for this_cell in cells {
-            for z in this_cell.get_zone() {
+        for this_cell in cells.into_iter() {
+            for z in &this_cell.zone {
                 if !ret.contains(&z) {
                     ret.insert(z);
                 }
@@ -303,7 +306,7 @@ impl<'a> Solver<'a> {
     }
 
     pub fn set_random_seed(&mut self, rand_seed: u64) {
-        self.rng = RefCell::new(rand::prelude::StdRng::seed_from_u64(rand_seed));
+        self.rng = rand::prelude::StdRng::seed_from_u64(rand_seed);
         self.rand_seed = rand_seed;
     }
 

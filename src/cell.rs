@@ -5,8 +5,8 @@ use crate::{coordinate::Coordinate, num_check::NumCheck, zone::Zone, zone_set::Z
 #[derive(Debug)]
 pub struct Cell {
     pub chk: RwLock<NumCheck>,
-    zone: ZoneSet,
-    coordi: Coordinate,
+    pub zone: ZoneSet,
+    pub coordi: Coordinate,
 }
 
 impl Cell {
@@ -17,26 +17,6 @@ impl Cell {
             zone: ZoneSet { zone },
             coordi: Coordinate { x, y },
         }
-    }
-
-    ///
-    #[must_use]
-    #[inline]
-    pub fn get_zone(&self) -> &ZoneSet {
-        &self.zone
-    }
-
-    #[must_use]
-    #[inline]
-    pub fn is_zone_contain(&self, zone: Zone) -> bool {
-        self.zone.is_contain(&zone)
-    }
-
-    /// 현재 Cell의 x, y 좌표를 가져옵니다.
-    #[must_use]
-    #[inline]
-    pub fn get_coordinate(&self) -> Coordinate {
-        self.coordi
     }
 }
 

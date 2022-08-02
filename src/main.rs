@@ -19,7 +19,6 @@ fn main() {
 
     let mut t = Table::new_default_16();
     let mut solver = Solver::new(&mut t);
-    // solver.set_random_seed(297982631672622005);
 
     let start = Instant::now();
     solver.fill_puzzle_with_timeout(std::time::Duration::MAX);

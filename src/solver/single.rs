@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use hashbrown::{HashMap, HashSet};
 
 use crate::{cell::Cell, zone::ZoneType};
@@ -8,7 +10,7 @@ use super::{
 };
 
 impl<'a> Solver<'a> {
-    pub fn single(&self) -> Option<SolverResult<'a>> {
+    pub fn single(&self) -> VecDeque<SolverResult<'a>> {
         let mut effect_cells: HashMap<&Cell, HashSet<usize>> = HashMap::new();
 
         for c in &self.changed_cell {
@@ -16,7 +18,7 @@ impl<'a> Solver<'a> {
 
             // 노트가 확정된 경우 Zone을 순회하면서 해당 노트를 가진 cell이 있나 찾음
             if let Some(final_num) = b.get_final_num() {
-                for z in c.get_zone() {
+                for z in &c.zone {
                     if let ZoneType::Unique = z.zone_type {
                         for c_comp in self.zone_iter(z) {
                             // 나 자신은 비교 대상에서 제외
@@ -39,19 +41,21 @@ impl<'a> Solver<'a> {
                     let mut found_cells: HashSet<&'a Cell> = HashSet::with_capacity(1);
                     found_cells.insert(c);
 
-                    let solver_result: Option<SolverResult<'a>> = Some(SolverResult {
+                    let solver_result: SolverResult<'a> = SolverResult {
                         solver_type: SolverResultDetail::Single {
                             found_chk: final_num,
                         },
                         found_cells,
                         effect_cells,
-                    });
+                    };
 
-                    return solver_result;
+                    let mut ret = VecDeque::new();
+                    ret.push_back(solver_result);
+                    return ret;
                 }
             }
         }
 
-        None
+        VecDeque::new()
     }
 }
