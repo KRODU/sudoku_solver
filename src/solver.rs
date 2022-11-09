@@ -19,7 +19,6 @@ use self::{
 };
 
 pub mod guess;
-pub mod hidden;
 pub mod naked;
 pub mod single;
 pub mod solver_history;
@@ -124,21 +123,21 @@ impl<'a> Solver<'a> {
                 }
             };
 
-            if let SolverHistoryType::Solve { ref solver_result } = history.history_type {
-                for (c, v) in &solver_result.effect_cells {
-                    c.chk.write().unwrap().set_to_false_list(v);
-                    self.changed_cell.insert(c);
-                }
+            let SolverHistoryType::Solve { ref solver_result } = history.history_type else {
+                unreachable!();
+            };
 
-                *self
-                    .solve_cnt
-                    .get_mut(&SolverResultSimple::convert_detail_to_simple(
-                        &solver_result.solver_type,
-                    ))
-                    .unwrap() += 1;
-            } else {
-                unreachable!()
+            for (c, v) in &solver_result.effect_cells {
+                c.chk.write().unwrap().set_to_false_list(v);
+                self.changed_cell.insert(c);
             }
+
+            *self
+                .solve_cnt
+                .get_mut(&SolverResultSimple::convert_detail_to_simple(
+                    &solver_result.solver_type,
+                ))
+                .unwrap() += 1;
 
             self.solver_history_stack.push(history);
 

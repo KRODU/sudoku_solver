@@ -53,12 +53,25 @@ fn combination_test() {
     let v = vec![1, 2, 3, 4, 5];
 
     let m = combinations(&v, 3, |_| Some(()));
-    for (comb, _) in m {
+    let mut map_iter = m.iter().map(|(comb, _)| {
         let mut print_str: String = String::new();
         for c in comb {
             print_str.push_str(c.to_string().as_str());
-            print_str.push_str(", ");
+            print_str.push_str(",");
         }
-        println!("{}", print_str);
-    }
+        print_str.pop();
+        print_str
+    });
+
+    assert_eq!(map_iter.next().unwrap(), "1,2,3");
+    assert_eq!(map_iter.next().unwrap(), "1,2,4");
+    assert_eq!(map_iter.next().unwrap(), "1,2,5");
+    assert_eq!(map_iter.next().unwrap(), "1,3,4");
+    assert_eq!(map_iter.next().unwrap(), "1,3,5");
+    assert_eq!(map_iter.next().unwrap(), "1,4,5");
+    assert_eq!(map_iter.next().unwrap(), "2,3,4");
+    assert_eq!(map_iter.next().unwrap(), "2,3,5");
+    assert_eq!(map_iter.next().unwrap(), "2,4,5");
+    assert_eq!(map_iter.next().unwrap(), "3,4,5");
+    assert_eq!(map_iter.next(), None);
 }

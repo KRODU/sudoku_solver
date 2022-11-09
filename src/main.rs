@@ -14,6 +14,7 @@ pub mod table;
 pub mod zone;
 pub mod zone_set;
 
+// cargo build --release --target x86_64-unknown-linux-musl
 fn main() {
     std::env::set_var("RUST_BACKTRACE", "full");
 
