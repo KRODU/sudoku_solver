@@ -97,9 +97,11 @@ impl<'a> Solver<'a> {
                         found_cells,
                         effect_cells,
                     });
+
+                    return false;
                 }
 
-                false
+                true
             });
 
             if ret.is_some() {
