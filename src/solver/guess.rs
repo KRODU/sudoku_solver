@@ -1,7 +1,6 @@
+use crate::model::{cell::Cell, ref_zone::RefZone};
 use hashbrown::HashMap;
 use rand::Rng;
-
-use crate::cell::Cell;
 
 use super::{
     solver_history::{SolverHistory, SolverHistoryType},
@@ -10,23 +9,25 @@ use super::{
 
 impl<'a> Solver<'a> {
     /// 값이 확정되지 않은 cell중에 하나를 무작위로 guess하여 넣습니다.
-    pub fn guess_random(&mut self) {
+    pub fn guess_random(&mut self, ref_zone: Vec<RefZone<'a>>) {
         let mut minimum_note_cnt = usize::MAX;
         let mut minimum_note_list: Vec<&Cell> = Vec::new();
 
-        for n in self.t.into_iter() {
-            let b = n.chk.read().unwrap();
-            let true_cnt = b.get_true_cnt();
-            if true_cnt <= 1 || true_cnt > minimum_note_cnt {
-                continue;
-            }
+        for z in ref_zone {
+            for c in z.cells {
+                let b = c.read;
+                let true_cnt = b.get_true_cnt();
+                if true_cnt <= 1 || true_cnt > minimum_note_cnt {
+                    continue;
+                }
 
-            if true_cnt < minimum_note_cnt {
-                minimum_note_list.clear();
-                minimum_note_cnt = true_cnt;
-            }
+                if true_cnt < minimum_note_cnt {
+                    minimum_note_list.clear();
+                    minimum_note_cnt = true_cnt;
+                }
 
-            minimum_note_list.push(n);
+                minimum_note_list.push(c.cell);
+            }
         }
 
         // 모든 스도쿠 퍼즐이 채워진 경우 return

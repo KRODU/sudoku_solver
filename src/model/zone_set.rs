@@ -1,4 +1,4 @@
-use crate::zone::Zone;
+use super::zone::Zone;
 
 #[derive(Debug)]
 pub struct ZoneSet {

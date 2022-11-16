@@ -1,12 +1,10 @@
+use crate::model::cell::Cell;
 use hashbrown::{HashMap, HashSet};
-
-use crate::cell::Cell;
 
 #[derive(Debug)]
 pub enum SolverResultDetail {
     Single { found_chk: usize },
     Naked { found_chks: HashSet<usize> },
-    Hidden { found_chks: HashSet<usize> },
 }
 
 #[derive(Debug)]

@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-hashbrown = "0.12"
+hashbrown = "0.13.1"
 rand = { version = "0.8", features = ["std_rng"] }
 enum-iterator = "1.1"
 
@@ -15,4 +15,3 @@ opt-level = 3
 strip = true
 lto = true 
 codegen-units = 1
-panic = 'abort'

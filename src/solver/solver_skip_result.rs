@@ -14,7 +14,6 @@ impl SolverResultSimple {
         match detail {
             SolverResultDetail::Single { .. } => SolverResultSimple::Single,
             SolverResultDetail::Naked { .. } => SolverResultSimple::Naked,
-            SolverResultDetail::Hidden { .. } => SolverResultSimple::Hidden,
         }
     }
 }

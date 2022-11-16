@@ -1,22 +1,15 @@
-use std::{
-    collections::VecDeque,
-    time::{Duration, Instant},
-};
-
-use enum_iterator::all;
-use hashbrown::{HashMap, HashSet};
-use rand::{prelude::StdRng, RngCore, SeedableRng};
-
-use crate::{
-    cell::Cell,
-    table::Table,
-    zone::{Zone, ZoneType},
-};
-
 use self::{
     solver_history::{SolverHistory, SolverHistoryType, SolverResult},
     solver_skip_result::SolverResultSimple,
 };
+use crate::{
+    model::{cell::Cell, cell_with_read::CellWithRead, ref_zone::RefZone, zone::Zone},
+    table::Table,
+};
+use enum_iterator::all;
+use hashbrown::{HashMap, HashSet};
+use rand::{prelude::StdRng, RngCore, SeedableRng};
+use std::time::{Duration, Instant};
 
 pub mod guess;
 pub mod naked;
@@ -27,8 +20,6 @@ pub mod validater;
 
 pub struct Solver<'a> {
     t: &'a Table,
-    zone_list: HashSet<&'a Zone>,
-    ref_cache: HashMap<&'a Zone, Vec<&'a Cell>>,
     solver_history_stack: Vec<SolverHistory<'a>>,
     rng: StdRng,
     rand_seed: u64,
@@ -37,7 +28,6 @@ pub struct Solver<'a> {
     guess_rollback_cnt: u32,
     guess_backtrace_rollback_cnt: u32,
     changed_cell: HashSet<&'a Cell>,
-    init: bool,
 }
 
 impl<'a> Solver<'a> {
@@ -64,50 +54,50 @@ impl<'a> Solver<'a> {
         0
     }
 
-    fn solve_history_rollback_last_guess(&self) -> Option<&SolverHistory<'a>> {
-        Some(&self.solver_history_stack[self.solver_history_stack.len() - 1])
-    }
-
     pub fn solve(&mut self) -> Option<&SolverHistory<'a>> {
-        let mut changed_zone: HashSet<&'a Zone> = HashSet::new();
-        for c in &self.changed_cell {
-            for z in &c.zone {
-                changed_zone.insert(z);
-            }
-        }
+        let ref_zone = Solver::get_zone_ref_with_read(self.t, &self.changed_cell);
 
         // 먼저 오류가 있는지 체크하여 있을 경우 롤백
-        if self.find_error_cell().is_some() {
+        if self.find_error_cell(&ref_zone).is_some() {
+            drop(ref_zone);
+            // println!("ROLLBACK");
             if self.history_rollback_last_guess() {
-                return self.solve_history_rollback_last_guess();
+                return self.solver_history_stack.last();
             } else {
                 return None;
             }
         }
 
         // Single Solver 적용
-        let mut result = self.single();
-        if self.solve_result_commit(result) {
-            return self.solve_history_rollback_last_guess();
+        let mut result = self.single(&ref_zone);
+        if !result.is_empty() {
+            // println!("SINGLE");
+            drop(ref_zone);
+            self.solve_result_commit(result);
+            return self.solver_history_stack.last();
         }
 
         // Naked Solver 적용
-        result = self.naked(&changed_zone);
-        if self.solve_result_commit(result) {
-            return self.solve_history_rollback_last_guess();
+        result = self.naked(&ref_zone);
+        if !result.is_empty() {
+            // println!("NAKED");
+            drop(ref_zone);
+            self.solve_result_commit(result);
+            return self.solver_history_stack.last();
         }
 
         // 푸는게 실패할 경우 guess를 적용
+        // println!("GUESS");
         self.changed_cell.clear();
-        self.guess_random();
+        self.guess_random(ref_zone);
         self.guess_cnt += 1;
-        self.solve_history_rollback_last_guess()
+        self.solver_history_stack.last()
     }
 
     /// 스도푸를 푼 경우 해당 결과를 적용합니다.
-    fn solve_result_commit(&mut self, mut result: VecDeque<SolverResult<'a>>) -> bool {
+    fn solve_result_commit(&mut self, mut result: Vec<SolverResult<'a>>) -> bool {
         let mut commit_flag = false;
-        while let Some(solver_result) = result.pop_front() {
+        while let Some(solver_result) = result.pop() {
             let history = {
                 let mut backup_chk: HashMap<&'a Cell, HashSet<usize>> =
                     HashMap::with_capacity(solver_result.effect_cells.len());
@@ -209,7 +199,6 @@ impl<'a> Solver<'a> {
     pub fn new(t: &'a mut Table) -> Self {
         let size = t.size;
         let rand_seed: u64 = StdRng::from_entropy().next_u64();
-        let zone_list = Solver::get_zone_list_init(t, size);
         let mut solve_cnt: HashMap<SolverResultSimple, u32> = HashMap::new();
         for n in all::<SolverResultSimple>() {
             solve_cnt.insert(n, 0u32);
@@ -220,10 +209,19 @@ impl<'a> Solver<'a> {
             changed_cell.insert(c);
         }
 
+        let ref_zone = Solver::get_zone_ref_with_read(t, &HashSet::new());
+        for zone in ref_zone {
+            if zone.cells.len() != size {
+                panic!(
+                    "Unique 타입의 개수는 퍼즐 사이즈와 동일해야 함! 사이즈:{}, 실제 갯수: {}",
+                    size,
+                    zone.cells.len()
+                )
+            }
+        }
+
         Solver {
             t,
-            zone_list,
-            ref_cache: Solver::get_zone_ref(t),
             solver_history_stack: Vec::new(),
             rng: rand::prelude::StdRng::seed_from_u64(rand_seed),
             rand_seed,
@@ -232,72 +230,44 @@ impl<'a> Solver<'a> {
             guess_backtrace_rollback_cnt: 0,
             solve_cnt,
             changed_cell,
-            init: true,
         }
     }
 
     #[must_use]
-    fn get_zone_ref(t: &'a Table) -> HashMap<&'a Zone, Vec<&'a Cell>> {
+    fn get_zone_ref_with_read(t: &'a Table, changed_cell: &HashSet<&'a Cell>) -> Vec<RefZone<'a>> {
+        let mut changed_zone: HashSet<&'a Zone> = HashSet::new();
+        for c in changed_cell {
+            for z in &c.zone {
+                changed_zone.insert(z);
+            }
+        }
+
         let size = t.size;
-        let mut zone_ref: HashMap<&'a Zone, Vec<&'a Cell>> = HashMap::with_capacity(size * size);
-        for this_cell in t {
-            for z in &this_cell.zone {
-                let row: &mut Vec<&Cell> = zone_ref
+        let mut zone_ref: HashMap<&'a Zone, Vec<CellWithRead>> =
+            HashMap::with_capacity(size * size);
+        for cell in t {
+            for z in &cell.zone {
+                let row = zone_ref
                     .entry(z)
                     .or_insert_with(|| Vec::with_capacity(size));
-                row.push(this_cell);
+                let read = cell.chk.read().unwrap();
+                row.push(CellWithRead { cell, read });
             }
         }
 
-        // 퍼즐 유효성 체크
-        for (z, c) in &zone_ref {
-            if let ZoneType::Unique = z.zone_type {
-                if c.len() != size {
-                    panic!(
-                        "Unique 타입의 개수는 퍼즐 사이즈와 동일해야 함! 사이즈:{}, 실제 갯수: {}",
-                        size,
-                        c.len()
-                    )
-                }
-            }
-        }
-        zone_ref
-    }
-
-    #[must_use]
-    fn get_zone_list_init(cells: &'a Table, size: usize) -> HashSet<&'a Zone> {
-        let mut ret: HashSet<&'a Zone> = HashSet::with_capacity(size);
-
-        for this_cell in cells.into_iter() {
-            for z in &this_cell.zone {
-                if !ret.contains(&z) {
-                    ret.insert(z);
-                }
-            }
+        let mut ret = Vec::with_capacity(zone_ref.len());
+        for (z, c) in zone_ref {
+            ret.push(RefZone {
+                zone: z,
+                changed: changed_zone.contains(z),
+                cells: c,
+            });
         }
         ret
     }
 
-    #[must_use]
-    #[inline]
-    pub fn get_zone_list(&self) -> &HashSet<&Zone> {
-        &self.zone_list
-    }
-
-    #[inline]
-    /// 지정된 Zone을 순회하는 Iterator를 반환합니다.
-    pub fn zone_iter<'b>(&'b self, zone: &'b Zone) -> std::slice::Iter<&'a Cell> {
-        self.ref_cache[zone].iter()
-    }
-
     pub fn get_table(&self) -> &Table {
         self.t
-    }
-
-    #[must_use]
-    #[inline]
-    pub fn get_cache(&self) -> &HashMap<&Zone, Vec<&Cell>> {
-        &self.ref_cache
     }
 
     pub fn get_random_seed(&self) -> u64 {

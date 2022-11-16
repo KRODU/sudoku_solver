@@ -1,20 +1,14 @@
+use crate::model::table::{self, Table};
+use crate::solver::solver_skip_result::SolverResultSimple;
 use enum_iterator::all;
 use solver::Solver;
 use std::time::Instant;
-use table::Table;
 
-use crate::solver::solver_skip_result::SolverResultSimple;
-
-pub mod cell;
-pub mod combinations;
-pub mod coordinate;
+mod combinations;
+mod model;
 pub mod num_check;
 pub mod solver;
-pub mod table;
-pub mod zone;
-pub mod zone_set;
 
-// cargo build --release --target x86_64-unknown-linux-musl
 fn main() {
     std::env::set_var("RUST_BACKTRACE", "full");
 

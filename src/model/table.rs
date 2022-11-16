@@ -1,7 +1,8 @@
+use super::{
+    cell::Cell,
+    zone::{Zone, ZoneType},
+};
 use std::fmt::Display;
-
-use crate::cell::Cell;
-use crate::zone::Zone;
 
 pub struct Table {
     pub cells: Vec<Vec<Cell>>,
@@ -31,15 +32,15 @@ impl Table {
                 let this_zone: Vec<Zone> = vec![
                     Zone {
                         z: index,
-                        zone_type: crate::zone::ZoneType::Unique,
+                        zone_type: ZoneType::Unique,
                     },
                     Zone {
                         z: x + 10,
-                        zone_type: crate::zone::ZoneType::Unique,
+                        zone_type: ZoneType::Unique,
                     },
                     Zone {
                         z: y + 19,
-                        zone_type: crate::zone::ZoneType::Unique,
+                        zone_type: ZoneType::Unique,
                     },
                 ];
                 let cell = Cell::new(9, x, y, this_zone);
@@ -72,15 +73,15 @@ impl Table {
                 let this_zone: Vec<Zone> = vec![
                     Zone {
                         z: index,
-                        zone_type: crate::zone::ZoneType::Unique,
+                        zone_type: ZoneType::Unique,
                     },
                     Zone {
                         z: x + 17,
-                        zone_type: crate::zone::ZoneType::Unique,
+                        zone_type: ZoneType::Unique,
                     },
                     Zone {
                         z: y + 33,
-                        zone_type: crate::zone::ZoneType::Unique,
+                        zone_type: ZoneType::Unique,
                     },
                 ];
                 let cell = Cell::new(16, x, y, this_zone);

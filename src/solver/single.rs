@@ -1,45 +1,43 @@
-use std::collections::VecDeque;
-
-use hashbrown::{HashMap, HashSet};
-
-use crate::{cell::Cell, zone::ZoneType};
-
 use super::{
     solver_history::{SolverResult, SolverResultDetail},
     Solver,
 };
+use crate::model::{cell::Cell, ref_zone::RefZone, zone::ZoneType};
+use hashbrown::{HashMap, HashSet};
 
 impl<'a> Solver<'a> {
-    pub fn single(&self) -> VecDeque<SolverResult<'a>> {
-        let mut effect_cells: HashMap<&Cell, HashSet<usize>> = HashMap::new();
+    pub fn single(&self, zone_ref_with_read: &Vec<RefZone<'a>>) -> Vec<SolverResult<'a>> {
+        for z in zone_ref_with_read {
+            if !z.changed {
+                continue;
+            }
 
-        for c in &self.changed_cell {
-            let b = c.chk.read().unwrap();
+            let ZoneType::Unique = z.zone.zone_type else { continue; };
 
-            // 노트가 확정된 경우 Zone을 순회하면서 해당 노트를 가진 cell이 있나 찾음
-            if let Some(final_num) = b.get_final_num() {
-                for z in &c.zone {
-                    if let ZoneType::Unique = z.zone_type {
-                        for c_comp in self.zone_iter(z) {
-                            // 나 자신은 비교 대상에서 제외
-                            if c_comp == c {
-                                continue;
-                            }
+            for c in &z.cells {
+                let Some(final_num) = c.read.get_final_num() else { continue; };
+                let mut effect_cells: HashMap<&Cell, HashSet<usize>> = HashMap::new();
 
-                            // 찾음
-                            if c_comp.chk.read().unwrap().get_chk(final_num) {
-                                let mut v = HashSet::with_capacity(1);
-                                v.insert(final_num);
-                                effect_cells.insert(c_comp, v);
-                            }
-                        }
+                for c_comp in &z.cells {
+                    // 노트가 확정된 경우 Zone을 순회하면서 해당 노트를 가진 cell이 있나 찾음
+
+                    // 나 자신은 비교 대상에서 제외
+                    if c_comp == c {
+                        continue;
+                    }
+
+                    // 찾음
+                    if c_comp.read.get_chk(final_num) {
+                        let mut v = HashSet::with_capacity(1);
+                        v.insert(final_num);
+                        effect_cells.insert(c_comp.cell, v);
                     }
                 }
 
                 if !effect_cells.is_empty() {
                     // 하나 이상의 삭제할 노트를 가진 cell을 찾을 경우
                     let mut found_cells: HashSet<&'a Cell> = HashSet::with_capacity(1);
-                    found_cells.insert(c);
+                    found_cells.insert(c.cell);
 
                     let solver_result: SolverResult<'a> = SolverResult {
                         solver_type: SolverResultDetail::Single {
@@ -49,13 +47,11 @@ impl<'a> Solver<'a> {
                         effect_cells,
                     };
 
-                    let mut ret = VecDeque::new();
-                    ret.push_back(solver_result);
-                    return ret;
+                    return vec![solver_result];
                 }
             }
         }
 
-        VecDeque::new()
+        Vec::new()
     }
 }

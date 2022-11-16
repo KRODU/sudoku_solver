@@ -1,6 +1,6 @@
+use super::{coordinate::Coordinate, zone::Zone, zone_set::ZoneSet};
+use crate::num_check::NumCheck;
 use std::sync::RwLock;
-
-use crate::{coordinate::Coordinate, num_check::NumCheck, zone::Zone, zone_set::ZoneSet};
 
 #[derive(Debug)]
 pub struct Cell {
