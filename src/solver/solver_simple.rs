@@ -1,43 +1,42 @@
+use super::solver_history::SolverResultDetail;
 use enum_iterator::Sequence;
 
-use super::solver_history::SolverResultDetail;
-
 #[derive(Sequence, Debug)]
-pub enum SolverResultSimple {
+pub enum SolverSimple {
+    Validate,
     Single,
     Naked,
-    Hidden,
 }
 
-impl SolverResultSimple {
+impl SolverSimple {
     pub fn convert_detail_to_simple(detail: &SolverResultDetail) -> Self {
         match detail {
-            SolverResultDetail::Single { .. } => SolverResultSimple::Single,
-            SolverResultDetail::Naked { .. } => SolverResultSimple::Naked,
+            SolverResultDetail::Single { .. } => SolverSimple::Single,
+            SolverResultDetail::Naked { .. } => SolverSimple::Naked,
         }
     }
 }
 
-impl PartialEq for SolverResultSimple {
+impl PartialEq for SolverSimple {
     fn eq(&self, other: &Self) -> bool {
         core::mem::discriminant(self) == core::mem::discriminant(other)
     }
 }
 
-impl Eq for SolverResultSimple {}
+impl Eq for SolverSimple {}
 
-impl std::hash::Hash for SolverResultSimple {
+impl std::hash::Hash for SolverSimple {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         core::mem::discriminant(self).hash(state);
     }
 }
 
-impl Clone for SolverResultSimple {
+impl Clone for SolverSimple {
     fn clone(&self) -> Self {
         match self {
+            Self::Validate => Self::Validate,
             Self::Single => Self::Single,
             Self::Naked => Self::Naked,
-            Self::Hidden => Self::Hidden,
         }
     }
 }

@@ -1,7 +1,4 @@
-use super::{
-    cell::Cell,
-    zone::{Zone, ZoneType},
-};
+use super::{cell::Cell, zone::Zone};
 use std::fmt::Display;
 
 pub struct Table {
@@ -30,18 +27,9 @@ impl Table {
             for y in 0..9 {
                 let index = zone[x * 9 + y];
                 let this_zone: Vec<Zone> = vec![
-                    Zone {
-                        z: index,
-                        zone_type: ZoneType::Unique,
-                    },
-                    Zone {
-                        z: x + 10,
-                        zone_type: ZoneType::Unique,
-                    },
-                    Zone {
-                        z: y + 19,
-                        zone_type: ZoneType::Unique,
-                    },
+                    Zone::new_unique_from_num(index),
+                    Zone::new_unique_from_num(x + 10),
+                    Zone::new_unique_from_num(y + 19),
                 ];
                 let cell = Cell::new(9, x, y, this_zone);
                 row.push(cell);
@@ -71,18 +59,9 @@ impl Table {
             for y in 0..16 {
                 let index = zone[x * 16 + y];
                 let this_zone: Vec<Zone> = vec![
-                    Zone {
-                        z: index,
-                        zone_type: ZoneType::Unique,
-                    },
-                    Zone {
-                        z: x + 17,
-                        zone_type: ZoneType::Unique,
-                    },
-                    Zone {
-                        z: y + 33,
-                        zone_type: ZoneType::Unique,
-                    },
+                    Zone::new_unique_from_num(index),
+                    Zone::new_unique_from_num(x + 17),
+                    Zone::new_unique_from_num(y + 33),
                 ];
                 let cell = Cell::new(16, x, y, this_zone);
                 row.push(cell);

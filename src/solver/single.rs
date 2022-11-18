@@ -1,5 +1,6 @@
 use super::{
     solver_history::{SolverResult, SolverResultDetail},
+    solver_simple::SolverSimple,
     Solver,
 };
 use crate::model::{cell::Cell, ref_zone::RefZone, zone::ZoneType};
@@ -8,7 +9,7 @@ use hashbrown::{HashMap, HashSet};
 impl<'a> Solver<'a> {
     pub fn single(&self, zone_ref_with_read: &Vec<RefZone<'a>>) -> Vec<SolverResult<'a>> {
         for z in zone_ref_with_read {
-            if !z.changed {
+            if self.checked_zone_get_bool(z.zone, SolverSimple::Single) {
                 continue;
             }
 
@@ -50,6 +51,8 @@ impl<'a> Solver<'a> {
                     return vec![solver_result];
                 }
             }
+
+            self.checked_zone_set_bool_true(z.zone, SolverSimple::Single);
         }
 
         Vec::new()

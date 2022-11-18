@@ -65,6 +65,7 @@ impl<'a> Solver<'a> {
         backup_chk.insert(cell, backup);
         b.set_to_value(final_num);
         self.changed_cell.insert(cell);
+        self.checked_zone_clear(cell);
 
         let history: SolverHistory<'a> = SolverHistory {
             history_type: SolverHistoryType::Guess { cell, final_num },

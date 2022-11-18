@@ -1,5 +1,5 @@
 use crate::model::table::{self, Table};
-use crate::solver::solver_skip_result::SolverResultSimple;
+use crate::solver::solver_simple::SolverSimple;
 use enum_iterator::all;
 use solver::Solver;
 use std::time::Instant;
@@ -21,7 +21,7 @@ fn main() {
     let end = Instant::now();
 
     println!("puzzle seed: {}", solver.get_random_seed());
-    for n in all::<SolverResultSimple>() {
+    for n in all::<SolverSimple>() {
         println!("{:?}: {}", n, solver.solve_cnt(&n));
     }
 

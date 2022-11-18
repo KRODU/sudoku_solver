@@ -43,7 +43,7 @@ pub struct Zone {
 }
 
 impl Zone {
-    pub fn new_from_num(z: usize) -> Zone {
+    pub fn new_unique_from_num(z: usize) -> Zone {
         Zone {
             z,
             zone_type: ZoneType::Unique,
@@ -58,15 +58,6 @@ impl Zone {
     #[must_use]
     pub fn get_zone_type(&self) -> &ZoneType {
         &self.zone_type
-    }
-}
-
-impl Clone for Zone {
-    fn clone(&self) -> Self {
-        Self {
-            z: self.z,
-            zone_type: self.zone_type.clone(),
-        }
     }
 }
 

@@ -1,5 +1,6 @@
 use super::{
     solver_history::{SolverResult, SolverResultDetail},
+    solver_simple::SolverSimple,
     Solver,
 };
 use crate::{
@@ -14,13 +15,13 @@ impl<'a> Solver<'a> {
             let mut join_handle_list = Vec::new();
 
             for zone_ref in zone_ref_with_read {
-                if !zone_ref.changed {
+                if self.checked_zone_get_bool(zone_ref.zone, SolverSimple::Naked) {
                     continue;
                 }
 
                 let ZoneType::Unique = zone_ref.zone.get_zone_type() else { continue; };
 
-                let join_handle = s.spawn(move || self.naked_number_zone(&zone_ref.cells));
+                let join_handle = s.spawn(move || self.naked_number_zone(zone_ref));
                 join_handle_list.push(join_handle);
             }
 
@@ -35,9 +36,10 @@ impl<'a> Solver<'a> {
         })
     }
 
-    fn naked_number_zone(&self, cell_list: &Vec<CellWithRead<'a>>) -> Option<SolverResult<'a>> {
+    fn naked_number_zone(&self, ref_zone: &RefZone<'a>) -> Option<SolverResult<'a>> {
         let mut union_node: HashSet<usize> = HashSet::new();
         let mut ret: Option<SolverResult<'a>> = None;
+        let cell_list = &ref_zone.cells;
         let mut comp_cell_target: Vec<&CellWithRead<'a>> = Vec::with_capacity(cell_list.len());
 
         for i in 2..self.t.size / 2 {
@@ -109,6 +111,7 @@ impl<'a> Solver<'a> {
             }
         }
 
-        ret
+        self.checked_zone_set_bool_true(ref_zone.zone, SolverSimple::Naked);
+        None
     }
 }

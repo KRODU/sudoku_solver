@@ -1,6 +1,6 @@
 use self::{
     solver_history::{SolverHistory, SolverHistoryType, SolverResult},
-    solver_skip_result::SolverResultSimple,
+    solver_simple::SolverSimple,
 };
 use crate::{
     model::{cell::Cell, cell_with_read::CellWithRead, ref_zone::RefZone, zone::Zone},
@@ -9,13 +9,16 @@ use crate::{
 use enum_iterator::all;
 use hashbrown::{HashMap, HashSet};
 use rand::{prelude::StdRng, RngCore, SeedableRng};
-use std::time::{Duration, Instant};
+use std::{
+    sync::RwLock,
+    time::{Duration, Instant},
+};
 
 pub mod guess;
 pub mod naked;
 pub mod single;
 pub mod solver_history;
-pub mod solver_skip_result;
+pub mod solver_simple;
 pub mod validater;
 
 pub struct Solver<'a> {
@@ -23,11 +26,12 @@ pub struct Solver<'a> {
     solver_history_stack: Vec<SolverHistory<'a>>,
     rng: StdRng,
     rand_seed: u64,
-    solve_cnt: HashMap<SolverResultSimple, u32>,
+    solve_cnt: HashMap<SolverSimple, u32>,
     guess_cnt: u32,
     guess_rollback_cnt: u32,
     guess_backtrace_rollback_cnt: u32,
     changed_cell: HashSet<&'a Cell>,
+    checked_zone: RwLock<HashMap<&'a Zone, HashMap<SolverSimple, bool>>>,
 }
 
 impl<'a> Solver<'a> {
@@ -55,7 +59,7 @@ impl<'a> Solver<'a> {
     }
 
     pub fn solve(&mut self) -> Option<&SolverHistory<'a>> {
-        let ref_zone = Solver::get_zone_ref_with_read(self.t, &self.changed_cell);
+        let ref_zone = Solver::get_zone_ref_with_read(self.t);
 
         // 먼저 오류가 있는지 체크하여 있을 경우 롤백
         if self.find_error_cell(&ref_zone).is_some() {
@@ -118,13 +122,15 @@ impl<'a> Solver<'a> {
             };
 
             for (c, v) in &solver_result.effect_cells {
-                c.chk.write().unwrap().set_to_false_list(v);
+                let mut write = c.chk.write().unwrap();
+                write.set_to_false_list(v);
                 self.changed_cell.insert(c);
+                self.checked_zone_clear(c);
             }
 
             *self
                 .solve_cnt
-                .get_mut(&SolverResultSimple::convert_detail_to_simple(
+                .get_mut(&SolverSimple::convert_detail_to_simple(
                     &solver_result.solver_type,
                 ))
                 .unwrap() += 1;
@@ -157,6 +163,7 @@ impl<'a> Solver<'a> {
             for (c, backup) in history.backup_chk {
                 c.chk.write().unwrap().set_to_chk_list(&backup);
                 self.changed_cell.insert(c);
+                self.checked_zone_clear(c);
             }
 
             if let SolverHistoryType::GuessBacktrace { .. } = history.history_type {
@@ -199,8 +206,8 @@ impl<'a> Solver<'a> {
     pub fn new(t: &'a mut Table) -> Self {
         let size = t.size;
         let rand_seed: u64 = StdRng::from_entropy().next_u64();
-        let mut solve_cnt: HashMap<SolverResultSimple, u32> = HashMap::new();
-        for n in all::<SolverResultSimple>() {
+        let mut solve_cnt: HashMap<SolverSimple, u32> = HashMap::new();
+        for n in all::<SolverSimple>() {
             solve_cnt.insert(n, 0u32);
         }
 
@@ -209,7 +216,7 @@ impl<'a> Solver<'a> {
             changed_cell.insert(c);
         }
 
-        let ref_zone = Solver::get_zone_ref_with_read(t, &HashSet::new());
+        let ref_zone = Solver::get_zone_ref_with_read(t);
         for zone in ref_zone {
             if zone.cells.len() != size {
                 panic!(
@@ -230,23 +237,17 @@ impl<'a> Solver<'a> {
             guess_backtrace_rollback_cnt: 0,
             solve_cnt,
             changed_cell,
+            checked_zone: RwLock::new(HashMap::new()),
         }
     }
 
     #[must_use]
-    fn get_zone_ref_with_read(t: &'a Table, changed_cell: &HashSet<&'a Cell>) -> Vec<RefZone<'a>> {
-        let mut changed_zone: HashSet<&'a Zone> = HashSet::new();
-        for c in changed_cell {
-            for z in &c.zone {
-                changed_zone.insert(z);
-            }
-        }
-
+    fn get_zone_ref_with_read(t: &'a Table) -> Vec<RefZone<'a>> {
         let size = t.size;
         let mut zone_ref: HashMap<&'a Zone, Vec<CellWithRead>> =
             HashMap::with_capacity(size * size);
         for cell in t {
-            for z in &cell.zone {
+            for z in &cell.zone_set {
                 let row = zone_ref
                     .entry(z)
                     .or_insert_with(|| Vec::with_capacity(size));
@@ -257,13 +258,44 @@ impl<'a> Solver<'a> {
 
         let mut ret = Vec::with_capacity(zone_ref.len());
         for (z, c) in zone_ref {
-            ret.push(RefZone {
-                zone: z,
-                changed: changed_zone.contains(z),
-                cells: c,
-            });
+            ret.push(RefZone { zone: z, cells: c });
         }
         ret
+    }
+
+    /// 특정 zone에 대한 checked 여부를 반환
+    #[must_use]
+    fn checked_zone_get_bool(&self, z: &Zone, solver: SolverSimple) -> bool {
+        let read = self.checked_zone.read().unwrap();
+
+        let Some(map) = read.get(z) else {
+            return false;
+        };
+
+        let Some(bool) = map.get(&solver) else {
+            return false;
+        };
+
+        *bool
+    }
+
+    /// 특정 zone에 대한 checked 여부를 true로 설정
+    fn checked_zone_set_bool_true(&self, z: &'a Zone, solver: SolverSimple) {
+        let mut write = self.checked_zone.write().unwrap();
+
+        write
+            .entry(z)
+            .or_insert_with(HashMap::new)
+            .insert(solver, true);
+    }
+
+    /// 특정 zone에 대한 checked를 모두 초기화
+    fn checked_zone_clear(&self, c: &Cell) {
+        let mut write = self.checked_zone.write().unwrap();
+
+        for z in &c.zone_set.zone {
+            write.remove(z);
+        }
     }
 
     pub fn get_table(&self) -> &Table {
@@ -282,7 +314,7 @@ impl<'a> Solver<'a> {
     /// Get the solver's solve cnt.
     #[must_use]
     #[inline]
-    pub fn solve_cnt(&self, result_simple: &SolverResultSimple) -> u32 {
+    pub fn solve_cnt(&self, result_simple: &SolverSimple) -> u32 {
         self.solve_cnt[result_simple]
     }
 

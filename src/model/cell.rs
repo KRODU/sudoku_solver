@@ -5,7 +5,7 @@ use std::sync::RwLock;
 #[derive(Debug)]
 pub struct Cell {
     pub chk: RwLock<NumCheck>,
-    pub zone: ZoneSet,
+    pub zone_set: ZoneSet,
     pub coordi: Coordinate,
 }
 
@@ -14,7 +14,7 @@ impl Cell {
     pub fn new(size: usize, x: usize, y: usize, zone: Vec<Zone>) -> Self {
         Cell {
             chk: RwLock::new(NumCheck::new(size)),
-            zone: ZoneSet { zone },
+            zone_set: ZoneSet { zone },
             coordi: Coordinate { x, y },
         }
     }

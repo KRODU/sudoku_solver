@@ -33,15 +33,22 @@ impl NumCheck {
     }
 
     #[must_use]
-    #[inline]
     pub fn size(&self) -> usize {
         self.size
     }
 
     #[must_use]
-    #[inline]
     pub fn get_chk(&self, num: usize) -> bool {
         self.chk_list[num - 1]
+    }
+
+    /// 사용 가능한 노트 중 가장 작은 값을 반환.
+    /// 만약 사용 가능한 값이 없다면 None을 반환.
+    #[must_use]
+    pub fn get_minimum_chk(&self) -> Option<usize> {
+        let find_result = self.chk_list.iter().enumerate().find(|(_, b)| **b);
+
+        find_result.map(|(index, _)| index + 1)
     }
 
     pub fn set_chk(&mut self, num: usize, chk: bool) {
@@ -102,7 +109,6 @@ impl NumCheck {
     }
 
     /// 값이 하나만 남은 경우 final_num으로 확정합니다.
-    #[inline]
     fn set_to_final_num(&mut self) {
         self.final_num = if self.true_cnt == 1 {
             Some(*self.true_list.iter().next().unwrap())
@@ -138,7 +144,6 @@ impl NumCheck {
     }
 
     /// 최종 값을 반환합니다. 확정되지 않은 경우 None 입니다.
-    #[inline]
     pub fn get_final_num(&self) -> Option<usize> {
         self.final_num
     }
@@ -174,13 +179,11 @@ impl NumCheck {
     }
 
     #[must_use]
-    #[inline]
     pub fn get_true_list(&self) -> &HashSet<usize> {
         &self.true_list
     }
 
     #[must_use]
-    #[inline]
     pub fn get_true_cnt(&self) -> usize {
         self.true_cnt
     }
