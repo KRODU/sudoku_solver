@@ -1,4 +1,5 @@
 use super::{cell::Cell, zone::Zone};
+use hashbrown::HashSet;
 use std::fmt::Display;
 
 pub struct Table {
@@ -26,12 +27,13 @@ impl Table {
             let mut row: Vec<Cell> = Vec::with_capacity(9);
             for y in 0..9 {
                 let index = zone[x * 9 + y];
-                let this_zone: Vec<Zone> = vec![
-                    Zone::new_unique_from_num(index),
-                    Zone::new_unique_from_num(x + 10),
-                    Zone::new_unique_from_num(y + 19),
-                ];
+
+                let mut this_zone: HashSet<Zone> = HashSet::with_capacity(3);
+                this_zone.insert(Zone::new_unique_from_num(index));
+                this_zone.insert(Zone::new_unique_from_num(x + 10));
+                this_zone.insert(Zone::new_unique_from_num(y + 19));
                 let cell = Cell::new(9, x, y, this_zone);
+
                 row.push(cell);
             }
             cells.push(row);
@@ -58,11 +60,12 @@ impl Table {
             let mut row: Vec<Cell> = Vec::with_capacity(16);
             for y in 0..16 {
                 let index = zone[x * 16 + y];
-                let this_zone: Vec<Zone> = vec![
-                    Zone::new_unique_from_num(index),
-                    Zone::new_unique_from_num(x + 17),
-                    Zone::new_unique_from_num(y + 33),
-                ];
+
+                let mut this_zone: HashSet<Zone> = HashSet::with_capacity(3);
+                this_zone.insert(Zone::new_unique_from_num(index));
+                this_zone.insert(Zone::new_unique_from_num(x + 17));
+                this_zone.insert(Zone::new_unique_from_num(y + 33));
+
                 let cell = Cell::new(16, x, y, this_zone);
                 row.push(cell);
             }

@@ -1,19 +1,25 @@
+use std::hash::Hasher;
+
 #[derive(Debug)]
 pub struct Coordinate {
-    pub x: usize,
-    pub y: usize,
+    x: usize,
+    y: usize,
+    hash_cache: u64,
 }
 
-impl Clone for Coordinate {
-    fn clone(&self) -> Self {
+impl Coordinate {
+    pub fn new(x: usize, y: usize) -> Self {
+        let mut state = ahash::AHasher::default();
+        state.write_usize(x);
+        state.write_usize(y);
+
         Self {
-            x: self.x,
-            y: self.y,
+            x,
+            y,
+            hash_cache: state.finish(),
         }
     }
 }
-
-impl Copy for Coordinate {}
 
 impl PartialEq for Coordinate {
     fn eq(&self, other: &Self) -> bool {
@@ -25,7 +31,6 @@ impl Eq for Coordinate {}
 
 impl std::hash::Hash for Coordinate {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.x.hash(state);
-        self.y.hash(state);
+        state.write_u64(self.hash_cache);
     }
 }

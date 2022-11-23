@@ -1,21 +1,22 @@
-use super::{coordinate::Coordinate, zone::Zone, zone_set::ZoneSet};
+use super::{coordinate::Coordinate, zone::Zone};
 use crate::num_check::NumCheck;
+use hashbrown::HashSet;
 use std::sync::RwLock;
 
 #[derive(Debug)]
 pub struct Cell {
     pub chk: RwLock<NumCheck>,
-    pub zone_set: ZoneSet,
+    pub zone: HashSet<Zone>,
     pub coordi: Coordinate,
 }
 
 impl Cell {
     #[must_use]
-    pub fn new(size: usize, x: usize, y: usize, zone: Vec<Zone>) -> Self {
+    pub fn new(size: usize, x: usize, y: usize, zone: HashSet<Zone>) -> Self {
         Cell {
             chk: RwLock::new(NumCheck::new(size)),
-            zone_set: ZoneSet { zone },
-            coordi: Coordinate { x, y },
+            zone,
+            coordi: Coordinate::new(x, y),
         }
     }
 }

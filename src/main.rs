@@ -16,6 +16,7 @@ fn main() {
     let mut solver = Solver::new(&mut t);
 
     let start = Instant::now();
+    solver.set_random_seed(0); // 실행시간 측정을 위한 시드 고정. 이걸 빼면 무작위 스도쿠 퍼즐이 만들어짐.
     solver.fill_puzzle_with_timeout(std::time::Duration::MAX);
     println!("{}", solver.get_table());
     let end = Instant::now();

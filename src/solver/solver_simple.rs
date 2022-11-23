@@ -6,6 +6,7 @@ pub enum SolverSimple {
     Validate,
     Single,
     Naked,
+    BoxLineReduction,
 }
 
 impl SolverSimple {
@@ -13,6 +14,7 @@ impl SolverSimple {
         match detail {
             SolverResultDetail::Single { .. } => SolverSimple::Single,
             SolverResultDetail::Naked { .. } => SolverSimple::Naked,
+            SolverResultDetail::BoxLineReduction { .. } => SolverSimple::BoxLineReduction,
         }
     }
 }
@@ -37,6 +39,7 @@ impl Clone for SolverSimple {
             Self::Validate => Self::Validate,
             Self::Single => Self::Single,
             Self::Naked => Self::Naked,
+            Self::BoxLineReduction => Self::BoxLineReduction,
         }
     }
 }

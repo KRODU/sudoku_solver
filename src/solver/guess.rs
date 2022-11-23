@@ -1,11 +1,8 @@
+use super::solver_history::{SolverHistory, SolverHistoryType};
+use super::Solver;
 use crate::model::{cell::Cell, ref_zone::RefZone};
 use hashbrown::HashMap;
 use rand::Rng;
-
-use super::{
-    solver_history::{SolverHistory, SolverHistoryType},
-    Solver,
-};
 
 impl<'a> Solver<'a> {
     /// 값이 확정되지 않은 cell중에 하나를 무작위로 guess하여 넣습니다.
@@ -13,6 +10,8 @@ impl<'a> Solver<'a> {
         let mut minimum_note_cnt = usize::MAX;
         let mut minimum_note_list: Vec<&Cell> = Vec::new();
 
+        // 모든 cell중에서 무작위로 선택하는 대신 후보숫자가 가장 적은 cell중에 무작위 선택
+        // 이렇게하면 나중에 rollback이 필요할 가능성을 조금이라도 줄일 수 있음
         for z in ref_zone {
             for c in z.cells {
                 let b = c.read;
@@ -36,7 +35,7 @@ impl<'a> Solver<'a> {
         }
 
         let cell_pick = minimum_note_list[self.rng.gen_range(0..minimum_note_list.len())];
-        let cell_notes = cell_pick.chk.read().unwrap().clone_chk_list_sort();
+        let cell_notes = cell_pick.chk.read().unwrap().clone_chk_list_vec();
         let note_pick = cell_notes[self.rng.gen_range(0..cell_notes.len())];
 
         self.guess_mut_something(cell_pick, note_pick);
@@ -60,7 +59,7 @@ impl<'a> Solver<'a> {
             return;
         }
 
-        let backup = b.clone_chk_list();
+        let backup = b.clone_chk_list_hash();
         let mut backup_chk = HashMap::with_capacity(1);
         backup_chk.insert(cell, backup);
         b.set_to_value(final_num);

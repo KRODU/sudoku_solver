@@ -4,4 +4,3 @@ pub mod coordinate;
 pub mod ref_zone;
 pub mod table;
 pub mod zone;
-pub mod zone_set;

@@ -1,19 +1,17 @@
-use super::{
-    solver_history::{SolverResult, SolverResultDetail},
-    solver_simple::SolverSimple,
-    Solver,
-};
+use super::solver_history::{SolverResult, SolverResultDetail};
+use super::solver_simple::SolverSimple;
+use super::Solver;
 use crate::model::{cell::Cell, ref_zone::RefZone, zone::ZoneType};
 use hashbrown::{HashMap, HashSet};
 
 impl<'a> Solver<'a> {
     pub fn single(&self, zone_ref_with_read: &Vec<RefZone<'a>>) -> Vec<SolverResult<'a>> {
         for z in zone_ref_with_read {
+            let ZoneType::Unique = z.zone.get_zone_type() else { continue; };
+
             if self.checked_zone_get_bool(z.zone, SolverSimple::Single) {
                 continue;
             }
-
-            let ZoneType::Unique = z.zone.zone_type else { continue; };
 
             for c in &z.cells {
                 let Some(final_num) = c.read.get_final_num() else { continue; };

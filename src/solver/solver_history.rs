@@ -5,6 +5,7 @@ use hashbrown::{HashMap, HashSet};
 pub enum SolverResultDetail {
     Single { found_chk: usize },
     Naked { found_chks: HashSet<usize> },
+    BoxLineReduction { found_chk: usize },
 }
 
 #[derive(Debug)]

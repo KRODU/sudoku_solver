@@ -1,3 +1,5 @@
+use std::hash::{Hash, Hasher};
+
 #[derive(Debug)]
 pub enum ZoneType {
     Unique,
@@ -38,15 +40,21 @@ impl std::hash::Hash for ZoneType {
 
 #[derive(Debug)]
 pub struct Zone {
-    pub z: usize,
-    pub zone_type: ZoneType,
+    z: usize,
+    zone_type: ZoneType,
+    hash_cache: u64,
 }
 
 impl Zone {
     pub fn new_unique_from_num(z: usize) -> Zone {
+        let mut state = ahash::AHasher::default();
+        z.hash(&mut state);
+        ZoneType::Unique.hash(&mut state);
+
         Zone {
             z,
             zone_type: ZoneType::Unique,
+            hash_cache: state.finish(),
         }
     }
 
@@ -71,7 +79,6 @@ impl Eq for Zone {}
 
 impl std::hash::Hash for Zone {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.z.hash(state);
-        self.zone_type.hash(state);
+        state.write_u64(self.hash_cache);
     }
 }

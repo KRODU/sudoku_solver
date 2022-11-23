@@ -1,19 +1,15 @@
-use self::{
-    solver_history::{SolverHistory, SolverHistoryType, SolverResult},
-    solver_simple::SolverSimple,
-};
-use crate::{
-    model::{cell::Cell, cell_with_read::CellWithRead, ref_zone::RefZone, zone::Zone},
-    table::Table,
-};
+use self::solver_history::{SolverHistory, SolverHistoryType, SolverResult};
+use self::solver_simple::SolverSimple;
+use crate::model::{cell::Cell, cell_with_read::CellWithRead, ref_zone::RefZone, zone::Zone};
+use crate::table::Table;
 use enum_iterator::all;
 use hashbrown::{HashMap, HashSet};
 use rand::{prelude::StdRng, RngCore, SeedableRng};
-use std::{
-    sync::RwLock,
-    time::{Duration, Instant},
-};
+use scoped_threadpool::Pool;
+use std::sync::{Mutex, RwLock};
+use std::time::{Duration, Instant};
 
+pub mod box_line_reduction;
 pub mod guess;
 pub mod naked;
 pub mod single;
@@ -32,6 +28,7 @@ pub struct Solver<'a> {
     guess_backtrace_rollback_cnt: u32,
     changed_cell: HashSet<&'a Cell>,
     checked_zone: RwLock<HashMap<&'a Zone, HashMap<SolverSimple, bool>>>,
+    pool: Mutex<Pool>,
 }
 
 impl<'a> Solver<'a> {
@@ -107,7 +104,7 @@ impl<'a> Solver<'a> {
                     HashMap::with_capacity(solver_result.effect_cells.len());
 
                 for c in solver_result.effect_cells.keys() {
-                    let backup = c.chk.read().unwrap().clone_chk_list();
+                    let backup = c.chk.read().unwrap().clone_chk_list_hash();
                     backup_chk.insert(c, backup);
                 }
 
@@ -175,7 +172,7 @@ impl<'a> Solver<'a> {
             if let SolverHistoryType::Guess { cell, final_num } = history.history_type {
                 let mut mut_chk = cell.chk.write().unwrap();
 
-                let backup_chk_list = mut_chk.clone_chk_list();
+                let backup_chk_list = mut_chk.clone_chk_list_hash();
                 let mut backup: HashMap<&'a Cell, HashSet<usize>> = HashMap::with_capacity(1);
                 backup.insert(cell, backup_chk_list);
                 mut_chk.set_chk(final_num, false);
@@ -238,6 +235,7 @@ impl<'a> Solver<'a> {
             solve_cnt,
             changed_cell,
             checked_zone: RwLock::new(HashMap::new()),
+            pool: Mutex::new(Pool::new(4)),
         }
     }
 
@@ -247,7 +245,7 @@ impl<'a> Solver<'a> {
         let mut zone_ref: HashMap<&'a Zone, Vec<CellWithRead>> =
             HashMap::with_capacity(size * size);
         for cell in t {
-            for z in &cell.zone_set {
+            for z in &cell.zone {
                 let row = zone_ref
                     .entry(z)
                     .or_insert_with(|| Vec::with_capacity(size));
@@ -293,7 +291,7 @@ impl<'a> Solver<'a> {
     fn checked_zone_clear(&self, c: &Cell) {
         let mut write = self.checked_zone.write().unwrap();
 
-        for z in &c.zone_set.zone {
+        for z in &c.zone {
             write.remove(z);
         }
     }

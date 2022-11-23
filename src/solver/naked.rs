@@ -3,37 +3,38 @@ use super::{
     solver_simple::SolverSimple,
     Solver,
 };
-use crate::{
-    combinations::combinations,
-    model::{cell::Cell, cell_with_read::CellWithRead, ref_zone::RefZone, zone::ZoneType},
-};
+use crate::combinations::combinations;
+use crate::model::{cell::Cell, cell_with_read::CellWithRead, ref_zone::RefZone, zone::ZoneType};
 use hashbrown::{HashMap, HashSet};
+use std::sync::Mutex;
 
 impl<'a> Solver<'a> {
     pub fn naked(&self, zone_ref_with_read: &Vec<RefZone<'a>>) -> Vec<SolverResult<'a>> {
-        std::thread::scope(|s| {
-            let mut join_handle_list = Vec::new();
+        let mut pool = self.pool.lock().unwrap();
+        let result_list: Mutex<Vec<SolverResult>> = Mutex::new(Vec::new());
 
+        pool.scoped(|s| {
             for zone_ref in zone_ref_with_read {
+                let ZoneType::Unique = zone_ref.zone.get_zone_type() else { continue; };
+
                 if self.checked_zone_get_bool(zone_ref.zone, SolverSimple::Naked) {
                     continue;
                 }
 
                 let ZoneType::Unique = zone_ref.zone.get_zone_type() else { continue; };
 
-                let join_handle = s.spawn(move || self.naked_number_zone(zone_ref));
-                join_handle_list.push(join_handle);
-            }
+                let result_list_borrow = &result_list;
 
-            let mut result_list = Vec::new();
-            for join_handle in join_handle_list {
-                if let Some(result) = join_handle.join().unwrap() {
-                    result_list.push(result);
-                }
+                s.execute(move || {
+                    if let Some(result) = self.naked_number_zone(zone_ref) {
+                        let mut result_list_lock = result_list_borrow.lock().unwrap();
+                        result_list_lock.push(result);
+                    }
+                });
             }
+        });
 
-            result_list
-        })
+        result_list.into_inner().unwrap()
     }
 
     fn naked_number_zone(&self, ref_zone: &RefZone<'a>) -> Option<SolverResult<'a>> {

@@ -122,25 +122,14 @@ impl NumCheck {
         self.true_cnt == 1
     }
 
-    /// true인 목록을 복사하여 반환합니다.
-    pub fn clone_chk_list(&self) -> HashSet<usize> {
-        let mut ret = HashSet::with_capacity(self.size);
-        for n in &self.true_list {
-            ret.insert(*n);
-        }
-
-        ret
+    /// true인 목록을 복사하여 HashSet으로 반환합니다.
+    pub fn clone_chk_list_hash(&self) -> HashSet<usize> {
+        self.true_list.iter().copied().collect()
     }
 
-    /// true인 목록을 복사한 뒤 소팅하여 반환합니다.
-    pub fn clone_chk_list_sort(&self) -> Vec<usize> {
-        let mut ret = Vec::with_capacity(self.size);
-        for n in &self.true_list {
-            ret.push(*n);
-        }
-
-        ret.sort_unstable();
-        ret
+    /// true인 목록을 복사하여 Vec으로 반환합니다.
+    pub fn clone_chk_list_vec(&self) -> Vec<usize> {
+        self.true_list.iter().copied().collect()
     }
 
     /// 최종 값을 반환합니다. 확정되지 않은 경우 None 입니다.
