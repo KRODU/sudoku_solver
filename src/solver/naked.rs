@@ -21,8 +21,6 @@ impl<'a> Solver<'a> {
                     continue;
                 }
 
-                let ZoneType::Unique = zone_ref.zone.get_zone_type() else { continue; };
-
                 let result_list_borrow = &result_list;
 
                 s.execute(move || {

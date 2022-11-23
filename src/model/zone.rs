@@ -1,6 +1,6 @@
 use std::hash::{Hash, Hasher};
 
-#[derive(Debug)]
+#[derive(PartialOrd, Ord, PartialEq, Eq, Hash, Debug)]
 pub enum ZoneType {
     Unique,
     Sum { sum: usize },
@@ -18,23 +18,6 @@ impl Clone for ZoneType {
 impl Default for ZoneType {
     fn default() -> Self {
         Self::Unique
-    }
-}
-
-impl PartialEq for ZoneType {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::Sum { sum: l_sum }, Self::Sum { sum: r_sum }) => l_sum == r_sum,
-            _ => core::mem::discriminant(self) == core::mem::discriminant(other),
-        }
-    }
-}
-
-impl Eq for ZoneType {}
-
-impl std::hash::Hash for ZoneType {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        core::mem::discriminant(self).hash(state);
     }
 }
 
@@ -69,6 +52,16 @@ impl Zone {
     }
 }
 
+impl Clone for Zone {
+    fn clone(&self) -> Self {
+        Self {
+            z: self.z,
+            zone_type: self.zone_type.clone(),
+            hash_cache: self.hash_cache,
+        }
+    }
+}
+
 impl PartialEq for Zone {
     fn eq(&self, other: &Self) -> bool {
         self.z == other.z && self.zone_type == other.zone_type
@@ -80,5 +73,25 @@ impl Eq for Zone {}
 impl std::hash::Hash for Zone {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         state.write_u64(self.hash_cache);
+    }
+}
+
+impl PartialOrd for Zone {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        match self.z.partial_cmp(&other.z) {
+            Some(core::cmp::Ordering::Equal) => {}
+            ord => return ord,
+        }
+        self.zone_type.partial_cmp(&other.zone_type)
+    }
+}
+
+impl Ord for Zone {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        match self.z.cmp(&other.z) {
+            core::cmp::Ordering::Equal => {}
+            ord => return ord,
+        }
+        self.zone_type.cmp(&other.zone_type)
     }
 }

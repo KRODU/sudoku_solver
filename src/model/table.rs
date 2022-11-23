@@ -1,5 +1,4 @@
 use super::{cell::Cell, zone::Zone};
-use hashbrown::HashSet;
 use std::fmt::Display;
 
 pub struct Table {
@@ -28,10 +27,11 @@ impl Table {
             for y in 0..9 {
                 let index = zone[x * 9 + y];
 
-                let mut this_zone: HashSet<Zone> = HashSet::with_capacity(3);
-                this_zone.insert(Zone::new_unique_from_num(index));
-                this_zone.insert(Zone::new_unique_from_num(x + 10));
-                this_zone.insert(Zone::new_unique_from_num(y + 19));
+                let this_zone = vec![
+                    Zone::new_unique_from_num(index),
+                    Zone::new_unique_from_num(x + 10),
+                    Zone::new_unique_from_num(y + 19),
+                ];
                 let cell = Cell::new(9, x, y, this_zone);
 
                 row.push(cell);
@@ -61,10 +61,11 @@ impl Table {
             for y in 0..16 {
                 let index = zone[x * 16 + y];
 
-                let mut this_zone: HashSet<Zone> = HashSet::with_capacity(3);
-                this_zone.insert(Zone::new_unique_from_num(index));
-                this_zone.insert(Zone::new_unique_from_num(x + 17));
-                this_zone.insert(Zone::new_unique_from_num(y + 33));
+                let this_zone = vec![
+                    Zone::new_unique_from_num(index),
+                    Zone::new_unique_from_num(x + 17),
+                    Zone::new_unique_from_num(y + 33),
+                ];
 
                 let cell = Cell::new(16, x, y, this_zone);
                 row.push(cell);
@@ -139,3 +140,32 @@ impl Display for Table {
         write!(f, "{}", ret)
     }
 }
+
+impl std::fmt::Debug for Table {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(&self, f)
+    }
+}
+
+impl PartialEq for Table {
+    fn eq(&self, other: &Self) -> bool {
+        if self.size != other.size {
+            return false;
+        }
+
+        for x in 0..self.size {
+            for y in 0..self.size {
+                let r1 = self.cells[x][y].chk.read().unwrap();
+                let r2 = other.cells[x][y].chk.read().unwrap();
+
+                if !r1.is_same_note(&r2) {
+                    return false;
+                }
+            }
+        }
+
+        true
+    }
+}
+
+impl Eq for Table {}

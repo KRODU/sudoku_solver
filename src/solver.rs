@@ -27,6 +27,7 @@ pub struct Solver<'a> {
     guess_rollback_cnt: u32,
     guess_backtrace_rollback_cnt: u32,
     changed_cell: HashSet<&'a Cell>,
+    ordered_zone: Vec<(&'a Zone, Vec<&'a Cell>)>,
     checked_zone: RwLock<HashMap<&'a Zone, HashMap<SolverSimple, bool>>>,
     pool: Mutex<Pool>,
 }
@@ -56,7 +57,7 @@ impl<'a> Solver<'a> {
     }
 
     pub fn solve(&mut self) -> Option<&SolverHistory<'a>> {
-        let ref_zone = Solver::get_zone_ref_with_read(self.t);
+        let ref_zone = Solver::get_zone_ref_with_read(&self.ordered_zone);
 
         // 먼저 오류가 있는지 체크하여 있을 경우 롤백
         if self.find_error_cell(&ref_zone).is_some() {
@@ -213,13 +214,13 @@ impl<'a> Solver<'a> {
             changed_cell.insert(c);
         }
 
-        let ref_zone = Solver::get_zone_ref_with_read(t);
-        for zone in ref_zone {
-            if zone.cells.len() != size {
+        let ordered_zone = Solver::get_ordered_zone(t);
+        for (_, c) in &ordered_zone {
+            if c.len() != size {
                 panic!(
                     "Unique 타입의 개수는 퍼즐 사이즈와 동일해야 함! 사이즈:{}, 실제 갯수: {}",
                     size,
-                    zone.cells.len()
+                    c.len()
                 )
             }
         }
@@ -234,30 +235,45 @@ impl<'a> Solver<'a> {
             guess_backtrace_rollback_cnt: 0,
             solve_cnt,
             changed_cell,
+            ordered_zone,
             checked_zone: RwLock::new(HashMap::new()),
             pool: Mutex::new(Pool::new(4)),
         }
     }
 
     #[must_use]
-    fn get_zone_ref_with_read(t: &'a Table) -> Vec<RefZone<'a>> {
+    fn get_ordered_zone(t: &'a Table) -> Vec<(&'a Zone, Vec<&'a Cell>)> {
         let size = t.size;
-        let mut zone_ref: HashMap<&'a Zone, Vec<CellWithRead>> =
-            HashMap::with_capacity(size * size);
+        let mut zone_ref: HashMap<&'a Zone, Vec<&Cell>> = HashMap::with_capacity(size * size);
         for cell in t {
-            for z in &cell.zone {
+            for z in &cell.zone_vec {
                 let row = zone_ref
                     .entry(z)
                     .or_insert_with(|| Vec::with_capacity(size));
-                let read = cell.chk.read().unwrap();
-                row.push(CellWithRead { cell, read });
+                row.push(cell);
             }
         }
 
-        let mut ret = Vec::with_capacity(zone_ref.len());
-        for (z, c) in zone_ref {
-            ret.push(RefZone { zone: z, cells: c });
+        let mut ret: Vec<(&'a Zone, Vec<&'a Cell>)> = zone_ref.into_iter().collect();
+        ret.sort_unstable_by_key(|(z, _)| *z);
+        ret
+    }
+
+    #[must_use]
+    fn get_zone_ref_with_read(ordered_zone: &Vec<(&'a Zone, Vec<&'a Cell>)>) -> Vec<RefZone<'a>> {
+        let mut ret = Vec::with_capacity(ordered_zone.len());
+        for (z, cell_list) in ordered_zone {
+            let mut cell_with_read = Vec::with_capacity(cell_list.len());
+            for cell in cell_list {
+                let read = cell.chk.read().unwrap();
+                cell_with_read.push(CellWithRead { cell, read });
+            }
+            ret.push(RefZone {
+                zone: z,
+                cells: cell_with_read,
+            });
         }
+
         ret
     }
 
@@ -291,7 +307,7 @@ impl<'a> Solver<'a> {
     fn checked_zone_clear(&self, c: &Cell) {
         let mut write = self.checked_zone.write().unwrap();
 
-        for z in &c.zone {
+        for z in &c.zone_vec {
             write.remove(z);
         }
     }
@@ -336,4 +352,21 @@ impl<'a> Solver<'a> {
     pub fn guess_rollback_cnt(&self) -> u32 {
         self.guess_rollback_cnt
     }
+}
+
+/// 동일한 시드에 대해서 같은 퍼즐을 생성하는지 테스트
+#[test]
+fn same_seed_puzzle_test() {
+    let mut t1 = Table::new_default_9();
+    let mut solver1 = Solver::new(&mut t1);
+    solver1.fill_puzzle_with_timeout(std::time::Duration::MAX);
+
+    let mut t2 = Table::new_default_9();
+    let mut solver2 = Solver::new(&mut t2);
+    solver2.set_random_seed(solver1.get_random_seed());
+    solver2.fill_puzzle_with_timeout(std::time::Duration::MAX);
+    drop(solver1);
+    drop(solver2);
+
+    assert_eq!(t1, t2);
 }

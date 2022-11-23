@@ -6,16 +6,18 @@ use std::sync::RwLock;
 #[derive(Debug)]
 pub struct Cell {
     pub chk: RwLock<NumCheck>,
-    pub zone: HashSet<Zone>,
+    pub zone_set: HashSet<Zone>,
+    pub zone_vec: Vec<Zone>,
     pub coordi: Coordinate,
 }
 
 impl Cell {
     #[must_use]
-    pub fn new(size: usize, x: usize, y: usize, zone: HashSet<Zone>) -> Self {
+    pub fn new(size: usize, x: usize, y: usize, zone: Vec<Zone>) -> Self {
         Cell {
             chk: RwLock::new(NumCheck::new(size)),
-            zone,
+            zone_set: zone.iter().cloned().collect(),
+            zone_vec: zone,
             coordi: Coordinate::new(x, y),
         }
     }
