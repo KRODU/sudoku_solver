@@ -2,7 +2,7 @@ use super::{cell::Cell, zone::Zone};
 use std::fmt::Display;
 
 pub struct Table {
-    pub cells: Vec<Vec<Cell>>,
+    pub cells: Vec<Cell>,
     pub size: usize,
 }
 
@@ -38,6 +38,8 @@ impl Table {
             }
             cells.push(row);
         }
+
+        let cells = cells.into_iter().flatten().collect::<Vec<_>>();
         Table { cells, size: 9 }
     }
 
@@ -72,6 +74,8 @@ impl Table {
             }
             cells.push(row);
         }
+
+        let cells = cells.into_iter().flatten().collect::<Vec<_>>();
         Table { cells, size: 16 }
     }
 }
@@ -82,37 +86,23 @@ impl<'a> IntoIterator for &'a Table {
 
     fn into_iter(self) -> Self::IntoIter {
         CellIter {
-            x: 0,
-            y: 0,
-            size: self.size,
+            index: 0,
             t: &self.cells,
         }
     }
 }
 
 pub struct CellIter<'a> {
-    x: usize,
-    y: usize,
-    size: usize,
-    t: &'a Vec<Vec<Cell>>,
+    index: usize,
+    t: &'a Vec<Cell>,
 }
 
 impl<'a> Iterator for CellIter<'a> {
     type Item = &'a Cell;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.x >= self.size {
-            self.x = 0;
-            self.y += 1;
-        }
-
-        let ret = if self.y >= self.size {
-            None
-        } else {
-            Some(&self.t[self.x][self.y])
-        };
-
-        self.x += 1;
+        let ret = self.t.get(self.index);
+        self.index += 1;
 
         ret
     }
@@ -123,7 +113,7 @@ impl Display for Table {
         let mut ret = String::new();
         for x in 0..self.size {
             for y in 0..self.size {
-                let cell = &self.cells[x][y];
+                let cell = &self.cells[x * self.size + y];
                 let final_num = cell.chk.read().unwrap().get_final_num();
                 if let Some(num) = final_num {
                     ret.push_str(num.to_string().as_str());
@@ -155,8 +145,8 @@ impl PartialEq for Table {
 
         for x in 0..self.size {
             for y in 0..self.size {
-                let r1 = self.cells[x][y].chk.read().unwrap();
-                let r2 = other.cells[x][y].chk.read().unwrap();
+                let r1 = self.cells[x * self.size + y].chk.read().unwrap();
+                let r2 = other.cells[x * self.size + y].chk.read().unwrap();
 
                 if !r1.is_same_note(&r2) {
                     return false;
