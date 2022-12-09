@@ -28,6 +28,7 @@ pub struct Solver<'a> {
     guess_backtrace_rollback_cnt: u32,
     changed_cell: HashSet<&'a Cell>,
     ordered_zone: Vec<(&'a Zone, Vec<&'a Cell>)>,
+    connect_zone: HashMap<&'a Zone, HashSet<&'a Zone>>,
     checked_zone: RwLock<HashMap<&'a Zone, HashMap<SolverSimple, bool>>>,
     pool: Mutex<Pool>,
 }
@@ -88,9 +89,20 @@ impl<'a> Solver<'a> {
             return self.solver_history_stack.last();
         }
 
+        // Box Line Reduction Solver 적용
+        let ref_zone_hash = ref_zone.iter().collect::<HashSet<_>>();
+        result = self.box_line_reduction(&ref_zone_hash);
+        if !result.is_empty() {
+            drop(ref_zone_hash);
+            drop(ref_zone);
+            self.solve_result_commit(result);
+            return self.solver_history_stack.last();
+        }
+
         // 푸는게 실패할 경우 guess를 적용
         // println!("GUESS");
         self.changed_cell.clear();
+        drop(ref_zone_hash);
         self.guess_random(ref_zone);
         self.guess_cnt += 1;
         self.solver_history_stack.last()
@@ -101,12 +113,12 @@ impl<'a> Solver<'a> {
         let mut commit_flag = false;
         while let Some(solver_result) = result.pop() {
             let history = {
-                let mut backup_chk: HashMap<&'a Cell, HashSet<usize>> =
-                    HashMap::with_capacity(solver_result.effect_cells.len());
+                let mut backup_chk: Vec<(&'a Cell, Vec<usize>)> =
+                    Vec::with_capacity(solver_result.effect_cells.len());
 
-                for c in solver_result.effect_cells.keys() {
-                    let backup = c.chk.read().unwrap().clone_chk_list_hash();
-                    backup_chk.insert(c, backup);
+                for (c, _) in &solver_result.effect_cells {
+                    let backup = c.chk.read().unwrap().clone_chk_list_vec();
+                    backup_chk.push((c, backup));
                 }
 
                 SolverHistory {
@@ -173,9 +185,8 @@ impl<'a> Solver<'a> {
             if let SolverHistoryType::Guess { cell, final_num } = history.history_type {
                 let mut mut_chk = cell.chk.write().unwrap();
 
-                let backup_chk_list = mut_chk.clone_chk_list_hash();
-                let mut backup: HashMap<&'a Cell, HashSet<usize>> = HashMap::with_capacity(1);
-                backup.insert(cell, backup_chk_list);
+                let backup_chk_list = mut_chk.clone_chk_list_vec();
+                let backup = vec![(cell, backup_chk_list)];
                 mut_chk.set_chk(final_num, false);
 
                 self.solver_history_stack.push(SolverHistory {
@@ -225,6 +236,8 @@ impl<'a> Solver<'a> {
             }
         }
 
+        let connect_zone = Solver::get_connected_zone(&ordered_zone);
+
         Solver {
             t,
             solver_history_stack: Vec::new(),
@@ -236,6 +249,7 @@ impl<'a> Solver<'a> {
             solve_cnt,
             changed_cell,
             ordered_zone,
+            connect_zone,
             checked_zone: RwLock::new(HashMap::new()),
             pool: Mutex::new(Pool::new(4)),
         }
@@ -261,7 +275,8 @@ impl<'a> Solver<'a> {
 
     #[must_use]
     fn get_zone_ref_with_read(ordered_zone: &Vec<(&'a Zone, Vec<&'a Cell>)>) -> Vec<RefZone<'a>> {
-        let mut ret = Vec::with_capacity(ordered_zone.len());
+        let mut ret: Vec<RefZone> = Vec::with_capacity(ordered_zone.len());
+
         for (z, cell_list) in ordered_zone {
             let mut cell_with_read = Vec::with_capacity(cell_list.len());
             for cell in cell_list {
@@ -272,6 +287,26 @@ impl<'a> Solver<'a> {
                 zone: z,
                 cells: cell_with_read,
             });
+        }
+
+        ret
+    }
+
+    #[must_use]
+    fn get_connected_zone(
+        ordered_zone: &Vec<(&'a Zone, Vec<&'a Cell>)>,
+    ) -> HashMap<&'a Zone, HashSet<&'a Zone>> {
+        let mut ret: HashMap<&'a Zone, HashSet<&'a Zone>> =
+            HashMap::with_capacity(ordered_zone.len());
+
+        for (z1, _) in ordered_zone {
+            for (z2, c2_list) in ordered_zone {
+                let connected = c2_list.iter().any(|c2| c2.zone_set.contains(*z1));
+
+                if connected {
+                    ret.entry(z1).or_insert_with(HashSet::new).insert(z2);
+                }
+            }
         }
 
         ret

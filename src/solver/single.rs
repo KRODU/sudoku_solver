@@ -2,7 +2,6 @@ use super::solver_history::{SolverResult, SolverResultDetail};
 use super::solver_simple::SolverSimple;
 use super::Solver;
 use crate::model::{cell::Cell, ref_zone::RefZone, zone::ZoneType};
-use hashbrown::{HashMap, HashSet};
 
 impl<'a> Solver<'a> {
     pub fn single(&self, zone_ref_with_read: &Vec<RefZone<'a>>) -> Vec<SolverResult<'a>> {
@@ -15,7 +14,7 @@ impl<'a> Solver<'a> {
 
             for c in &z.cells {
                 let Some(final_num) = c.read.get_final_num() else { continue; };
-                let mut effect_cells: HashMap<&Cell, HashSet<usize>> = HashMap::new();
+                let mut effect_cells: Vec<(&Cell, Vec<usize>)> = Vec::new();
 
                 for c_comp in &z.cells {
                     // 노트가 확정된 경우 Zone을 순회하면서 해당 노트를 가진 cell이 있나 찾음
@@ -27,22 +26,16 @@ impl<'a> Solver<'a> {
 
                     // 찾음
                     if c_comp.read.get_chk(final_num) {
-                        let mut v = HashSet::with_capacity(1);
-                        v.insert(final_num);
-                        effect_cells.insert(c_comp.cell, v);
+                        effect_cells.push((c_comp.cell, vec![final_num]));
                     }
                 }
 
                 if !effect_cells.is_empty() {
                     // 하나 이상의 삭제할 노트를 가진 cell을 찾을 경우
-                    let mut found_cells: HashSet<&'a Cell> = HashSet::with_capacity(1);
-                    found_cells.insert(c.cell);
-
                     let solver_result: SolverResult<'a> = SolverResult {
                         solver_type: SolverResultDetail::Single {
                             found_chk: final_num,
                         },
-                        found_cells,
                         effect_cells,
                     };
 

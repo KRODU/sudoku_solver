@@ -1,18 +1,16 @@
 use crate::model::cell::Cell;
-use hashbrown::{HashMap, HashSet};
 
 #[derive(Debug)]
 pub enum SolverResultDetail {
     Single { found_chk: usize },
-    Naked { found_chks: HashSet<usize> },
+    Naked { found_chks: Vec<usize> },
     BoxLineReduction { found_chk: usize },
 }
 
 #[derive(Debug)]
 pub struct SolverResult<'a> {
     pub solver_type: SolverResultDetail,
-    pub found_cells: HashSet<&'a Cell>,
-    pub effect_cells: HashMap<&'a Cell, HashSet<usize>>,
+    pub effect_cells: Vec<(&'a Cell, Vec<usize>)>,
 }
 
 #[derive(Debug)]
@@ -31,5 +29,5 @@ pub enum SolverHistoryType<'a> {
 #[derive(Debug)]
 pub struct SolverHistory<'a> {
     pub history_type: SolverHistoryType<'a>,
-    pub backup_chk: HashMap<&'a Cell, HashSet<usize>>,
+    pub backup_chk: Vec<(&'a Cell, Vec<usize>)>,
 }

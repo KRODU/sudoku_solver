@@ -1,6 +1,6 @@
 use std::hash::{Hash, Hasher};
 
-#[derive(PartialOrd, Ord, PartialEq, Eq, Hash, Debug)]
+#[derive(PartialOrd, Ord, Debug)]
 pub enum ZoneType {
     Unique,
     Sum { sum: usize },
@@ -18,6 +18,20 @@ impl Clone for ZoneType {
 impl Default for ZoneType {
     fn default() -> Self {
         Self::Unique
+    }
+}
+
+impl PartialEq for ZoneType {
+    fn eq(&self, other: &Self) -> bool {
+        core::mem::discriminant(self) == core::mem::discriminant(other)
+    }
+}
+
+impl Eq for ZoneType {}
+
+impl Hash for ZoneType {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        core::mem::discriminant(self).hash(state);
     }
 }
 

@@ -5,7 +5,7 @@ use super::{
 };
 use crate::combinations::combinations;
 use crate::model::{cell::Cell, cell_with_read::CellWithRead, ref_zone::RefZone, zone::ZoneType};
-use hashbrown::{HashMap, HashSet};
+use hashbrown::HashSet;
 use std::sync::Mutex;
 
 impl<'a> Solver<'a> {
@@ -68,7 +68,7 @@ impl<'a> Solver<'a> {
                     return true;
                 }
 
-                let mut effect_cells: HashMap<&Cell, HashSet<usize>> = HashMap::new();
+                let mut effect_cells: Vec<(&Cell, Vec<usize>)> = Vec::new();
                 // zone을 순회하며 삭제할 노트가 있는지 찾음
                 for zone_cell in cell_list {
                     // 순회 대상에서 자기 자신은 제외
@@ -81,21 +81,16 @@ impl<'a> Solver<'a> {
 
                     // 제거할 노트를 발견한 경우
                     if !inter.is_empty() {
-                        effect_cells.insert(zone_cell.cell, inter);
+                        effect_cells.push((zone_cell.cell, inter.into_iter().collect()));
                     }
                 }
 
                 // effect_cells에 값이 존재하는 경우 제거한 노트를 발견한 것임.
                 if !effect_cells.is_empty() {
-                    let mut found_cells: HashSet<&'a Cell> = HashSet::with_capacity(arr.len());
-                    for effect_cell in arr {
-                        found_cells.insert(effect_cell.cell);
-                    }
                     ret = Some(SolverResult {
                         solver_type: SolverResultDetail::Naked {
-                            found_chks: union_node.clone(),
+                            found_chks: union_node.iter().copied().collect(),
                         },
-                        found_cells,
                         effect_cells,
                     });
 

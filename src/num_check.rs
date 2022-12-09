@@ -60,7 +60,7 @@ impl NumCheck {
     }
 
     /// chk_list에 포함된 노트만 true이며 그 외엔 false입니다.
-    pub fn set_to_chk_list(&mut self, chk_list: &HashSet<usize>) {
+    pub fn set_to_chk_list(&mut self, chk_list: &Vec<usize>) {
         self.true_cnt = 0;
         self.chk_list.iter_mut().for_each(|(_, b)| *b = false);
         self.true_list.clear();
@@ -93,7 +93,7 @@ impl NumCheck {
     }
 
     /// 지정된 리스트의 값을 모두 false로 지정합니다.
-    pub fn set_to_false_list(&mut self, list: &HashSet<usize>) {
+    pub fn set_to_false_list(&mut self, list: &Vec<usize>) {
         for i in list {
             self.set_chk(*i, false);
         }

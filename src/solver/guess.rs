@@ -1,7 +1,6 @@
 use super::solver_history::{SolverHistory, SolverHistoryType};
 use super::Solver;
 use crate::model::{cell::Cell, ref_zone::RefZone};
-use hashbrown::HashMap;
 use rand::Rng;
 
 impl<'a> Solver<'a> {
@@ -59,9 +58,8 @@ impl<'a> Solver<'a> {
             return;
         }
 
-        let backup = b.clone_chk_list_hash();
-        let mut backup_chk = HashMap::with_capacity(1);
-        backup_chk.insert(cell, backup);
+        let backup = b.clone_chk_list_vec();
+        let backup_chk = vec![(cell, backup)];
         b.set_to_value(final_num);
         self.changed_cell.insert(cell);
         self.checked_zone_clear(cell);
