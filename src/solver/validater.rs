@@ -1,11 +1,11 @@
 use super::{solver_simple::SolverSimple, Solver};
 use crate::model::{cell::Cell, ref_zone::RefZone, zone::ZoneType};
 
-impl<'a> Solver<'a> {
+impl<'a, const N: usize> Solver<'a, N> {
     /// 현재 스도쿠 퍼즐의 유효성 검사하여 에러셀을 반환.
     /// 에러셀이 없다면 None
-    pub fn find_error_cell(&self, zone_ref_with_read: &Vec<RefZone<'a>>) -> Option<&Cell> {
-        let mut unique_chk_map: Vec<bool> = vec![false; self.t.size];
+    pub fn find_error_cell(&self, zone_ref_with_read: &Vec<RefZone<'a, N>>) -> Option<&Cell<N>> {
+        let mut unique_chk_map = [false; N];
 
         for ref_zone in zone_ref_with_read {
             if self.checked_zone_get_bool(ref_zone.zone, SolverSimple::Validate) {

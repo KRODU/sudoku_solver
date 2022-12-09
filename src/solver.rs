@@ -17,23 +17,23 @@ pub mod solver_history;
 pub mod solver_simple;
 pub mod validater;
 
-pub struct Solver<'a> {
-    t: &'a Table,
-    solver_history_stack: Vec<SolverHistory<'a>>,
+pub struct Solver<'a, const N: usize> {
+    t: &'a Table<N>,
+    solver_history_stack: Vec<SolverHistory<'a, N>>,
     rng: StdRng,
     rand_seed: u64,
     solve_cnt: HashMap<SolverSimple, u32>,
     guess_cnt: u32,
     guess_rollback_cnt: u32,
     guess_backtrace_rollback_cnt: u32,
-    changed_cell: HashSet<&'a Cell>,
-    ordered_zone: Vec<(&'a Zone, Vec<&'a Cell>)>,
+    changed_cell: HashSet<&'a Cell<N>>,
+    ordered_zone: Vec<(&'a Zone, Vec<&'a Cell<N>>)>,
     connect_zone: HashMap<&'a Zone, HashSet<&'a Zone>>,
     checked_zone: RwLock<HashMap<&'a Zone, HashMap<SolverSimple, bool>>>,
     pool: Mutex<Pool>,
 }
 
-impl<'a> Solver<'a> {
+impl<'a, const N: usize> Solver<'a, N> {
     /// 제한시간 내에 스도쿠를 모두 채우려고 시도합니다.
     ///
     /// 풀리지 않고 남은 cell의 개수를 반환합니다.
@@ -57,8 +57,9 @@ impl<'a> Solver<'a> {
         0
     }
 
-    pub fn solve(&mut self) -> Option<&SolverHistory<'a>> {
-        let ref_zone = Solver::get_zone_ref_with_read(&self.ordered_zone);
+    pub fn solve(&mut self) -> Option<&SolverHistory<'a, N>> {
+        let ref_zone = Solver::<N>::get_zone_ref_with_read(&self.ordered_zone);
+        debug_assert!(self.t.num_check_validater());
 
         // 먼저 오류가 있는지 체크하여 있을 경우 롤백
         if self.find_error_cell(&ref_zone).is_some() {
@@ -90,30 +91,30 @@ impl<'a> Solver<'a> {
         }
 
         // Box Line Reduction Solver 적용
-        let ref_zone_hash = ref_zone.iter().collect::<HashSet<_>>();
-        result = self.box_line_reduction(&ref_zone_hash);
-        if !result.is_empty() {
-            drop(ref_zone_hash);
-            drop(ref_zone);
-            self.solve_result_commit(result);
-            return self.solver_history_stack.last();
-        }
+        // let ref_zone_hash = ref_zone.iter().collect::<HashSet<_>>();
+        // result = self.box_line_reduction(&ref_zone_hash);
+        // if !result.is_empty() {
+        //     drop(ref_zone_hash);
+        //     drop(ref_zone);
+        //     self.solve_result_commit(result);
+        //     return self.solver_history_stack.last();
+        // }
 
         // 푸는게 실패할 경우 guess를 적용
         // println!("GUESS");
         self.changed_cell.clear();
-        drop(ref_zone_hash);
+        // drop(ref_zone_hash);
         self.guess_random(ref_zone);
         self.guess_cnt += 1;
         self.solver_history_stack.last()
     }
 
     /// 스도푸를 푼 경우 해당 결과를 적용합니다.
-    fn solve_result_commit(&mut self, mut result: Vec<SolverResult<'a>>) -> bool {
+    fn solve_result_commit(&mut self, mut result: Vec<SolverResult<'a, N>>) -> bool {
         let mut commit_flag = false;
         while let Some(solver_result) = result.pop() {
             let history = {
-                let mut backup_chk: Vec<(&'a Cell, Vec<usize>)> =
+                let mut backup_chk: Vec<(&'a Cell<N>, Vec<usize>)> =
                     Vec::with_capacity(solver_result.effect_cells.len());
 
                 for (c, _) in &solver_result.effect_cells {
@@ -212,31 +213,30 @@ impl<'a> Solver<'a> {
     }
 
     #[must_use]
-    pub fn new(t: &'a mut Table) -> Self {
-        let size = t.size;
+    pub fn new(t: &'a mut Table<N>) -> Self {
         let rand_seed: u64 = StdRng::from_entropy().next_u64();
         let mut solve_cnt: HashMap<SolverSimple, u32> = HashMap::new();
         for n in all::<SolverSimple>() {
             solve_cnt.insert(n, 0u32);
         }
 
-        let mut changed_cell = HashSet::with_capacity(size * size);
+        let mut changed_cell = HashSet::with_capacity(N * N);
         for c in t.into_iter() {
             changed_cell.insert(c);
         }
 
         let ordered_zone = Solver::get_ordered_zone(t);
         for (_, c) in &ordered_zone {
-            if c.len() != size {
+            if c.len() != N {
                 panic!(
                     "Unique 타입의 개수는 퍼즐 사이즈와 동일해야 함! 사이즈:{}, 실제 갯수: {}",
-                    size,
+                    N,
                     c.len()
                 )
             }
         }
 
-        let connect_zone = Solver::get_connected_zone(&ordered_zone);
+        let connect_zone = Solver::<N>::get_connected_zone(&ordered_zone);
 
         Solver {
             t,
@@ -256,26 +256,25 @@ impl<'a> Solver<'a> {
     }
 
     #[must_use]
-    fn get_ordered_zone(t: &'a Table) -> Vec<(&'a Zone, Vec<&'a Cell>)> {
-        let size = t.size;
-        let mut zone_ref: HashMap<&'a Zone, Vec<&Cell>> = HashMap::with_capacity(size * size);
+    fn get_ordered_zone(t: &'a Table<N>) -> Vec<(&'a Zone, Vec<&'a Cell<N>>)> {
+        let mut zone_ref: HashMap<&'a Zone, Vec<&Cell<N>>> = HashMap::with_capacity(N * N);
         for cell in t {
             for z in &cell.zone_vec {
-                let row = zone_ref
-                    .entry(z)
-                    .or_insert_with(|| Vec::with_capacity(size));
+                let row = zone_ref.entry(z).or_insert_with(|| Vec::with_capacity(N));
                 row.push(cell);
             }
         }
 
-        let mut ret: Vec<(&'a Zone, Vec<&'a Cell>)> = zone_ref.into_iter().collect();
+        let mut ret: Vec<(&'a Zone, Vec<&'a Cell<N>>)> = zone_ref.into_iter().collect();
         ret.sort_unstable_by_key(|(z, _)| *z);
         ret
     }
 
     #[must_use]
-    fn get_zone_ref_with_read(ordered_zone: &Vec<(&'a Zone, Vec<&'a Cell>)>) -> Vec<RefZone<'a>> {
-        let mut ret: Vec<RefZone> = Vec::with_capacity(ordered_zone.len());
+    fn get_zone_ref_with_read(
+        ordered_zone: &Vec<(&'a Zone, Vec<&'a Cell<N>>)>,
+    ) -> Vec<RefZone<'a, N>> {
+        let mut ret: Vec<RefZone<N>> = Vec::with_capacity(ordered_zone.len());
 
         for (z, cell_list) in ordered_zone {
             let mut cell_with_read = Vec::with_capacity(cell_list.len());
@@ -294,7 +293,7 @@ impl<'a> Solver<'a> {
 
     #[must_use]
     fn get_connected_zone(
-        ordered_zone: &Vec<(&'a Zone, Vec<&'a Cell>)>,
+        ordered_zone: &Vec<(&'a Zone, Vec<&'a Cell<N>>)>,
     ) -> HashMap<&'a Zone, HashSet<&'a Zone>> {
         let mut ret: HashMap<&'a Zone, HashSet<&'a Zone>> =
             HashMap::with_capacity(ordered_zone.len());
@@ -339,7 +338,7 @@ impl<'a> Solver<'a> {
     }
 
     /// 특정 zone에 대한 checked를 모두 초기화
-    fn checked_zone_clear(&self, c: &Cell) {
+    fn checked_zone_clear(&self, c: &Cell<N>) {
         let mut write = self.checked_zone.write().unwrap();
 
         for z in &c.zone_vec {
@@ -347,7 +346,7 @@ impl<'a> Solver<'a> {
         }
     }
 
-    pub fn get_table(&self) -> &Table {
+    pub fn get_table(&self) -> &Table<N> {
         self.t
     }
 
@@ -404,4 +403,17 @@ fn same_seed_puzzle_test() {
     drop(solver2);
 
     assert_eq!(t1, t2);
+
+    let mut t1 = Table::new_default_9();
+    let mut solver1 = Solver::new(&mut t1);
+    solver1.fill_puzzle_with_timeout(std::time::Duration::MAX);
+
+    let mut t2 = Table::new_default_9();
+    let mut solver2 = Solver::new(&mut t2);
+    solver2.set_random_seed(solver1.get_random_seed() + 1);
+    solver2.fill_puzzle_with_timeout(std::time::Duration::MAX);
+    drop(solver1);
+    drop(solver2);
+
+    assert_ne!(t1, t2);
 }

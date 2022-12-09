@@ -3,8 +3,8 @@ use super::solver_simple::SolverSimple;
 use super::Solver;
 use crate::model::{cell::Cell, ref_zone::RefZone, zone::ZoneType};
 
-impl<'a> Solver<'a> {
-    pub fn single(&self, zone_ref_with_read: &Vec<RefZone<'a>>) -> Vec<SolverResult<'a>> {
+impl<'a, const N: usize> Solver<'a, N> {
+    pub fn single(&self, zone_ref_with_read: &Vec<RefZone<'a, N>>) -> Vec<SolverResult<'a, N>> {
         for z in zone_ref_with_read {
             let ZoneType::Unique = z.zone.get_zone_type() else { continue; };
 
@@ -14,7 +14,7 @@ impl<'a> Solver<'a> {
 
             for c in &z.cells {
                 let Some(final_num) = c.read.get_final_num() else { continue; };
-                let mut effect_cells: Vec<(&Cell, Vec<usize>)> = Vec::new();
+                let mut effect_cells: Vec<(&Cell<N>, Vec<usize>)> = Vec::new();
 
                 for c_comp in &z.cells {
                     // 노트가 확정된 경우 Zone을 순회하면서 해당 노트를 가진 cell이 있나 찾음
@@ -32,7 +32,7 @@ impl<'a> Solver<'a> {
 
                 if !effect_cells.is_empty() {
                     // 하나 이상의 삭제할 노트를 가진 cell을 찾을 경우
-                    let solver_result: SolverResult<'a> = SolverResult {
+                    let solver_result: SolverResult<'a, N> = SolverResult {
                         solver_type: SolverResultDetail::Single {
                             found_chk: final_num,
                         },

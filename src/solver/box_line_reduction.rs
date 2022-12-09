@@ -6,12 +6,13 @@ use super::{
 use crate::model::{cell::Cell, ref_zone::RefZone, zone::ZoneType};
 use hashbrown::HashSet;
 
-impl<'a> Solver<'a> {
+impl<'a, const N: usize> Solver<'a, N> {
     pub fn box_line_reduction(
         &self,
-        ref_zone_hash: &HashSet<&RefZone<'a>>,
-    ) -> Vec<SolverResult<'a>> {
-        for z1 in ref_zone_hash {
+        zone_ref_with_read: &Vec<RefZone<'a, N>>,
+        ref_zone_hash: &HashSet<&RefZone<'a, N>>,
+    ) -> Vec<SolverResult<'a, N>> {
+        for z1 in zone_ref_with_read {
             let ZoneType::Unique = z1.zone.get_zone_type() else { continue; };
 
             if self.checked_zone_get_bool(z1.zone, SolverSimple::BoxLineReduction) {
@@ -26,7 +27,7 @@ impl<'a> Solver<'a> {
                 z1.cells.iter().fold(HashSet::<usize>::new(), |mut h, c| {
                     let read = &c.read;
                     if read.get_true_cnt() > 1 {
-                        read.union_note(&mut h);
+                        read.union_note_hash(&mut h);
                     }
                     h
                 });
@@ -48,7 +49,7 @@ impl<'a> Solver<'a> {
                     });
 
                     if target_this_note {
-                        let mut effect_cells: Vec<(&'a Cell, Vec<usize>)> = Vec::new();
+                        let mut effect_cells: Vec<(&'a Cell<N>, Vec<usize>)> = Vec::new();
 
                         for z2_cell in &z2_ref.cells {
                             if z2_cell.cell.zone_set.contains(z1.zone) {
