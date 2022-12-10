@@ -11,15 +11,15 @@ pub struct NumCheck<const N: usize> {
 
 impl<const N: usize> NumCheck<N> {
     #[must_use]
-    pub fn new(size: usize) -> NumCheck<N> {
-        if size <= 1 {
+    pub fn new_with_true() -> NumCheck<N> {
+        if N <= 1 {
             panic!("스도쿠 퍼즐의 크기는 최소 2이상이어야 합니다.")
         }
 
-        let mut chk_list = Vec::with_capacity(size);
-        let mut true_list = Vec::with_capacity(size);
+        let mut chk_list = Vec::with_capacity(N);
+        let mut true_list = Vec::with_capacity(N);
 
-        for n in 1..=size {
+        for n in 1..=N {
             chk_list.push((n, Some(n - 1)));
             true_list.push(n);
         }
@@ -27,7 +27,28 @@ impl<const N: usize> NumCheck<N> {
         NumCheck {
             chk_list: chk_list.try_into().expect("SIZE_NOT_SAME"),
             true_list,
-            true_cnt: size,
+            true_cnt: N,
+            final_num: None,
+        }
+    }
+
+    #[must_use]
+    pub fn new_with_false() -> NumCheck<N> {
+        if N <= 1 {
+            panic!("스도쿠 퍼즐의 크기는 최소 2이상이어야 합니다.")
+        }
+
+        let mut chk_list = Vec::with_capacity(N);
+        let true_list = Vec::with_capacity(N);
+
+        for n in 1..=N {
+            chk_list.push((n, None));
+        }
+
+        NumCheck {
+            chk_list: chk_list.try_into().expect("SIZE_NOT_SAME"),
+            true_list,
+            true_cnt: N,
             final_num: None,
         }
     }
@@ -52,18 +73,17 @@ impl<const N: usize> NumCheck<N> {
             return;
         }
 
-        if chk {
-            self.true_cnt += 1;
-            self.true_list.push(num);
-            self.chk_list[num - 1].1 = Some(self.true_list.len() - 1);
-        } else {
+        if let Some(remove_index) = self.chk_list[num - 1].1 {
             self.true_cnt -= 1;
-            let remove_index = self.chk_list[num - 1].1.unwrap();
             self.true_list.swap_remove(remove_index);
             if let Some(swap_node) = self.true_list.get(remove_index) {
                 self.chk_list[swap_node - 1].1 = Some(remove_index);
             }
             self.chk_list[num - 1].1 = None;
+        } else {
+            self.true_cnt += 1;
+            self.true_list.push(num);
+            self.chk_list[num - 1].1 = Some(self.true_list.len() - 1);
         }
 
         self.set_to_final_num();
@@ -198,5 +218,11 @@ impl<const N: usize> NumCheck<N> {
         }
 
         true
+    }
+}
+
+impl<const N: usize> Default for NumCheck<N> {
+    fn default() -> Self {
+        Self::new_with_false()
     }
 }

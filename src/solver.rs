@@ -91,19 +91,19 @@ impl<'a, const N: usize> Solver<'a, N> {
         }
 
         // Box Line Reduction Solver 적용
-        // let ref_zone_hash = ref_zone.iter().collect::<HashSet<_>>();
-        // result = self.box_line_reduction(&ref_zone_hash);
-        // if !result.is_empty() {
-        //     drop(ref_zone_hash);
-        //     drop(ref_zone);
-        //     self.solve_result_commit(result);
-        //     return self.solver_history_stack.last();
-        // }
+        let ref_zone_hash = ref_zone.iter().collect::<HashSet<_>>();
+        result = self.box_line_reduction(&ref_zone, &ref_zone_hash);
+        if !result.is_empty() {
+            drop(ref_zone_hash);
+            drop(ref_zone);
+            self.solve_result_commit(result);
+            return self.solver_history_stack.last();
+        }
 
         // 푸는게 실패할 경우 guess를 적용
         // println!("GUESS");
         self.changed_cell.clear();
-        // drop(ref_zone_hash);
+        drop(ref_zone_hash);
         self.guess_random(ref_zone);
         self.guess_cnt += 1;
         self.solver_history_stack.last()

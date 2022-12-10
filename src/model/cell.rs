@@ -13,9 +13,9 @@ pub struct Cell<const N: usize> {
 
 impl<const N: usize> Cell<N> {
     #[must_use]
-    pub fn new(size: usize, x: usize, y: usize, zone: Vec<Zone>) -> Self {
+    pub fn new(x: usize, y: usize, zone: Vec<Zone>) -> Self {
         Cell {
-            chk: RwLock::new(NumCheck::new(size)),
+            chk: RwLock::new(NumCheck::<N>::new_with_true()),
             zone_set: zone.iter().cloned().collect(),
             zone_vec: zone,
             coordi: Coordinate::new(x, y),

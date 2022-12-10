@@ -31,7 +31,7 @@ impl Table<9> {
                     Zone::new_unique_from_num(x + 10),
                     Zone::new_unique_from_num(y + 19),
                 ];
-                let cell = Cell::new(9, x, y, this_zone);
+                let cell = Cell::new(x, y, this_zone);
 
                 row.push(cell);
             }
@@ -74,7 +74,7 @@ impl Table<16> {
                     Zone::new_unique_from_num(y + 33),
                 ];
 
-                let cell = Cell::new(16, x, y, this_zone);
+                let cell = Cell::new(x, y, this_zone);
                 row.push(cell);
             }
             cells.push(row);
