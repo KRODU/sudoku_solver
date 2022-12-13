@@ -390,6 +390,7 @@ impl<'a, const N: usize> Solver<'a, N> {
 
 /// 동일한 시드에 대해서 같은 퍼즐을 생성하는지 테스트
 #[test]
+#[cfg_attr(miri, ignore)] // 이 테스트는 miri test가 너무 오래걸려서 miri에서는 제외..
 fn same_seed_puzzle_test() {
     let mut t1 = Table::new_default_9();
     let mut solver1 = Solver::new(&mut t1);

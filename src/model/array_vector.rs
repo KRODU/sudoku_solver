@@ -65,6 +65,37 @@ impl<T, const N: usize> ArrayVector<T, N> {
             ptr::drop_in_place(slice);
         }
     }
+
+    pub fn swap_remove(&mut self, index: usize) -> Option<T> {
+        if index >= self.len {
+            return None;
+        }
+
+        unsafe {
+            let base_ptr = self.arr.as_mut_ptr() as *mut T;
+            let dst = base_ptr.add(index);
+            let ret = ptr::read(dst);
+            self.len -= 1;
+            let src = base_ptr.add(self.len);
+            ptr::copy(src, dst, 1);
+            Some(ret)
+        }
+    }
+
+    pub fn remove(&mut self, index: usize) -> Option<T> {
+        if index >= self.len {
+            return None;
+        }
+
+        unsafe {
+            let base_ptr = self.arr.as_mut_ptr() as *mut T;
+            let ptr = base_ptr.add(index);
+            let ret = ptr::read(ptr);
+            self.len -= 1;
+            ptr::copy(ptr.add(1), ptr, self.len - index);
+            Some(ret)
+        }
+    }
 }
 
 impl<T, const N: usize> Default for ArrayVector<T, N> {
@@ -295,7 +326,6 @@ mod array_vector_test {
         let into_iter = vec.into_iter();
         drop(into_iter);
         assert_eq!(*drop_order.borrow(), "0,1,2,3,4,5,6,");
-        assert_eq!(loop_cnt, 7);
         drop_order.borrow_mut().clear();
 
         //clear시 메모리 해제 테스트
@@ -351,6 +381,22 @@ mod array_vector_test {
         assert_eq!(*drop_order.borrow(), "3,4,5,6,");
         drop_order.borrow_mut().clear();
 
+        // swap_remove를 할 경우의 drop order 테스트
+        let mut vec = get_drop_test_vec(&drop_order);
+        vec.swap_remove(6);
+        vec.swap_remove(3);
+        drop(vec);
+        assert_eq!(*drop_order.borrow(), "6,3,0,1,2,5,4,");
+        drop_order.borrow_mut().clear();
+
+        // remove를 할 경우의 drop order 테스트
+        let mut vec = get_drop_test_vec(&drop_order);
+        vec.remove(6);
+        vec.remove(3);
+        drop(vec);
+        assert_eq!(*drop_order.borrow(), "6,3,0,1,2,4,5,");
+        drop_order.borrow_mut().clear();
+
         // 0 크기의 빈 배열에서의 메모리 해제 테스트
         let vec = ArrayVector::<DropTest, 0>::new();
         drop(vec);
@@ -363,7 +409,7 @@ mod array_vector_test {
         assert_eq!(*drop_order.borrow(), "");
         drop_order.borrow_mut().clear();
 
-        // 빈 into_iter drop시 메모리 해제 테스트
+        // 빈 into_iter를 drop시 메모리 해제 테스트
         let vec = ArrayVector::<DropTest, 15>::new();
         let into_iter = vec.into_iter();
         drop(into_iter);
