@@ -37,8 +37,7 @@ impl<T, const N: usize> ArrayVector<T, N> {
 
         unsafe {
             self.len -= 1;
-            let ptr = self.arr.get_unchecked(self.len).as_ptr();
-            Some(ptr::read(ptr))
+            Some(self.arr.get_unchecked(self.len).assume_init_read())
         }
     }
 
@@ -47,7 +46,7 @@ impl<T, const N: usize> ArrayVector<T, N> {
             return None;
         }
 
-        unsafe { Some(&*self.arr.get_unchecked(index).as_ptr()) }
+        unsafe { Some(self.arr.get_unchecked(index).assume_init_ref()) }
     }
 
     pub fn get_mut(&mut self, index: usize) -> Option<&mut T> {
@@ -55,17 +54,13 @@ impl<T, const N: usize> ArrayVector<T, N> {
             return None;
         }
 
-        unsafe { Some(&mut *self.arr.get_unchecked_mut(index).as_mut_ptr()) }
+        unsafe { Some(self.arr.get_unchecked_mut(index).assume_init_mut()) }
     }
 
     pub fn clear(&mut self) {
-        if N == 0 {
-            return;
-        }
-
         unsafe {
-            let ptr = self.arr.get_unchecked_mut(0).as_mut_ptr();
-            let slice = ptr::slice_from_raw_parts_mut(ptr, self.len);
+            let slice =
+                self.arr.get_unchecked_mut(..self.len) as *mut [MaybeUninit<T>] as *mut [T];
             self.len = 0;
             ptr::drop_in_place(slice);
         }
@@ -80,13 +75,9 @@ impl<T, const N: usize> Default for ArrayVector<T, N> {
 
 impl<T, const N: usize> Drop for ArrayVector<T, N> {
     fn drop(&mut self) {
-        if N == 0 {
-            return;
-        }
-
         unsafe {
-            let ptr = self.arr.get_unchecked_mut(0).as_mut_ptr();
-            let slice = ptr::slice_from_raw_parts_mut(ptr, self.len);
+            let slice =
+                self.arr.get_unchecked_mut(..self.len) as *mut [MaybeUninit<T>] as *mut [T];
             ptr::drop_in_place(slice);
         }
     }
@@ -100,7 +91,7 @@ impl<T, const N: usize> Index<usize> for ArrayVector<T, N> {
             panic!("ArrayVector_OUT_OF_INDEX");
         }
 
-        unsafe { &*self.arr.get_unchecked(index).as_ptr() }
+        unsafe { self.arr.get_unchecked(index).assume_init_ref() }
     }
 }
 
@@ -110,7 +101,7 @@ impl<T, const N: usize> IndexMut<usize> for ArrayVector<T, N> {
             panic!("ArrayVector_OUT_OF_INDEX");
         }
 
-        unsafe { &mut *self.arr.get_unchecked_mut(index).as_mut_ptr() }
+        unsafe { self.arr.get_unchecked_mut(index).assume_init_mut() }
     }
 }
 
@@ -141,8 +132,11 @@ impl<T, const N: usize> Iterator for IntoIterArrayVector<T, N> {
         }
 
         unsafe {
-            let ptr = self.array_vector.arr.get_unchecked(self.index).as_ptr();
-            let ret = ptr::read(ptr);
+            let ret = self
+                .array_vector
+                .arr
+                .get_unchecked(self.index)
+                .assume_init_read();
             self.index += 1;
             Some(ret)
         }
@@ -151,18 +145,11 @@ impl<T, const N: usize> Iterator for IntoIterArrayVector<T, N> {
 
 impl<T, const N: usize> Drop for IntoIterArrayVector<T, N> {
     fn drop(&mut self) {
-        let len = self.array_vector.len - self.index;
-        if len == 0 {
-            return;
-        }
+        let len = self.array_vector.len;
 
         unsafe {
-            let ptr = self
-                .array_vector
-                .arr
-                .get_unchecked_mut(self.index)
-                .as_mut_ptr();
-            let slice = ptr::slice_from_raw_parts_mut(ptr, len);
+            let slice = self.array_vector.arr.get_unchecked_mut(self.index..len)
+                as *mut [MaybeUninit<T>] as *mut [T];
             ptr::drop_in_place(slice);
         }
     }
@@ -194,9 +181,13 @@ impl<'a, T, const N: usize> Iterator for IterArrayVector<'a, T, N> {
         }
 
         unsafe {
-            let ptr = self.array_vector.arr.get_unchecked(self.index).as_ptr();
+            let ret = self
+                .array_vector
+                .arr
+                .get_unchecked(self.index)
+                .assume_init_ref();
             self.index += 1;
-            Some(&*ptr)
+            Some(ret)
         }
     }
 }
@@ -257,7 +248,7 @@ mod array_vector_test {
         }
     }
 
-    fn get_test_vec(drop_order: &Rc<RefCell<String>>) -> ArrayVector<DropTest, 15> {
+    fn get_drop_test_vec(drop_order: &Rc<RefCell<String>>) -> ArrayVector<DropTest, 15> {
         let mut vec = ArrayVector::<DropTest, 15>::new();
 
         for num in 0..=6 {
@@ -270,15 +261,27 @@ mod array_vector_test {
         vec
     }
 
+    fn get_test_vec() -> ArrayVector<usize, 15> {
+        let mut vec = ArrayVector::<usize, 15>::new();
+
+        for num in 0..=6 {
+            vec.push(num);
+        }
+
+        vec
+    }
+
     #[test]
     fn array_vector_drop_test() {
+        // drop시 메모리 해제 테스트
         let drop_order = Rc::new(RefCell::new(String::new()));
-        let vec = get_test_vec(&drop_order);
+        let vec = get_drop_test_vec(&drop_order);
         drop(vec);
         assert_eq!(*drop_order.borrow(), "0,1,2,3,4,5,6,");
         drop_order.borrow_mut().clear();
 
-        let vec = get_test_vec(&drop_order);
+        //into_iter시 메모리 해제 테스트
+        let vec = get_drop_test_vec(&drop_order);
         let mut loop_cnt = 0;
         for _t in vec {
             loop_cnt += 1;
@@ -287,29 +290,57 @@ mod array_vector_test {
         assert_eq!(loop_cnt, 7);
         drop_order.borrow_mut().clear();
 
-        let mut vec = get_test_vec(&drop_order);
+        //into_iter drop시 메모리 해제 테스트
+        let vec = get_drop_test_vec(&drop_order);
+        let into_iter = vec.into_iter();
+        drop(into_iter);
+        assert_eq!(*drop_order.borrow(), "0,1,2,3,4,5,6,");
+        assert_eq!(loop_cnt, 7);
+        drop_order.borrow_mut().clear();
+
+        //clear시 메모리 해제 테스트
+        let mut vec = get_drop_test_vec(&drop_order);
         vec.clear();
         assert_eq!(*drop_order.borrow(), "0,1,2,3,4,5,6,");
         drop_order.borrow_mut().clear();
         drop(vec);
 
-        let mut vec = get_test_vec(&drop_order);
+        // clear 후 drop시 메모리 해제 테스트
+        let mut vec = get_drop_test_vec(&drop_order);
         vec.clear();
         drop(vec);
         assert_eq!(*drop_order.borrow(), "0,1,2,3,4,5,6,");
         drop_order.borrow_mut().clear();
 
-        let mut vec = get_test_vec(&drop_order);
+        // pop을 할 경우 메모리 해제 테스트
+        let mut vec = get_drop_test_vec(&drop_order);
         loop_cnt = 0;
         while let Some(_t) = vec.pop() {
             loop_cnt += 1;
         }
-        drop(vec);
         assert_eq!(*drop_order.borrow(), "6,5,4,3,2,1,0,");
         assert_eq!(loop_cnt, 7);
         drop_order.borrow_mut().clear();
+        drop(vec);
+        assert_eq!(*drop_order.borrow(), "");
+        drop_order.borrow_mut().clear();
 
-        let vec = get_test_vec(&drop_order);
+        // pop하다가 clear할 경우의 메모리 해제 테스트
+        let mut vec = get_drop_test_vec(&drop_order);
+        assert_eq!(vec.pop().unwrap().num, 6);
+        assert_eq!(vec.pop().unwrap().num, 5);
+        assert_eq!(vec.pop().unwrap().num, 4);
+        assert_eq!(*drop_order.borrow(), "6,5,4,");
+        drop_order.borrow_mut().clear();
+        vec.clear();
+        assert_eq!(*drop_order.borrow(), "0,1,2,3,");
+        drop_order.borrow_mut().clear();
+        drop(vec);
+        assert_eq!(*drop_order.borrow(), "");
+        drop_order.borrow_mut().clear();
+
+        // into_iter에서 next하다가 into_iter가 drop될 경우의 메모리 해제 테스트
+        let vec = get_drop_test_vec(&drop_order);
         let mut into_iter = vec.into_iter();
         assert_eq!(into_iter.next().unwrap().num, 0);
         assert_eq!(into_iter.next().unwrap().num, 1);
@@ -319,5 +350,54 @@ mod array_vector_test {
         drop(into_iter); // 여기서 3,4,5,6이 drop되어야 함.
         assert_eq!(*drop_order.borrow(), "3,4,5,6,");
         drop_order.borrow_mut().clear();
+
+        // 0 크기의 빈 배열에서의 메모리 해제 테스트
+        let vec = ArrayVector::<DropTest, 0>::new();
+        drop(vec);
+        assert_eq!(*drop_order.borrow(), "");
+        drop_order.borrow_mut().clear();
+
+        // 15 크기의 빈 배열에서의 메모리 해제 테스트
+        let vec = ArrayVector::<DropTest, 15>::new();
+        drop(vec);
+        assert_eq!(*drop_order.borrow(), "");
+        drop_order.borrow_mut().clear();
+
+        // 빈 into_iter drop시 메모리 해제 테스트
+        let vec = ArrayVector::<DropTest, 15>::new();
+        let into_iter = vec.into_iter();
+        drop(into_iter);
+        assert_eq!(*drop_order.borrow(), "");
+        drop_order.borrow_mut().clear();
+    }
+
+    #[test]
+    #[should_panic(expected = "ArrayVector의 사이즈는 const N을 초과할 수 없음")]
+    fn zero_size_panic() {
+        let mut vec = ArrayVector::<usize, 0>::new();
+        vec.push(0); // 여기서 panic
+    }
+
+    #[test]
+    fn iter_test() {
+        let mut vec = get_test_vec();
+        let mut comp_value = 0_usize;
+        for &value in &vec {
+            assert_eq!(comp_value, value);
+            comp_value += 1;
+        }
+        assert_eq!(comp_value - 1, 6);
+
+        // mut 로 변경 후 비교
+        for value in &mut vec {
+            *value += 3;
+        }
+
+        comp_value = 3;
+        for &value in &vec {
+            assert_eq!(comp_value, value);
+            comp_value += 1;
+        }
+        assert_eq!(comp_value - 1, 9);
     }
 }

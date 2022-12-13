@@ -14,8 +14,7 @@ where
     }
 
     let mut result: Vec<&T> = Vec::with_capacity(len);
-    let mut stop_this = false;
-    combinations_recur(arr, len, 0, &mut result, &mut stop_this, &mut f);
+    combinations_recur(arr, len, 0, &mut result, &mut f);
 }
 
 fn combinations_recur<'a, T, F>(
@@ -23,23 +22,23 @@ fn combinations_recur<'a, T, F>(
     len: usize,
     start_position: usize,
     result: &mut Vec<&'a T>,
-    stop_this: &mut bool,
     f: &mut F,
-) where
+) -> bool
+where
     F: FnMut(&Vec<&T>) -> bool,
 {
     if len == 0 {
-        *stop_this = !f(result);
-        return;
+        return !f(result);
     }
     for i in start_position..=arr.len() - len {
-        if *stop_this {
-            return;
-        }
         result.push(&arr[i]);
-        combinations_recur(arr, len - 1, i + 1, result, stop_this, f);
+        if combinations_recur(arr, len - 1, i + 1, result, f) {
+            return true;
+        }
         result.pop();
     }
+
+    false
 }
 
 #[test]
