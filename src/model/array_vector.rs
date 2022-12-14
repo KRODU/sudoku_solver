@@ -1,5 +1,6 @@
 use core::panic;
 use std::{
+    fmt::{Debug, Display},
     mem::{ManuallyDrop, MaybeUninit},
     ops::{Index, IndexMut},
     ptr,
@@ -41,6 +42,10 @@ impl<T, const N: usize> ArrayVector<T, N> {
         }
     }
 
+    pub fn len(&self) -> usize {
+        self.len
+    }
+
     pub fn get(&self, index: usize) -> Option<&T> {
         if index >= self.len {
             return None;
@@ -63,6 +68,14 @@ impl<T, const N: usize> ArrayVector<T, N> {
                 self.arr.get_unchecked_mut(..self.len) as *mut [MaybeUninit<T>] as *mut [T];
             self.len = 0;
             ptr::drop_in_place(slice);
+        }
+    }
+
+    pub fn get_init_slice(&self) -> &[T] {
+        unsafe {
+            let slice =
+                &*(self.arr.get_unchecked(..self.len) as *const [MaybeUninit<T>] as *const [T]);
+            slice
         }
     }
 
@@ -96,6 +109,14 @@ impl<T, const N: usize> ArrayVector<T, N> {
             Some(ret)
         }
     }
+
+    pub fn iter(&self) -> IterArrayVector<T, N> {
+        self.into_iter()
+    }
+
+    pub fn iter_mut(&mut self) -> IterMutArrayVector<T, N> {
+        self.into_iter()
+    }
 }
 
 impl<T, const N: usize> Default for ArrayVector<T, N> {
@@ -111,6 +132,55 @@ impl<T, const N: usize> Drop for ArrayVector<T, N> {
                 self.arr.get_unchecked_mut(..self.len) as *mut [MaybeUninit<T>] as *mut [T];
             ptr::drop_in_place(slice);
         }
+    }
+}
+
+impl<T, const N: usize> Clone for ArrayVector<T, N>
+where
+    T: Clone,
+{
+    fn clone(&self) -> Self {
+        let mut ret = ArrayVector::new();
+
+        for ele in self {
+            ret.push(ele.clone());
+        }
+
+        ret
+    }
+}
+
+impl<T, const N: usize> Debug for ArrayVector<T, N>
+where
+    T: Debug,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ArrayVector")
+            .field("arr", &self.get_init_slice())
+            .field("len", &self.len)
+            .finish()
+    }
+}
+
+impl<T, const N: usize> Display for ArrayVector<T, N>
+where
+    T: Display,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut arr_str = String::new();
+        arr_str.push('[');
+        for ele in self {
+            arr_str.push_str(&ele.to_string());
+            arr_str.push_str(", ");
+        }
+
+        if arr_str.len() > 1 {
+            arr_str.pop();
+            arr_str.pop();
+        }
+
+        arr_str.push(']');
+        write!(f, "{}", &arr_str)
     }
 }
 
@@ -409,7 +479,14 @@ mod array_vector_test {
         assert_eq!(*drop_order.borrow(), "");
         drop_order.borrow_mut().clear();
 
-        // 빈 into_iter를 drop시 메모리 해제 테스트
+        // 0 크기의 빈 into_iter를 drop시 메모리 해제 테스트
+        let vec = ArrayVector::<DropTest, 0>::new();
+        let into_iter = vec.into_iter();
+        drop(into_iter);
+        assert_eq!(*drop_order.borrow(), "");
+        drop_order.borrow_mut().clear();
+
+        // 15 크기의 빈 into_iter를 drop시 메모리 해제 테스트
         let vec = ArrayVector::<DropTest, 15>::new();
         let into_iter = vec.into_iter();
         drop(into_iter);
@@ -419,9 +496,40 @@ mod array_vector_test {
 
     #[test]
     #[should_panic(expected = "ArrayVector의 사이즈는 const N을 초과할 수 없음")]
-    fn zero_size_panic() {
+    fn zero_size_push_panic() {
         let mut vec = ArrayVector::<usize, 0>::new();
         vec.push(0); // 여기서 panic
+    }
+
+    #[test]
+    #[should_panic(expected = "ArrayVector_OUT_OF_INDEX")]
+    fn zero_size_index_panic() {
+        let vec = ArrayVector::<usize, 15>::new();
+        let _m = vec[0]; // 여기서 panic
+    }
+
+    #[test]
+    #[should_panic(expected = "ArrayVector_OUT_OF_INDEX")]
+    fn zero_size_index_mut_panic() {
+        let mut vec = ArrayVector::<usize, 15>::new();
+        vec[0] += 5; // 여기서 panic
+    }
+
+    #[test]
+    fn fmt_test() {
+        let vec = get_test_vec();
+        assert_eq!(
+            format!("{:?}", vec),
+            "ArrayVector { arr: [0, 1, 2, 3, 4, 5, 6], len: 7 }"
+        );
+        assert_eq!(vec.to_string(), "[0, 1, 2, 3, 4, 5, 6]");
+
+        let empty_vec = ArrayVector::<usize, 15>::new();
+        assert_eq!(
+            format!("{:?}", empty_vec),
+            "ArrayVector { arr: [], len: 0 }"
+        );
+        assert_eq!(empty_vec.to_string(), "[]");
     }
 
     #[test]
@@ -430,6 +538,13 @@ mod array_vector_test {
         let mut comp_value = 0_usize;
         for &value in &vec {
             assert_eq!(comp_value, value);
+            comp_value += 1;
+        }
+        assert_eq!(comp_value - 1, 6);
+
+        comp_value = 0;
+        for index in 0..=6 {
+            assert_eq!(vec[index], comp_value);
             comp_value += 1;
         }
         assert_eq!(comp_value - 1, 6);
@@ -445,5 +560,16 @@ mod array_vector_test {
             comp_value += 1;
         }
         assert_eq!(comp_value - 1, 9);
+
+        for index in 0..=6 {
+            vec[index] += 3;
+        }
+
+        comp_value = 6;
+        for index in 0..=6 {
+            assert_eq!(vec[index], comp_value);
+            comp_value += 1;
+        }
+        assert_eq!(comp_value - 1, 12);
     }
 }
