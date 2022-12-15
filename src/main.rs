@@ -1,13 +1,8 @@
-use crate::model::table::{self, Table};
-use crate::solver::solver_simple::SolverSimple;
 use enum_iterator::all;
-use solver::Solver;
 use std::time::Instant;
-
-mod combinations;
-mod model;
-pub mod num_check;
-pub mod solver;
+use sudoku_solver_lib::model::table::Table;
+use sudoku_solver_lib::solver::solver_simple::SolverSimple;
+use sudoku_solver_lib::solver::Solver;
 
 fn main() {
     std::env::set_var("RUST_BACKTRACE", "full");

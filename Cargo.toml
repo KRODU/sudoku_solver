@@ -5,12 +5,27 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[lib]
+name = "sudoku_solver_lib"
+path = "src/lib.rs"
+
+[[bin]]
+name = "sudoku_solver_bin"
+path = "src/main.rs"
+
 [dependencies]
 hashbrown = "0.13"
 ahash = "0.8"
 rand = { version = "0.8", features = ["std_rng"] }
 enum-iterator = "1.1"
 scoped_threadpool = "0.1"
+
+[dev-dependencies]
+criterion = "0.4"
+
+[[bench]]
+name = "sudoku_benchmark"
+harness = false
 
 [profile.release]
 opt-level = 3

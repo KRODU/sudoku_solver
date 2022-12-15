@@ -1,7 +1,7 @@
 use self::solver_history::{SolverHistory, SolverHistoryType, SolverResult};
 use self::solver_simple::SolverSimple;
+use crate::model::table::Table;
 use crate::model::{cell::Cell, cell_with_read::CellWithRead, ref_zone::RefZone, zone::Zone};
-use crate::table::Table;
 use enum_iterator::all;
 use hashbrown::{HashMap, HashSet};
 use rand::{prelude::StdRng, RngCore, SeedableRng};
