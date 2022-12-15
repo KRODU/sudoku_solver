@@ -1,10 +1,13 @@
+use crate::model::array_vector::ArrayVector;
 use hashbrown::HashSet;
+
+type ChkListType = (usize, Option<usize>);
 
 #[derive(Debug)]
 pub struct NumCheck<const N: usize> {
-    chk_list: [(usize, Option<usize>); N],
+    chk_list: [ChkListType; N],
     /// 값은 1부터 들어갑니다.
-    true_list: Vec<usize>,
+    true_list: ArrayVector<usize, N>,
     true_cnt: usize,
     final_num: Option<usize>,
 }
@@ -17,7 +20,7 @@ impl<const N: usize> NumCheck<N> {
         }
 
         let mut chk_list = Vec::with_capacity(N);
-        let mut true_list = Vec::with_capacity(N);
+        let mut true_list = ArrayVector::new();
 
         for n in 1..=N {
             chk_list.push((n, Some(n - 1)));
@@ -39,7 +42,7 @@ impl<const N: usize> NumCheck<N> {
         }
 
         let mut chk_list = Vec::with_capacity(N);
-        let true_list = Vec::with_capacity(N);
+        let true_list = ArrayVector::new();
 
         for n in 1..=N {
             chk_list.push((n, None));
@@ -90,7 +93,7 @@ impl<const N: usize> NumCheck<N> {
     }
 
     /// chk_list에 포함된 노트만 true이며 그 외엔 false입니다.
-    pub fn set_to_chk_list(&mut self, chk_list: &Vec<usize>) {
+    pub fn set_to_chk_list(&mut self, chk_list: &ArrayVector<usize, N>) {
         self.true_cnt = 0;
         self.chk_list.iter_mut().for_each(|(_, b)| *b = None);
         self.true_list.clear();
@@ -122,7 +125,7 @@ impl<const N: usize> NumCheck<N> {
     }
 
     /// 지정된 리스트의 값을 모두 false로 지정합니다.
-    pub fn set_to_false_list(&mut self, list: &Vec<usize>) {
+    pub fn set_to_false_list(&mut self, list: &ArrayVector<usize, N>) {
         for i in list {
             self.set_chk(*i, false);
         }
@@ -143,7 +146,7 @@ impl<const N: usize> NumCheck<N> {
     }
 
     /// true인 목록을 복사하여 Vec으로 반환합니다.
-    pub fn clone_chk_list_vec(&self) -> Vec<usize> {
+    pub fn clone_chk_list_vec(&self) -> ArrayVector<usize, N> {
         self.true_list.clone()
     }
 

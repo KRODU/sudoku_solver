@@ -3,8 +3,8 @@ use super::{
     solver_simple::SolverSimple,
     Solver,
 };
-use crate::combinations::combinations;
 use crate::model::{cell::Cell, cell_with_read::CellWithRead, ref_zone::RefZone, zone::ZoneType};
+use crate::{combinations::combinations, model::array_vector::ArrayVector};
 use hashbrown::HashSet;
 use std::sync::Mutex;
 
@@ -68,7 +68,7 @@ impl<'a, const N: usize> Solver<'a, N> {
                     return true;
                 }
 
-                let mut effect_cells: Vec<(&Cell<N>, Vec<usize>)> = Vec::new();
+                let mut effect_cells: Vec<(&Cell<N>, ArrayVector<usize, N>)> = Vec::new();
                 // zone을 순회하며 삭제할 노트가 있는지 찾음
                 for zone_cell in cell_list {
                     // 순회 대상에서 자기 자신은 제외
@@ -81,7 +81,7 @@ impl<'a, const N: usize> Solver<'a, N> {
 
                     // 제거할 노트를 발견한 경우
                     if !inter.is_empty() {
-                        let mut note: Vec<usize> = inter.into_iter().collect();
+                        let mut note: ArrayVector<usize, N> = inter.into_iter().collect();
                         note.sort_unstable();
                         effect_cells.push((zone_cell.cell, note));
                     }

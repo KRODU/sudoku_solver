@@ -1,4 +1,4 @@
-use crate::model::cell::Cell;
+use crate::model::{array_vector::ArrayVector, cell::Cell};
 
 #[derive(Debug)]
 pub enum SolverResultDetail {
@@ -10,7 +10,7 @@ pub enum SolverResultDetail {
 #[derive(Debug)]
 pub struct SolverResult<'a, const N: usize> {
     pub solver_type: SolverResultDetail,
-    pub effect_cells: Vec<(&'a Cell<N>, Vec<usize>)>,
+    pub effect_cells: Vec<(&'a Cell<N>, ArrayVector<usize, N>)>,
 }
 
 #[derive(Debug)]
@@ -32,5 +32,5 @@ pub enum SolverHistoryType<'a, const N: usize> {
 #[derive(Debug)]
 pub struct SolverHistory<'a, const N: usize> {
     pub history_type: SolverHistoryType<'a, N>,
-    pub backup_chk: Vec<(&'a Cell<N>, Vec<usize>)>,
+    pub backup_chk: Vec<(&'a Cell<N>, ArrayVector<usize, N>)>,
 }

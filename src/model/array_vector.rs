@@ -1,8 +1,9 @@
 use core::panic;
 use std::{
     fmt::{Debug, Display},
+    hash::Hash,
     mem::{ManuallyDrop, MaybeUninit},
-    ops::{Index, IndexMut},
+    ops::{Deref, DerefMut, Index, IndexMut},
     ptr,
 };
 
@@ -75,11 +76,13 @@ impl<T, const N: usize> ArrayVector<T, N> {
         }
     }
 
-    pub fn get_init_slice(&self) -> &[T] {
+    pub fn get_slice(&self) -> &[T] {
+        unsafe { &*(self.arr.get_unchecked(..self.len) as *const [MaybeUninit<T>] as *const [T]) }
+    }
+
+    pub fn get_mut_slice(&mut self) -> &mut [T] {
         unsafe {
-            let slice =
-                &*(self.arr.get_unchecked(..self.len) as *const [MaybeUninit<T>] as *const [T]);
-            slice
+            &mut *(self.arr.get_unchecked_mut(..self.len) as *mut [MaybeUninit<T>] as *mut [T])
         }
     }
 
@@ -160,7 +163,7 @@ where
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("ArrayVector")
-            .field("arr", &self.get_init_slice())
+            .field("arr", &self.get_slice())
             .field("len", &self.len)
             .finish()
     }
@@ -188,6 +191,28 @@ where
     }
 }
 
+impl<T, const N: usize> Hash for ArrayVector<T, N>
+where
+    T: Hash,
+{
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.get_slice().hash(state);
+        self.len.hash(state);
+    }
+}
+
+impl<T, const N: usize> FromIterator<T> for ArrayVector<T, N> {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+        let mut ret = ArrayVector::new();
+
+        for val in iter {
+            ret.push(val);
+        }
+
+        ret
+    }
+}
+
 impl<T, const N: usize> Index<usize> for ArrayVector<T, N> {
     type Output = T;
 
@@ -207,6 +232,20 @@ impl<T, const N: usize> IndexMut<usize> for ArrayVector<T, N> {
         }
 
         unsafe { self.arr.get_unchecked_mut(index).assume_init_mut() }
+    }
+}
+
+impl<T, const N: usize> Deref for ArrayVector<T, N> {
+    type Target = [T];
+
+    fn deref(&self) -> &Self::Target {
+        self.get_slice()
+    }
+}
+
+impl<T, const N: usize> DerefMut for ArrayVector<T, N> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.get_mut_slice()
     }
 }
 
@@ -575,5 +614,19 @@ mod array_vector_test {
             comp_value += 1;
         }
         assert_eq!(comp_value - 1, 12);
+    }
+
+    #[test]
+    fn deref_test() {
+        let mut vec = ArrayVector::<usize, 15>::new();
+        vec.push(8);
+        vec.push(0);
+        vec.push(3);
+        vec.push(7);
+        vec.sort_unstable();
+        assert_eq!(vec.to_string(), "[0, 3, 7, 8]");
+        let (left, right) = vec.split_at(2);
+        assert_eq!(left, &[0, 3]);
+        assert_eq!(right, &[7, 8]);
     }
 }

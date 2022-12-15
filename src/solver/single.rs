@@ -1,6 +1,7 @@
 use super::solver_history::{SolverResult, SolverResultDetail};
 use super::solver_simple::SolverSimple;
 use super::Solver;
+use crate::model::array_vector::ArrayVector;
 use crate::model::{cell::Cell, ref_zone::RefZone, zone::ZoneType};
 
 impl<'a, const N: usize> Solver<'a, N> {
@@ -14,7 +15,7 @@ impl<'a, const N: usize> Solver<'a, N> {
 
             for c in &z.cells {
                 let Some(final_num) = c.read.get_final_num() else { continue; };
-                let mut effect_cells: Vec<(&Cell<N>, Vec<usize>)> = Vec::new();
+                let mut effect_cells: Vec<(&Cell<N>, ArrayVector<usize, N>)> = Vec::new();
 
                 for c_comp in &z.cells {
                     // 노트가 확정된 경우 Zone을 순회하면서 해당 노트를 가진 cell이 있나 찾음
@@ -26,7 +27,9 @@ impl<'a, const N: usize> Solver<'a, N> {
 
                     // 찾음
                     if c_comp.read.get_chk(final_num) {
-                        effect_cells.push((c_comp.cell, vec![final_num]));
+                        let mut note_vec = ArrayVector::new();
+                        note_vec.push(final_num);
+                        effect_cells.push((c_comp.cell, note_vec));
                     }
                 }
 

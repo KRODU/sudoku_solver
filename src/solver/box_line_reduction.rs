@@ -3,7 +3,7 @@ use super::{
     solver_simple::SolverSimple,
     Solver,
 };
-use crate::model::{cell::Cell, ref_zone::RefZone, zone::ZoneType};
+use crate::model::{array_vector::ArrayVector, cell::Cell, ref_zone::RefZone, zone::ZoneType};
 use hashbrown::HashSet;
 
 impl<'a, const N: usize> Solver<'a, N> {
@@ -53,7 +53,8 @@ impl<'a, const N: usize> Solver<'a, N> {
                     });
 
                     if target_this_note {
-                        let mut effect_cells: Vec<(&'a Cell<N>, Vec<usize>)> = Vec::new();
+                        let mut effect_cells: Vec<(&'a Cell<N>, ArrayVector<usize, N>)> =
+                            Vec::new();
 
                         for z2_cell in &z2_ref.cells {
                             if z2_cell.cell.zone_set.contains(z1.zone) {
@@ -61,7 +62,9 @@ impl<'a, const N: usize> Solver<'a, N> {
                             }
 
                             if z2_cell.read.get_chk(note) {
-                                effect_cells.push((z2_cell.cell, vec![note]));
+                                let mut note_vec = ArrayVector::new();
+                                note_vec.push(note);
+                                effect_cells.push((z2_cell.cell, note_vec));
                             }
                         }
 
