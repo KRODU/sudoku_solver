@@ -1,14 +1,18 @@
 use std::ops::Deref;
 
-use crate::model::array_vector::{ArrayVector, IntoIterArrayVector};
+use crate::model::{
+    array_note::ArrayNote,
+    array_vector::{ArrayVector, IntoIterArrayVector},
+    note::Note,
+};
 
 #[derive(Debug)]
 pub struct NumCheck<const N: usize> {
-    chk_list: [Option<usize>; N],
+    chk_list: ArrayNote<Option<usize>, N>,
     /// 값의 순서는 무작위로 섞일 수 있습니다.
-    true_list: ArrayVector<usize, N>,
+    true_list: ArrayVector<Note<N>, N>,
     true_cnt: usize,
-    final_num: Option<usize>,
+    final_num: Option<Note<N>>,
 }
 
 impl<const N: usize> NumCheck<N> {
@@ -23,11 +27,11 @@ impl<const N: usize> NumCheck<N> {
 
         for (n, item) in chk_list.iter_mut().enumerate() {
             *item = Some(n);
-            true_list.push(n + 1);
+            true_list.push(Note::new(n + 1));
         }
 
         NumCheck {
-            chk_list,
+            chk_list: ArrayNote::new(chk_list),
             true_list,
             true_cnt: N,
             final_num: None,
@@ -43,7 +47,7 @@ impl<const N: usize> NumCheck<N> {
         let true_list = ArrayVector::new();
 
         NumCheck {
-            chk_list: [None; N],
+            chk_list: ArrayNote::new([None; N]),
             true_list,
             true_cnt: N,
             final_num: None,
@@ -51,22 +55,22 @@ impl<const N: usize> NumCheck<N> {
     }
 
     #[must_use]
-    pub fn get_chk(&self, num: usize) -> bool {
-        self.chk_list[num - 1].is_some()
+    pub fn get_chk(&self, num: Note<N>) -> bool {
+        self.chk_list[num].is_some()
     }
 
     /// 사용 가능한 노트 중 가장 작은 값을 반환.
     /// 만약 사용 가능한 값이 없다면 None을 반환.
     #[must_use]
-    pub fn get_minimum_chk(&self) -> Option<usize> {
+    pub fn get_minimum_chk(&self) -> Option<Note<N>> {
         self.chk_list
             .iter()
             .enumerate()
             .find(|(_, b)| b.is_some())
-            .map(|(n, _)| n + 1)
+            .map(|(n, _)| Note::new(n + 1))
     }
 
-    pub fn set_chk(&mut self, num: usize, chk: bool) {
+    pub fn set_chk(&mut self, num: Note<N>, chk: bool) {
         if chk {
             self.set_true(num);
         } else {
@@ -74,45 +78,45 @@ impl<const N: usize> NumCheck<N> {
         }
     }
 
-    pub fn set_true(&mut self, num: usize) {
-        if self.chk_list[num - 1].is_some() {
+    pub fn set_true(&mut self, num: Note<N>) {
+        if self.chk_list[num].is_some() {
             return;
         }
 
         self.true_cnt += 1;
         self.true_list.push(num);
-        self.chk_list[num - 1] = Some(self.true_list.len() - 1);
+        self.chk_list[num] = Some(self.true_list.len() - 1);
 
         self.set_to_final_num();
     }
 
-    pub fn set_false(&mut self, num: usize) {
-        let Some(remove_index) = self.chk_list[num - 1] else {
+    pub fn set_false(&mut self, num: Note<N>) {
+        let Some(remove_index) = self.chk_list[num] else {
             return;
         };
 
         self.true_cnt -= 1;
         self.true_list.swap_remove(remove_index);
         if let Some(swap_node) = self.true_list.get(remove_index) {
-            self.chk_list[swap_node - 1] = Some(remove_index);
+            self.chk_list[*swap_node] = Some(remove_index);
         }
-        self.chk_list[num - 1] = None;
+        self.chk_list[num] = None;
 
         self.set_to_final_num();
     }
 
     /// chk_list에 포함된 노트만 true이며 그 외엔 false입니다.
-    pub fn set_to_chk_list(&mut self, chk_list: &ArrayVector<usize, N>) {
+    pub fn set_to_chk_list(&mut self, chk_list: &ArrayVector<Note<N>, N>) {
         self.true_cnt = 0;
-        self.chk_list = [None; N];
+        self.chk_list = ArrayNote::new([None; N]);
         self.true_list.clear();
 
         for &n in chk_list {
-            if self.chk_list[n - 1].is_some() {
+            if self.chk_list[n].is_some() {
                 continue;
             }
 
-            self.chk_list[n - 1] = Some(self.true_cnt);
+            self.chk_list[n] = Some(self.true_cnt);
             self.true_list.push(n);
             self.true_cnt += 1;
         }
@@ -123,15 +127,15 @@ impl<const N: usize> NumCheck<N> {
     // 모든 노트를 false로 설정합니다.
     pub fn set_all_false(&mut self) {
         self.true_cnt = 0;
-        self.chk_list = [None; N];
+        self.chk_list = ArrayNote::new([None; N]);
         self.true_list.clear();
         self.final_num = None;
     }
 
     /// 하나의 값으로 이 노트를 확정합니다.
-    pub fn set_to_value(&mut self, value: usize) {
-        self.chk_list = [None; N];
-        self.chk_list[value - 1] = Some(0);
+    pub fn set_to_value(&mut self, value: Note<N>) {
+        self.chk_list = ArrayNote::new([None; N]);
+        self.chk_list[value] = Some(0);
 
         self.true_list.clear();
         self.true_list.push(value);
@@ -142,7 +146,7 @@ impl<const N: usize> NumCheck<N> {
     }
 
     /// 지정된 리스트의 값을 모두 false로 지정합니다.
-    pub fn set_to_false_list(&mut self, list: &ArrayVector<usize, N>) {
+    pub fn set_to_false_list(&mut self, list: &ArrayVector<Note<N>, N>) {
         for i in list {
             self.set_false(*i);
         }
@@ -163,18 +167,18 @@ impl<const N: usize> NumCheck<N> {
     }
 
     /// true인 목록을 복사하여 Vec으로 반환합니다.
-    pub fn clone_chk_list_vec(&self) -> ArrayVector<usize, N> {
+    pub fn clone_chk_list_vec(&self) -> ArrayVector<Note<N>, N> {
         self.true_list.clone()
     }
 
     /// 최종 값을 반환합니다. 확정되지 않은 경우 None 입니다.
-    pub fn get_final_num(&self) -> Option<usize> {
+    pub fn get_final_num(&self) -> Option<Note<N>> {
         self.final_num
     }
 
     /// 이 노트와 다른 노트를 비교하여 완전히 같은 경우 true
     pub fn is_same_note(&self, num_check: &NumCheck<N>) -> bool {
-        for n in 0..N {
+        for n in Note::<N>::note_iter() {
             if self.chk_list[n].is_some() != num_check.chk_list[n].is_some() {
                 return false;
             }
@@ -187,9 +191,9 @@ impl<const N: usize> NumCheck<N> {
     pub fn intersection_note(&self, num_check: &NumCheck<N>) -> NumCheck<N> {
         let mut ret = NumCheck::new_with_false();
 
-        for n in 0..N {
-            if self.chk_list[n].is_some() && num_check.chk_list[n].is_some() {
-                ret.set_true(n + 1);
+        for &true_value in &self.true_list {
+            if num_check.chk_list[true_value].is_some() {
+                ret.set_true(true_value);
             }
         }
 
@@ -197,7 +201,7 @@ impl<const N: usize> NumCheck<N> {
     }
 
     /// 이 노트와 다른 노트를 비교하여 합집합 노트를 만듭니다.
-    pub fn union_note_hash(&self, num_check: &mut NumCheck<N>) {
+    pub fn union_note(&self, num_check: &mut NumCheck<N>) {
         for true_value in &self.true_list {
             num_check.set_true(*true_value);
         }
@@ -220,8 +224,8 @@ impl<const N: usize> NumCheck<N> {
             assert_eq!(self.get_minimum_chk().unwrap(), self.final_num.unwrap());
         }
 
-        for n in 1..=N {
-            if let Some(index) = self.chk_list[n - 1] {
+        for n in Note::<N>::note_iter() {
+            if let Some(index) = self.chk_list[n] {
                 assert_eq!(self.true_list[index], n);
             }
         }
@@ -237,8 +241,8 @@ impl<const N: usize> Default for NumCheck<N> {
 }
 
 impl<const N: usize> IntoIterator for NumCheck<N> {
-    type Item = usize;
-    type IntoIter = IntoIterArrayVector<usize, N>;
+    type Item = Note<N>;
+    type IntoIter = IntoIterArrayVector<Note<N>, N>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.true_list.into_iter()
@@ -246,8 +250,8 @@ impl<const N: usize> IntoIterator for NumCheck<N> {
 }
 
 impl<'a, const N: usize> IntoIterator for &'a NumCheck<N> {
-    type Item = &'a usize;
-    type IntoIter = std::slice::Iter<'a, usize>;
+    type Item = &'a Note<N>;
+    type IntoIter = std::slice::Iter<'a, Note<N>>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.true_list.iter()
@@ -255,7 +259,7 @@ impl<'a, const N: usize> IntoIterator for &'a NumCheck<N> {
 }
 
 impl<const N: usize> Deref for NumCheck<N> {
-    type Target = [usize];
+    type Target = [Note<N>];
 
     fn deref(&self) -> &Self::Target {
         self.true_list.get_slice()

@@ -3,7 +3,7 @@ use std::{
     fmt::{Debug, Display},
     hash::Hash,
     mem::{ManuallyDrop, MaybeUninit},
-    ops::{Deref, DerefMut, Index, IndexMut},
+    ops::{Deref, DerefMut},
     ptr,
 };
 
@@ -69,10 +69,8 @@ impl<T, const N: usize> ArrayVector<T, N> {
 
     pub fn clear(&mut self) {
         unsafe {
-            let slice =
-                self.arr.get_unchecked_mut(..self.len) as *mut [MaybeUninit<T>] as *mut [T];
+            ptr::drop_in_place(self.get_mut_slice_ptr());
             self.len = 0;
-            ptr::drop_in_place(slice);
         }
     }
 
@@ -84,6 +82,10 @@ impl<T, const N: usize> ArrayVector<T, N> {
         unsafe {
             &mut *(self.arr.get_unchecked_mut(..self.len) as *mut [MaybeUninit<T>] as *mut [T])
         }
+    }
+
+    pub fn get_mut_slice_ptr(&mut self) -> *mut [T] {
+        unsafe { self.arr.get_unchecked_mut(..self.len) as *mut [MaybeUninit<T>] as *mut [T] }
     }
 
     pub fn swap_remove(&mut self, index: usize) -> Option<T> {
@@ -127,9 +129,7 @@ impl<T, const N: usize> Default for ArrayVector<T, N> {
 impl<T, const N: usize> Drop for ArrayVector<T, N> {
     fn drop(&mut self) {
         unsafe {
-            let slice =
-                self.arr.get_unchecked_mut(..self.len) as *mut [MaybeUninit<T>] as *mut [T];
-            ptr::drop_in_place(slice);
+            ptr::drop_in_place(self.get_mut_slice_ptr());
         }
     }
 }
@@ -202,28 +202,6 @@ impl<T, const N: usize> FromIterator<T> for ArrayVector<T, N> {
         }
 
         ret
-    }
-}
-
-impl<T, const N: usize> Index<usize> for ArrayVector<T, N> {
-    type Output = T;
-
-    fn index(&self, index: usize) -> &Self::Output {
-        if index >= self.len {
-            panic!("ArrayVector_OUT_OF_INDEX");
-        }
-
-        unsafe { self.arr.get_unchecked(index).assume_init_ref() }
-    }
-}
-
-impl<T, const N: usize> IndexMut<usize> for ArrayVector<T, N> {
-    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        if index >= self.len {
-            panic!("ArrayVector_OUT_OF_INDEX");
-        }
-
-        unsafe { self.arr.get_unchecked_mut(index).assume_init_mut() }
     }
 }
 
@@ -481,14 +459,14 @@ mod array_vector_test {
     }
 
     #[test]
-    #[should_panic(expected = "ArrayVector_OUT_OF_INDEX")]
+    #[should_panic(expected = "index out of bounds: the len is 0 but the index is 0")]
     fn zero_size_index_panic() {
         let vec = ArrayVector::<usize, 15>::new();
         let _m = vec[0]; // 여기서 panic
     }
 
     #[test]
-    #[should_panic(expected = "ArrayVector_OUT_OF_INDEX")]
+    #[should_panic(expected = "index out of bounds: the len is 0 but the index is 0")]
     fn zero_size_index_mut_panic() {
         let mut vec = ArrayVector::<usize, 15>::new();
         vec[0] += 5; // 여기서 panic

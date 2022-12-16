@@ -10,7 +10,7 @@ pub enum SolverSimple {
 }
 
 impl SolverSimple {
-    pub fn convert_detail_to_simple(detail: &SolverResultDetail) -> Self {
+    pub fn convert_detail_to_simple<const N: usize>(detail: &SolverResultDetail<N>) -> Self {
         match detail {
             SolverResultDetail::Single { .. } => SolverSimple::Single,
             SolverResultDetail::Naked { .. } => SolverSimple::Naked,

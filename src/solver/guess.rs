@@ -1,5 +1,6 @@
 use super::solver_history::{SolverHistory, SolverHistoryType};
 use super::Solver;
+use crate::model::note::Note;
 use crate::model::{cell::Cell, ref_zone::RefZone};
 use rand::Rng;
 
@@ -48,7 +49,7 @@ impl<'a, const N: usize> Solver<'a, N> {
     /// 이 함수는 노트의 값을 변경시키기에 다른 스레드에서 값을 읽는중이면 안됩니다.
     ///
     /// 히스토리에 Guess를 추가합니다.
-    pub fn guess_mut_something(&mut self, cell: &'a Cell<N>, final_num: usize) {
+    pub fn guess_mut_something(&mut self, cell: &'a Cell<N>, final_num: Note<N>) {
         let mut b = cell.chk.write().unwrap();
 
         // 불가능한 값으로 guess할 경우 panic 발생

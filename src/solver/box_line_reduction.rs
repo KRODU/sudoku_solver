@@ -4,7 +4,7 @@ use super::{
     Solver,
 };
 use crate::{
-    model::{array_vector::ArrayVector, cell::Cell, ref_zone::RefZone, zone::ZoneType},
+    model::{array_vector::ArrayVector, cell::Cell, note::Note, ref_zone::RefZone, zone::ZoneType},
     num_check::NumCheck,
 };
 use hashbrown::HashSet;
@@ -32,7 +32,7 @@ impl<'a, const N: usize> Solver<'a, N> {
                     .fold(NumCheck::new_with_false(), |mut h, c| {
                         let read = &c.read;
                         if read.get_true_cnt() > 1 {
-                            read.union_note_hash(&mut h);
+                            read.union_note(&mut h);
                         }
                         h
                     });
@@ -58,7 +58,7 @@ impl<'a, const N: usize> Solver<'a, N> {
                     });
 
                     if target_this_note {
-                        let mut effect_cells: Vec<(&'a Cell<N>, ArrayVector<usize, N>)> =
+                        let mut effect_cells: Vec<(&'a Cell<N>, ArrayVector<Note<N>, N>)> =
                             Vec::new();
 
                         for z2_cell in &z2_ref.cells {
