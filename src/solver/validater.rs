@@ -5,7 +5,7 @@ impl<'a, const N: usize> Solver<'a, N> {
     /// 현재 스도쿠 퍼즐의 유효성 검사하여 에러셀을 반환.
     /// 에러셀이 없다면 None
     pub fn find_error_cell(&self, zone_ref_with_read: &Vec<RefZone<'a, N>>) -> Option<&Cell<N>> {
-        let mut unique_chk_map = [false; N];
+        let mut unique_chk_map: [bool; N];
 
         for ref_zone in zone_ref_with_read {
             if self.checked_zone_get_bool(ref_zone.zone, SolverSimple::Validate) {
@@ -15,7 +15,7 @@ impl<'a, const N: usize> Solver<'a, N> {
             match ref_zone.zone.get_zone_type() {
                 // 파라미터의 모든 Cell이 고유값을 가지고 있는지 확인
                 ZoneType::Unique => {
-                    unique_chk_map.iter_mut().for_each(|b| *b = false);
+                    unique_chk_map = [false; N];
 
                     for c in &ref_zone.cells {
                         let chk_borr = &c.read;

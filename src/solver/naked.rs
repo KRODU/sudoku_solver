@@ -4,8 +4,8 @@ use super::{
     Solver,
 };
 use crate::model::{cell::Cell, cell_with_read::CellWithRead, ref_zone::RefZone, zone::ZoneType};
+use crate::num_check::NumCheck;
 use crate::{combinations::combinations, model::array_vector::ArrayVector};
-use hashbrown::HashSet;
 use std::sync::Mutex;
 
 impl<'a, const N: usize> Solver<'a, N> {
@@ -36,7 +36,7 @@ impl<'a, const N: usize> Solver<'a, N> {
     }
 
     fn naked_number_zone(&self, ref_zone: &RefZone<'a, N>) -> Option<SolverResult<'a, N>> {
-        let mut union_node: HashSet<usize> = HashSet::new();
+        let mut union_node: NumCheck<N> = NumCheck::new_with_false();
         let mut ret: Option<SolverResult<'a, N>> = None;
         let cell_list = &ref_zone.cells;
         let mut comp_cell_target: Vec<&CellWithRead<'a, N>> = Vec::with_capacity(cell_list.len());
@@ -54,17 +54,17 @@ impl<'a, const N: usize> Solver<'a, N> {
                     return true;
                 }
 
-                union_node.clear();
+                union_node.set_all_false();
                 for c in arr {
                     let b = &c.read;
 
                     b.union_note_hash(&mut union_node);
-                    if union_node.len() > i {
+                    if union_node.get_true_cnt() > i {
                         return true;
                     }
                 }
 
-                if union_node.len() != i {
+                if union_node.get_true_cnt() != i {
                     return true;
                 }
 
@@ -81,16 +81,14 @@ impl<'a, const N: usize> Solver<'a, N> {
 
                     // 제거할 노트를 발견한 경우
                     if !inter.is_empty() {
-                        let mut note: ArrayVector<usize, N> = inter.into_iter().collect();
-                        note.sort_unstable();
+                        let note: ArrayVector<usize, N> = inter.into_iter().collect();
                         effect_cells.push((zone_cell.cell, note));
                     }
                 }
 
                 // effect_cells에 값이 존재하는 경우 제거한 노트를 발견한 것임.
                 if !effect_cells.is_empty() {
-                    let mut found_chks: Vec<usize> = union_node.iter().copied().collect();
-                    found_chks.sort_unstable();
+                    let found_chks: Vec<usize> = union_node.iter().copied().collect();
                     ret = Some(SolverResult {
                         solver_type: SolverResultDetail::Naked { found_chks },
                         effect_cells,

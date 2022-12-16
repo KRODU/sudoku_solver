@@ -14,7 +14,7 @@ pub struct ArrayVector<T, const N: usize> {
 }
 
 impl<T, const N: usize> ArrayVector<T, N> {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             arr: unsafe { MaybeUninit::<[MaybeUninit<T>; N]>::uninit().assume_init() },
             len: 0,
@@ -115,14 +115,6 @@ impl<T, const N: usize> ArrayVector<T, N> {
             ptr::copy(ptr.add(1), ptr, self.len - index);
             Some(ret)
         }
-    }
-
-    pub fn iter(&self) -> IterArrayVector<T, N> {
-        self.into_iter()
-    }
-
-    pub fn iter_mut(&mut self) -> IterMutArrayVector<T, N> {
-        self.into_iter()
     }
 }
 
@@ -301,75 +293,19 @@ impl<T, const N: usize> Drop for IntoIterArrayVector<T, N> {
 
 impl<'a, T, const N: usize> IntoIterator for &'a ArrayVector<T, N> {
     type Item = &'a T;
-    type IntoIter = IterArrayVector<'a, T, N>;
+    type IntoIter = std::slice::Iter<'a, T>;
 
     fn into_iter(self) -> Self::IntoIter {
-        IterArrayVector {
-            array_vector: self,
-            index: 0,
-        }
-    }
-}
-
-pub struct IterArrayVector<'a, T, const N: usize> {
-    array_vector: &'a ArrayVector<T, N>,
-    index: usize,
-}
-
-impl<'a, T, const N: usize> Iterator for IterArrayVector<'a, T, N> {
-    type Item = &'a T;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.index == self.array_vector.len {
-            return None;
-        }
-
-        unsafe {
-            let ret = self
-                .array_vector
-                .arr
-                .get_unchecked(self.index)
-                .assume_init_ref();
-            self.index += 1;
-            Some(ret)
-        }
+        self.get_slice().iter()
     }
 }
 
 impl<'a, T, const N: usize> IntoIterator for &'a mut ArrayVector<T, N> {
     type Item = &'a mut T;
-    type IntoIter = IterMutArrayVector<'a, T, N>;
+    type IntoIter = std::slice::IterMut<'a, T>;
 
     fn into_iter(self) -> Self::IntoIter {
-        IterMutArrayVector {
-            array_vector: self,
-            index: 0,
-        }
-    }
-}
-
-pub struct IterMutArrayVector<'a, T, const N: usize> {
-    array_vector: &'a mut ArrayVector<T, N>,
-    index: usize,
-}
-
-impl<'a, T, const N: usize> Iterator for IterMutArrayVector<'a, T, N> {
-    type Item = &'a mut T;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.index == self.array_vector.len {
-            return None;
-        }
-
-        unsafe {
-            let ptr = self
-                .array_vector
-                .arr
-                .get_unchecked_mut(self.index)
-                .as_mut_ptr();
-            self.index += 1;
-            Some(&mut *ptr)
-        }
+        self.get_mut_slice().iter_mut()
     }
 }
 

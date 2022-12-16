@@ -3,7 +3,10 @@ use super::{
     solver_simple::SolverSimple,
     Solver,
 };
-use crate::model::{array_vector::ArrayVector, cell::Cell, ref_zone::RefZone, zone::ZoneType};
+use crate::{
+    model::{array_vector::ArrayVector, cell::Cell, ref_zone::RefZone, zone::ZoneType},
+    num_check::NumCheck,
+};
 use hashbrown::HashSet;
 
 impl<'a, const N: usize> Solver<'a, N> {
@@ -24,13 +27,15 @@ impl<'a, const N: usize> Solver<'a, N> {
             };
 
             let current_zone_union_note =
-                z1.cells.iter().fold(HashSet::<usize>::new(), |mut h, c| {
-                    let read = &c.read;
-                    if read.get_true_cnt() > 1 {
-                        read.union_note_hash(&mut h);
-                    }
-                    h
-                });
+                z1.cells
+                    .iter()
+                    .fold(NumCheck::new_with_false(), |mut h, c| {
+                        let read = &c.read;
+                        if read.get_true_cnt() > 1 {
+                            read.union_note_hash(&mut h);
+                        }
+                        h
+                    });
 
             // Box Line Reduction 검색 알고리즘:
             // 1. 서로 연결되어 있는 두 Zone을 찾는다. (2개의 Zone이 있을 때 두 Zone에 모두 겹쳐있는 Cell이 하나 이상 있을 경우, 두 Zone은 서로 연결되었다고 한다.)

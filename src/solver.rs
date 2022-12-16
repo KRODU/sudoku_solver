@@ -189,7 +189,7 @@ impl<'a, const N: usize> Solver<'a, N> {
 
                 let backup_chk_list = mut_chk.clone_chk_list_vec();
                 let backup = vec![(cell, backup_chk_list)];
-                mut_chk.set_chk(final_num, false);
+                mut_chk.set_false(final_num);
 
                 self.solver_history_stack.push(SolverHistory {
                     history_type: SolverHistoryType::GuessBacktrace {
