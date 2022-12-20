@@ -18,7 +18,7 @@ impl<const N: usize> MaxNum<N> {
 
     /// # Safety
     ///
-    /// num의 값은 num >= MIN && num <= MAX을 충족해야 함.
+    /// num의 값은 num > 0 && num <= N을 충족해야 함.
     pub unsafe fn new_unchecked(num: usize) -> Self {
         Self { num }
     }
