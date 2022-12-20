@@ -1,4 +1,4 @@
-use super::{coordinate::Coordinate, zone::Zone};
+use super::{coordinate::Coordinate, max_num::MaxNum, zone::Zone};
 use crate::num_check::NumCheck;
 use hashbrown::HashSet;
 use std::sync::RwLock;
@@ -8,7 +8,7 @@ pub struct Cell<const N: usize> {
     pub chk: RwLock<NumCheck<N>>,
     pub zone_set: HashSet<Zone>,
     pub zone_vec: Vec<Zone>,
-    pub coordi: Coordinate,
+    pub coordi: Coordinate<N>,
 }
 
 impl<const N: usize> Cell<N> {
@@ -18,7 +18,10 @@ impl<const N: usize> Cell<N> {
             chk: RwLock::new(NumCheck::<N>::new_with_true()),
             zone_set: zone.iter().cloned().collect(),
             zone_vec: zone,
-            coordi: Coordinate::new(x, y),
+            coordi: Coordinate::new(
+                MaxNum::new_with_zero_offset(x),
+                MaxNum::new_with_zero_offset(y),
+            ),
         }
     }
 }

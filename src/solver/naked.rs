@@ -4,7 +4,7 @@ use super::{
     Solver,
 };
 use crate::model::{
-    cell::Cell, cell_with_read::CellWithRead, note::Note, ref_zone::RefZone, zone::ZoneType,
+    cell::Cell, cell_with_read::CellWithRead, max_num::MaxNum, ref_zone::RefZone, zone::ZoneType,
 };
 use crate::num_check::NumCheck;
 use crate::{combinations::combinations, model::array_vector::ArrayVector};
@@ -70,7 +70,7 @@ impl<'a, const N: usize> Solver<'a, N> {
                     return true;
                 }
 
-                let mut effect_cells: Vec<(&Cell<N>, ArrayVector<Note<N>, N>)> = Vec::new();
+                let mut effect_cells: Vec<(&Cell<N>, ArrayVector<MaxNum<N>, N>)> = Vec::new();
                 // zone을 순회하며 삭제할 노트가 있는지 찾음
                 for zone_cell in cell_list {
                     // 순회 대상에서 자기 자신은 제외
@@ -83,14 +83,15 @@ impl<'a, const N: usize> Solver<'a, N> {
 
                     // 제거할 노트를 발견한 경우
                     if !inter.is_empty() {
-                        let note: ArrayVector<Note<N>, N> = inter.into_iter().collect();
+                        let note: ArrayVector<MaxNum<N>, N> = inter.into_iter().collect();
                         effect_cells.push((zone_cell.cell, note));
                     }
                 }
 
                 // effect_cells에 값이 존재하는 경우 제거한 노트를 발견한 것임.
                 if !effect_cells.is_empty() {
-                    let found_chks: ArrayVector<Note<N>, N> = union_node.iter().copied().collect();
+                    let found_chks: ArrayVector<MaxNum<N>, N> =
+                        union_node.iter().copied().collect();
                     ret = Some(SolverResult {
                         solver_type: SolverResultDetail::Naked { found_chks },
                         effect_cells,

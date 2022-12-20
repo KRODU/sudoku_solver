@@ -3,10 +3,10 @@ use super::{
     solver_simple::SolverSimple,
     Solver,
 };
-use crate::{
-    model::{array_vector::ArrayVector, cell::Cell, note::Note, ref_zone::RefZone, zone::ZoneType},
-    num_check::NumCheck,
+use crate::model::{
+    array_vector::ArrayVector, cell::Cell, max_num::MaxNum, ref_zone::RefZone, zone::ZoneType,
 };
+use crate::num_check::NumCheck;
 use hashbrown::HashSet;
 
 impl<'a, const N: usize> Solver<'a, N> {
@@ -58,7 +58,7 @@ impl<'a, const N: usize> Solver<'a, N> {
                     });
 
                     if target_this_note {
-                        let mut effect_cells: Vec<(&'a Cell<N>, ArrayVector<Note<N>, N>)> =
+                        let mut effect_cells: Vec<(&'a Cell<N>, ArrayVector<MaxNum<N>, N>)> =
                             Vec::new();
 
                         for z2_cell in &z2_ref.cells {

@@ -1,7 +1,7 @@
 use self::solver_history::{SolverHistory, SolverHistoryType, SolverResult};
 use self::solver_simple::SolverSimple;
 use crate::model::array_vector::ArrayVector;
-use crate::model::note::Note;
+use crate::model::max_num::MaxNum;
 use crate::model::table::Table;
 use crate::model::{cell::Cell, cell_with_read::CellWithRead, ref_zone::RefZone, zone::Zone};
 use enum_iterator::all;
@@ -116,7 +116,7 @@ impl<'a, const N: usize> Solver<'a, N> {
         let mut commit_flag = false;
         while let Some(solver_result) = result.pop() {
             let history = {
-                let mut backup_chk: Vec<(&'a Cell<N>, ArrayVector<Note<N>, N>)> =
+                let mut backup_chk: Vec<(&'a Cell<N>, ArrayVector<MaxNum<N>, N>)> =
                     Vec::with_capacity(solver_result.effect_cells.len());
 
                 for (c, _) in &solver_result.effect_cells {

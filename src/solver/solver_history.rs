@@ -1,16 +1,22 @@
-use crate::model::{array_vector::ArrayVector, cell::Cell, note::Note};
+use crate::model::{array_vector::ArrayVector, cell::Cell, max_num::MaxNum};
 
 #[derive(Debug)]
 pub enum SolverResultDetail<const N: usize> {
-    Single { found_chk: Note<N> },
-    Naked { found_chks: ArrayVector<Note<N>, N> },
-    BoxLineReduction { found_chk: Note<N> },
+    Single {
+        found_chk: MaxNum<N>,
+    },
+    Naked {
+        found_chks: ArrayVector<MaxNum<N>, N>,
+    },
+    BoxLineReduction {
+        found_chk: MaxNum<N>,
+    },
 }
 
 #[derive(Debug)]
 pub struct SolverResult<'a, const N: usize> {
     pub solver_type: SolverResultDetail<N>,
-    pub effect_cells: Vec<(&'a Cell<N>, ArrayVector<Note<N>, N>)>,
+    pub effect_cells: Vec<(&'a Cell<N>, ArrayVector<MaxNum<N>, N>)>,
 }
 
 #[derive(Debug)]
@@ -21,19 +27,19 @@ pub enum SolverHistoryType<'a, const N: usize> {
     /// 스도쿠에서 임의의 값을 추측한 경우입니다.
     Guess {
         cell: &'a Cell<N>,
-        final_num: Note<N>,
+        final_num: MaxNum<N>,
     },
 
     /// Guess가 실패한 경우 실패항 guess 숫자를 제외하게 됩니다.
     /// 그것을 추적하기 위한 타입입니다.
     GuessBacktrace {
         cell: &'a Cell<N>,
-        except_num: Note<N>,
+        except_num: MaxNum<N>,
     },
 }
 
 #[derive(Debug)]
 pub struct SolverHistory<'a, const N: usize> {
     pub history_type: SolverHistoryType<'a, N>,
-    pub backup_chk: Vec<(&'a Cell<N>, ArrayVector<Note<N>, N>)>,
+    pub backup_chk: Vec<(&'a Cell<N>, ArrayVector<MaxNum<N>, N>)>,
 }
