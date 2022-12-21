@@ -90,8 +90,8 @@ pub fn new_jigsaw() -> Table<9> {
 
             let this_zone = vec![
                 Zone::new_unique_from_num(index),  // cell이 속해있는 직소 모양
-                Zone::new_unique_from_num(x + 10), // cell이 속한 가로
-                Zone::new_unique_from_num(y + 19), // cell이 속한 세로
+                Zone::new_unique_from_num(x + 10), // cell이 속한 세로
+                Zone::new_unique_from_num(y + 19), // cell이 속한 가로
             ];
             let cell = Cell::new(x, y, this_zone);
 
