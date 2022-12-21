@@ -67,8 +67,12 @@ fn main() {
 
 ### 직소 스도쿠 생성 예시
 
+다음은 Zone을 커스터마이징하여 직소 스도쿠를 생성하는 예시입니다.
+
+#### 생성할 직소 스도쿠의 모습
 ![직소](https://user-images.githubusercontent.com/104359503/208801798-49cba9ef-fd7e-4635-8caf-9a2e0576a614.png)
 
+#### 직소 스도쿠 생성 코드 예시
 ```rust
 use sudoku_solver_lib::model::cell::Cell;
 use sudoku_solver_lib::model::table::Table;
@@ -118,7 +122,7 @@ fn main() {
 }
 ```
 
-### 직소 스도쿠 퍼즐 생성 출력 결과 예시
+#### 직소 스도쿠 퍼즐 생성 출력 결과 예시
 
 ```
 6       3       1       7       2       5       9       8       4
