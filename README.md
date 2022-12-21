@@ -3,6 +3,9 @@
 Rust로 작성된 스도쿠를 생성하거나, 기존 퍼즐을 풀기 위한 프로그램
 
 ## 퍼즐 생성 방법
+
+완성된 스도쿠를 다음과 같이 간단히 생성할 수 있습니다.
+
 ```rust
 use sudoku_solver_lib::model::table::Table;
 use sudoku_solver_lib::solver::Solver;
@@ -128,3 +131,15 @@ fn main() {
 4       2       5       6       1       8       3       9       7
 9       8       6       3       4       1       7       2       5
 ```
+
+
+## 현재 구현 상태
+* Single
+* Naked Pair, Naked Triple, Naked Quad 등..
+* Box Line Reduction
+* 구현된 알고리즘으로 풀 수 없을 경우 무작위 Guess 및 Guess가 잘못되었을 경우 Rollback
+
+## TODO
+* 더 많은 Solver 알고리즘 구현
+* 출력 결과물을 더 보기좋게 제공
+* 더 빠른 속도 (RwLock을 제거할 방법을 고민중..)
