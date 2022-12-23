@@ -104,12 +104,7 @@ pub fn new_jigsaw() -> Table<9> {
         cells.push(row);
     }
 
-    let cells = cells
-        .into_iter()
-        .map(|c| TryInto::<[Cell<9>; 9]>::try_into(c).expect("SIZE_NOT_SAME"))
-        .collect::<Vec<_>>();
-    let cells = TryInto::<[[Cell<9>; 9]; 9]>::try_into(cells).expect("SIZE_NOT_SAME");
-    Table { cells }
+    Table::new_with_vec_cells(cells)
 }
 
 fn main() {

@@ -3,22 +3,23 @@ use super::solver_simple::SolverSimple;
 use super::Solver;
 use crate::model::array_vector::ArrayVector;
 use crate::model::max_num::MaxNum;
-use crate::model::{cell::Cell, ref_zone::RefZone, zone::ZoneType};
+use crate::model::table_lock::TableLockReadGuard;
+use crate::model::{cell::Cell, zone::ZoneType};
 
 impl<'a, const N: usize> Solver<'a, N> {
-    pub fn single(&self, zone_ref_with_read: &Vec<RefZone<'a, N>>) -> Vec<SolverResult<'a, N>> {
-        for z in zone_ref_with_read {
-            let ZoneType::Unique = z.zone.get_zone_type() else { continue; };
+    pub fn single(&self, read: &TableLockReadGuard<N>) -> Vec<SolverResult<'a, N>> {
+        for (zone, cells) in &self.ordered_zone {
+            let ZoneType::Unique = zone.get_zone_type() else { continue; };
 
-            if self.checked_zone_get_bool(z.zone, SolverSimple::Single) {
+            if self.checked_zone_get_bool(zone, SolverSimple::Single) {
                 continue;
             }
 
-            for c in &z.cells {
-                let Some(final_num) = c.read.get_final_num() else { continue; };
+            for c in cells {
+                let Some(final_num) = read.read_from_cell(c).get_final_num() else { continue; };
                 let mut effect_cells: Vec<(&Cell<N>, ArrayVector<MaxNum<N>, N>)> = Vec::new();
 
-                for c_comp in &z.cells {
+                for c_comp in cells {
                     // 노트가 확정된 경우 Zone을 순회하면서 해당 노트를 가진 cell이 있나 찾음
 
                     // 나 자신은 비교 대상에서 제외
@@ -27,10 +28,10 @@ impl<'a, const N: usize> Solver<'a, N> {
                     }
 
                     // 찾음
-                    if c_comp.read.get_chk(final_num) {
+                    if read.read_from_cell(c_comp).get_chk(final_num) {
                         let mut note_vec = ArrayVector::new();
                         note_vec.push(final_num);
-                        effect_cells.push((c_comp.cell, note_vec));
+                        effect_cells.push((c_comp, note_vec));
                     }
                 }
 
@@ -47,7 +48,7 @@ impl<'a, const N: usize> Solver<'a, N> {
                 }
             }
 
-            self.checked_zone_set_bool_true(z.zone, SolverSimple::Single);
+            self.checked_zone_set_bool_true(zone, SolverSimple::Single);
         }
 
         Vec::new()

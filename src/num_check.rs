@@ -165,8 +165,8 @@ impl<const N: usize> NumCheck<N> {
         self.true_cnt == 1
     }
 
-    /// true인 목록을 복사하여 Vec으로 반환합니다.
-    pub fn clone_chk_list_vec(&self) -> ArrayVector<MaxNum<N>, N> {
+    /// true인 목록을 복사하여 반환합니다.
+    pub fn clone_chk_list(&self) -> ArrayVector<MaxNum<N>, N> {
         self.true_list.clone()
     }
 

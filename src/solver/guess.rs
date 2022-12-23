@@ -1,20 +1,21 @@
 use super::solver_history::{SolverHistory, SolverHistoryType};
 use super::Solver;
+use crate::model::cell::Cell;
 use crate::model::max_num::MaxNum;
-use crate::model::{cell::Cell, ref_zone::RefZone};
+use crate::model::table_lock::TableLockReadGuard;
 use rand::Rng;
 
 impl<'a, const N: usize> Solver<'a, N> {
     /// 값이 확정되지 않은 cell중에 하나를 무작위로 guess하여 넣습니다.
-    pub fn guess_random(&mut self, ref_zone: Vec<RefZone<'a, N>>) {
+    pub fn guess_random(&mut self, read: TableLockReadGuard<N>) {
         let mut minimum_note_cnt = usize::MAX;
         let mut minimum_note_list: Vec<&Cell<N>> = Vec::new();
 
         // 모든 cell중에서 무작위로 선택하는 대신 후보숫자가 가장 적은 cell중에 무작위 선택
         // 이렇게하면 나중에 rollback이 필요할 가능성을 조금이라도 줄일 수 있음
-        for z in ref_zone {
-            for c in z.cells {
-                let b = c.read;
+        for (_, cells) in &self.ordered_zone {
+            for c in cells {
+                let b = read.read_from_cell(c);
                 let true_cnt = b.get_true_cnt();
                 if true_cnt <= 1 || true_cnt > minimum_note_cnt {
                     continue;
@@ -25,7 +26,7 @@ impl<'a, const N: usize> Solver<'a, N> {
                     minimum_note_cnt = true_cnt;
                 }
 
-                minimum_note_list.push(c.cell);
+                minimum_note_list.push(c);
             }
         }
 
@@ -36,10 +37,15 @@ impl<'a, const N: usize> Solver<'a, N> {
 
         let cell_pick = minimum_note_list[self.rng.gen_range(0..minimum_note_list.len())];
         // println!("{:?}", cell_pick.coordi);
-        let cell_notes = cell_pick.chk.read().unwrap().clone_chk_list_vec();
+        let cell_notes = self
+            .t
+            .read_lock()
+            .read_from_cell(cell_pick)
+            .clone_chk_list();
         // println!("{:?}", cell_notes);
         let note_pick = cell_notes[self.rng.gen_range(0..cell_notes.len())];
         // println!("{:?}", note_pick);
+        drop(read);
 
         self.guess_mut_something(cell_pick, note_pick);
     }
@@ -50,7 +56,8 @@ impl<'a, const N: usize> Solver<'a, N> {
     ///
     /// 히스토리에 Guess를 추가합니다.
     pub fn guess_mut_something(&mut self, cell: &'a Cell<N>, final_num: MaxNum<N>) {
-        let mut b = cell.chk.write().unwrap();
+        let mut write = self.t.write_lock();
+        let b = write.write_from_cell(cell);
 
         // 불가능한 값으로 guess할 경우 panic 발생
         if !b.get_chk(final_num) {
@@ -62,7 +69,7 @@ impl<'a, const N: usize> Solver<'a, N> {
             return;
         }
 
-        let backup = b.clone_chk_list_vec();
+        let backup = b.clone_chk_list();
         let backup_chk = vec![(cell, backup)];
         b.set_to_value(final_num);
         self.changed_cell.insert(cell);

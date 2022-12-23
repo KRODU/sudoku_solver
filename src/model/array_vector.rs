@@ -27,6 +27,15 @@ impl<T, const N: usize> ArrayVector<T, N> {
         }
 
         unsafe {
+            self.push_unchecked(val);
+        }
+    }
+
+    /// # Safety
+    ///
+    /// len == N 상태일 때 호출하면 UB
+    pub unsafe fn push_unchecked(&mut self, val: T) {
+        unsafe {
             self.arr.get_unchecked_mut(self.len).write(val);
             self.len += 1;
         }
@@ -142,7 +151,10 @@ where
         let mut ret = ArrayVector::new();
 
         for ele in self {
-            ret.push(ele.clone());
+            // 반환할 ArrayVector의 N과 self의 N은 무조건 동일하므로 safe
+            unsafe {
+                ret.push_unchecked(ele.clone());
+            }
         }
 
         ret

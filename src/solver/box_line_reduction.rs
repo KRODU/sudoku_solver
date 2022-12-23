@@ -4,35 +4,31 @@ use super::{
     Solver,
 };
 use crate::model::{
-    array_vector::ArrayVector, cell::Cell, max_num::MaxNum, ref_zone::RefZone, zone::ZoneType,
+    array_vector::ArrayVector, cell::Cell, max_num::MaxNum, table_lock::TableLockReadGuard,
+    zone::ZoneType,
 };
 use crate::num_check::NumCheck;
-use hashbrown::HashSet;
 
 impl<'a, const N: usize> Solver<'a, N> {
-    pub fn box_line_reduction(
-        &self,
-        zone_ref_with_read: &Vec<RefZone<'a, N>>,
-        ref_zone_hash: &HashSet<&RefZone<'a, N>>,
-    ) -> Vec<SolverResult<'a, N>> {
-        for z1 in zone_ref_with_read {
-            let ZoneType::Unique = z1.zone.get_zone_type() else { continue; };
+    pub fn box_line_reduction(&self, read: &TableLockReadGuard<N>) -> Vec<SolverResult<'a, N>> {
+        for (z1, z1_cells) in &self.ordered_zone {
+            let ZoneType::Unique = z1.get_zone_type() else { continue; };
 
-            if self.checked_zone_get_bool(z1.zone, SolverSimple::BoxLineReduction) {
+            if self.checked_zone_get_bool(z1, SolverSimple::BoxLineReduction) {
                 continue;
             }
 
-            let Some(connect_zone) = self.connect_zone.get(z1.zone) else {
+            let Some(connect_zone) = self.connect_zone.get(z1) else {
                 continue;
             };
 
             let current_zone_union_note =
-                z1.cells
+                z1_cells
                     .iter()
                     .fold(NumCheck::new_with_false(), |mut h, c| {
-                        let read = &c.read;
-                        if read.get_true_cnt() > 1 {
-                            read.union_note(&mut h);
+                        let cell_read = read.read_from_cell(c);
+                        if cell_read.get_true_cnt() > 1 {
+                            cell_read.union_note(&mut h);
                         }
                         h
                     });
@@ -44,32 +40,32 @@ impl<'a, const N: usize> Solver<'a, N> {
             for &z2 in connect_zone {
                 let ZoneType::Unique = z2.get_zone_type() else { continue; };
 
-                let Some(z2_ref) = ref_zone_hash.get(z2) else {
+                let Some(z2_cells) = self.hashed_zone.get(z2) else {
                     continue;
                 };
 
                 for &note in &current_zone_union_note {
-                    let target_this_note = !z1.cells.iter().any(|c| {
-                        if c.cell.zone_set.contains(z2) {
+                    let target_this_note = !z1_cells.iter().any(|c| {
+                        if c.zone_set.contains(z2) {
                             return false;
                         }
 
-                        c.read.get_chk(note)
+                        read.read_from_cell(c).get_chk(note)
                     });
 
                     if target_this_note {
                         let mut effect_cells: Vec<(&'a Cell<N>, ArrayVector<MaxNum<N>, N>)> =
                             Vec::new();
 
-                        for z2_cell in &z2_ref.cells {
-                            if z2_cell.cell.zone_set.contains(z1.zone) {
+                        for z2_cell in z2_cells {
+                            if z2_cell.zone_set.contains(*z1) {
                                 continue;
                             }
 
-                            if z2_cell.read.get_chk(note) {
+                            if read.read_from_cell(z2_cell).get_chk(note) {
                                 let mut note_vec = ArrayVector::new();
                                 note_vec.push(note);
-                                effect_cells.push((z2_cell.cell, note_vec));
+                                effect_cells.push((z2_cell, note_vec));
                             }
                         }
 
@@ -85,7 +81,7 @@ impl<'a, const N: usize> Solver<'a, N> {
                 }
             }
 
-            self.checked_zone_set_bool_true(z1.zone, SolverSimple::BoxLineReduction);
+            self.checked_zone_set_bool_true(z1, SolverSimple::BoxLineReduction);
         }
 
         Vec::new()
