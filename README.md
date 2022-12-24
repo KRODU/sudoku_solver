@@ -76,10 +76,11 @@ fn main() {
 ```rust
 use sudoku_solver_lib::model::cell::Cell;
 use sudoku_solver_lib::model::table::Table;
+use sudoku_solver_lib::model::table_lock::TableLock;
 use sudoku_solver_lib::model::zone::Zone;
 use sudoku_solver_lib::solver::Solver;
 
-pub fn new_jigsaw() -> Table<9> {
+pub fn new_jigsaw() -> TableLock<9> {
     let zone: [usize; 81] = [
         1, 1, 1, 1, 1, 2, 2, 2, 2, 4, 1, 1, 1, 3, 3, 2, 2, 2, 4, 4, 1, 3, 3, 3, 3, 2, 2, 4, 4, 4,
         5, 5, 3, 3, 3, 6, 4, 4, 5, 5, 5, 5, 5, 6, 6, 4, 7, 7, 7, 5, 5, 6, 6, 6, 8, 8, 7, 7, 7, 7,
