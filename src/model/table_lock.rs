@@ -194,7 +194,7 @@ impl<'a, 'b, const N: usize> TableLockWriteGuard<'a, 'b, N> {
         unsafe { &mut *cell.chk_unsafe.get() }
     }
 
-    pub fn read_from_coordinate(&mut self, x: MaxNum<N>, y: MaxNum<N>) -> &mut NumCheck<N> {
+    pub fn write_from_coordinate(&mut self, x: MaxNum<N>, y: MaxNum<N>) -> &mut NumCheck<N> {
         unsafe {
             &mut *self
                 .table_lock
