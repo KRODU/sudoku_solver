@@ -19,10 +19,7 @@ impl<const N: usize> Cell<N> {
             chk_unsafe: UnsafeCellSync::new(NumCheck::<N>::new_with_true()),
             zone_set: zone.iter().cloned().collect(),
             zone_vec: zone,
-            coordi: Coordinate::new(
-                MaxNum::new_with_zero_offset(x),
-                MaxNum::new_with_zero_offset(y),
-            ),
+            coordi: Coordinate::new(MaxNum::new(x), MaxNum::new(y)),
         }
     }
 }

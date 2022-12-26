@@ -26,7 +26,7 @@ impl<const N: usize> NumCheck<N> {
 
         for (n, item) in chk_list.iter_mut().enumerate() {
             *item = Some(n);
-            true_list.push(MaxNum::new(n + 1));
+            true_list.push(MaxNum::new(n));
         }
 
         NumCheck {
@@ -66,7 +66,7 @@ impl<const N: usize> NumCheck<N> {
             .iter()
             .enumerate()
             .find(|(_, b)| b.is_some())
-            .map(|(n, _)| MaxNum::new(n + 1))
+            .map(|(n, _)| MaxNum::new(n))
     }
 
     pub fn set_chk(&mut self, num: MaxNum<N>, chk: bool) {

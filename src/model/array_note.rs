@@ -34,15 +34,21 @@ impl<T, const N: usize> Index<MaxNum<N>> for ArrayNote<T, N> {
     type Output = T;
 
     fn index(&self, index: MaxNum<N>) -> &Self::Output {
-        // MaxNum<N>은 0 <= get_zero_offset < N이 보장됨
-        unsafe { self.arr.get_unchecked(index.get_zero_offset()) }
+        let note = index.get_note();
+        debug_assert!(note < N);
+
+        // MaxNum<N> < N이 보장됨
+        unsafe { self.arr.get_unchecked(note) }
     }
 }
 
 impl<T, const N: usize> IndexMut<MaxNum<N>> for ArrayNote<T, N> {
     fn index_mut(&mut self, index: MaxNum<N>) -> &mut Self::Output {
-        // MaxNum<N>은 0 <= get_zero_offset < N이 보장됨
-        unsafe { self.arr.get_unchecked_mut(index.get_zero_offset()) }
+        let note = index.get_note();
+        debug_assert!(note < N);
+
+        // MaxNum<N> < N이 보장됨
+        unsafe { self.arr.get_unchecked_mut(note) }
     }
 }
 

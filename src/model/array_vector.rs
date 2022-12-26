@@ -35,6 +35,8 @@ impl<T, const N: usize> ArrayVector<T, N> {
     ///
     /// len == N 상태일 때 호출하면 UB
     pub unsafe fn push_unchecked(&mut self, val: T) {
+        debug_assert!(self.len < N);
+
         unsafe {
             self.arr.get_unchecked_mut(self.len).write(val);
             self.len += 1;

@@ -7,19 +7,17 @@ pub struct MaxNum<const N: usize> {
 }
 
 impl<const N: usize> MaxNum<N> {
+    /// num의 값은 num < N을 충족해야 함.
     pub fn new(num: usize) -> Self {
-        assert!(num > 0 && num <= N);
+        assert!(num < N);
         Self { num }
-    }
-
-    pub fn new_with_zero_offset(num: usize) -> Self {
-        Self::new(num + 1)
     }
 
     /// # Safety
     ///
-    /// num의 값은 num > 0 && num <= N을 충족해야 함.
+    /// num의 값은 num < N을 충족해야 함.
     pub unsafe fn new_unchecked(num: usize) -> Self {
+        debug_assert!(num < N);
         Self { num }
     }
 
@@ -27,12 +25,8 @@ impl<const N: usize> MaxNum<N> {
         self.num
     }
 
-    pub fn get_zero_offset(&self) -> usize {
-        self.num - 1
-    }
-
     pub fn note_iter() -> NoteIter<N> {
-        NoteIter { cur: 1 }
+        NoteIter { cur: 0 }
     }
 }
 
@@ -72,7 +66,7 @@ impl<const N: usize> Iterator for NoteIter<N> {
     type Item = MaxNum<N>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.cur > N {
+        if self.cur == N {
             return None;
         }
         let ret = unsafe { Some(MaxNum::new_unchecked(self.cur)) };
