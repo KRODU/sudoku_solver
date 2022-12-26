@@ -1,14 +1,12 @@
-use std::marker::PhantomPinned;
-
 use super::{cell::Cell, table_lock::TableLock, zone::Zone};
+use std::pin::Pin;
 
 pub struct Table<const N: usize> {
-    pub cells: [[Cell<N>; N]; N],
-    _pin: PhantomPinned,
+    pub cells: Pin<Box<[Cell<N>]>>,
 }
 
 impl Table<9> {
-    /// 9X9 기본 스도쿠 구조입니다.
+    /// 9X9 기본 스도쿠 구조입니다.0
     pub fn new_default_9() -> TableLock<9> {
         let mut zone: Vec<usize> = Vec::with_capacity(81);
         let mut zone_row = [1, 1, 1, 2, 2, 2, 3, 3, 3];
@@ -26,7 +24,7 @@ impl Table<9> {
         for x in 0..9 {
             let mut row: Vec<Cell<9>> = Vec::with_capacity(9);
             for y in 0..9 {
-                let index = zone[x * 9 + y];
+                let index = zone[x + y * 9];
 
                 let this_zone = vec![
                     Zone::new_unique_from_num(index),
@@ -63,7 +61,7 @@ impl Table<16> {
         for x in 0..16 {
             let mut row: Vec<Cell<16>> = Vec::with_capacity(16);
             for y in 0..16 {
-                let index = zone[x * 16 + y];
+                let index = zone[x + y * 16];
 
                 let this_zone = vec![
                     Zone::new_unique_from_num(index),
@@ -83,16 +81,16 @@ impl Table<16> {
 
 impl<const N: usize> Table<N> {
     pub fn new_with_vec_cells(cells: Vec<Vec<Cell<N>>>) -> TableLock<N> {
-        let cells = cells
-            .into_iter()
-            .map(|c| TryInto::<[Cell<N>; N]>::try_into(c).expect("SIZE_NOT_SAME"))
-            .collect::<Vec<_>>();
+        let mut ret: Vec<Cell<N>> = Vec::with_capacity(N * N);
 
-        let cells = TryInto::<[[Cell<N>; N]; N]>::try_into(cells).expect("SIZE_NOT_SAME");
+        for row in cells {
+            for cell in row {
+                ret.push(cell);
+            }
+        }
 
         TableLock::new(Table {
-            cells,
-            _pin: PhantomPinned,
+            cells: Box::into_pin(ret.into_boxed_slice()),
         })
     }
 }

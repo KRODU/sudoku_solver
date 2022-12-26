@@ -1,24 +1,24 @@
-use super::{cell::Cell, table::Table};
+use super::{cell::Cell, max_num::MaxNum, table::Table};
 use crate::num_check::NumCheck;
 use std::{
     fmt::{Debug, Display},
     ops::{Deref, Range},
-    pin::Pin,
     sync::{RwLock, RwLockReadGuard, RwLockWriteGuard},
 };
 
 pub struct TableLock<const N: usize> {
-    table: Pin<Box<Table<N>>>,
+    table: Table<N>,
     cell_addr_range: Range<usize>,
     lock: RwLock<()>,
 }
 
 impl<const N: usize> TableLock<N> {
     pub fn new(t: Table<N>) -> TableLock<N> {
-        let t = Box::pin(t);
+        assert_eq!(t.cells.len(), N * N);
+
         let cell_addr_range: Range<usize>;
         unsafe {
-            let base_ptr = t.cells.as_ptr() as *const Cell<N>;
+            let base_ptr = t.cells.as_ptr();
             let end_ptr = base_ptr.add(N * N);
             cell_addr_range = base_ptr as usize..end_ptr as usize;
         }
@@ -32,14 +32,14 @@ impl<const N: usize> TableLock<N> {
 
     pub fn read_lock(&self) -> TableLockReadGuard<N> {
         TableLockReadGuard {
-            table_ref: self,
+            table_lock: self,
             _read_guard: self.lock.read().unwrap_or_else(|err| err.into_inner()),
         }
     }
 
     pub fn write_lock(&self) -> TableLockWriteGuard<N> {
         TableLockWriteGuard {
-            table_ref: self,
+            table_lock: self,
             _write_guard: self.lock.write().unwrap_or_else(|err| err.into_inner()),
         }
     }
@@ -64,13 +64,22 @@ impl<const N: usize> TableLock<N> {
 
         true
     }
+
+    pub fn get_cell_from_coordinate(&self, x: MaxNum<N>, y: MaxNum<N>) -> &Cell<N> {
+        unsafe {
+            // MaxNum<N>의 값은 N보다 작은 것이 보장됨
+            self.table
+                .cells
+                .get_unchecked(x.get_value() * N + y.get_value())
+        }
+    }
 }
 
 impl<const N: usize> Deref for TableLock<N> {
-    type Target = Table<N>;
+    type Target = [Cell<N>];
 
     fn deref(&self) -> &Self::Target {
-        &self.table
+        &self.table.cells
     }
 }
 
@@ -78,12 +87,11 @@ impl<const N: usize> Display for TableLock<N> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let read = self.read_lock();
         let mut ret = String::new();
-        for x in 0..N {
-            for y in 0..N {
-                let cell = &self.cells[x][y];
-                let final_num = read.read_from_cell(cell).get_final_num();
+        for x in MaxNum::<N>::iter() {
+            for y in MaxNum::<N>::iter() {
+                let final_num = read.read_from_coordinate(x, y).get_final_num();
                 if let Some(num) = final_num {
-                    ret.push_str(num.to_string().as_str());
+                    ret.push_str((num.get_value() + 1).to_string().as_str());
                 } else {
                     ret.push(' ');
                 }
@@ -108,10 +116,10 @@ impl<const N: usize> PartialEq for TableLock<N> {
     fn eq(&self, other: &Self) -> bool {
         let read_self = self.read_lock();
         let read_other = other.read_lock();
-        for x in 0..N {
-            for y in 0..N {
-                let r1 = read_self.read_from_cell(&self.cells[x][y]);
-                let r2 = read_other.read_from_cell(&other.cells[x][y]);
+        for x in MaxNum::<N>::iter() {
+            for y in MaxNum::<N>::iter() {
+                let r1 = read_self.read_from_coordinate(x, y);
+                let r2 = read_other.read_from_coordinate(x, y);
 
                 if !r1.is_same_note(r2) {
                     return false;
@@ -130,61 +138,69 @@ impl<'a, const N: usize> IntoIterator for &'a TableLock<N> {
     type IntoIter = CellIter<'a, N>;
 
     fn into_iter(self) -> Self::IntoIter {
-        CellIter {
-            x: 0,
-            y: 0,
-            t: &self.cells,
-        }
+        CellIter { index: 0, t: self }
     }
 }
 
 pub struct CellIter<'a, const N: usize> {
-    x: usize,
-    y: usize,
-    t: &'a [[Cell<N>; N]; N],
+    index: usize,
+    t: &'a [Cell<N>],
 }
 
 impl<'a, const N: usize> Iterator for CellIter<'a, N> {
     type Item = &'a Cell<N>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.x >= N {
-            self.x = 0;
-            self.y += 1;
+        if self.index >= self.t.len() {
+            return None;
         }
 
-        let ret = if self.y >= N {
-            None
-        } else {
-            Some(&self.t[self.x][self.y])
-        };
-
-        self.x += 1;
-
-        ret
+        let ret = &self.t[self.index];
+        self.index += 1;
+        Some(ret)
     }
 }
 
 pub struct TableLockReadGuard<'a, 'b, const N: usize> {
-    table_ref: &'a TableLock<N>,
+    table_lock: &'a TableLock<N>,
     _read_guard: RwLockReadGuard<'b, ()>,
 }
 
 impl<'a, 'b, const N: usize> TableLockReadGuard<'a, 'b, N> {
     pub fn read_from_cell(&self, cell: &Cell<N>) -> &NumCheck<N> {
-        self.table_ref.assert_cell_in_table(cell);
+        self.table_lock.assert_cell_in_table(cell);
         unsafe { &*cell.chk_unsafe.get() }
+    }
+
+    pub fn read_from_coordinate(&self, x: MaxNum<N>, y: MaxNum<N>) -> &NumCheck<N> {
+        unsafe {
+            &*self
+                .table_lock
+                .get_cell_from_coordinate(x, y)
+                .chk_unsafe
+                .get()
+        }
     }
 }
 
 pub struct TableLockWriteGuard<'a, 'b, const N: usize> {
-    table_ref: &'a TableLock<N>,
+    table_lock: &'a TableLock<N>,
     _write_guard: RwLockWriteGuard<'b, ()>,
 }
 
 impl<'a, 'b, const N: usize> TableLockWriteGuard<'a, 'b, N> {
     pub fn write_from_cell(&mut self, cell: &Cell<N>) -> &mut NumCheck<N> {
-        self.table_ref.assert_cell_in_table(cell);
+        self.table_lock.assert_cell_in_table(cell);
         unsafe { &mut *cell.chk_unsafe.get() }
+    }
+
+    pub fn read_from_coordinate(&mut self, x: MaxNum<N>, y: MaxNum<N>) -> &mut NumCheck<N> {
+        unsafe {
+            &mut *self
+                .table_lock
+                .get_cell_from_coordinate(x, y)
+                .chk_unsafe
+                .get()
+        }
     }
 }

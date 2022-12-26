@@ -1,6 +1,7 @@
 use std::fmt::{Display, Formatter};
 use std::hash::Hash;
 
+/// MaxNum의 값은 0 <= value < N를 보장함.
 #[derive(Debug)]
 pub struct MaxNum<const N: usize> {
     num: usize,
@@ -21,12 +22,12 @@ impl<const N: usize> MaxNum<N> {
         Self { num }
     }
 
-    pub fn get_note(&self) -> usize {
+    pub fn get_value(&self) -> usize {
         self.num
     }
 
-    pub fn note_iter() -> NoteIter<N> {
-        NoteIter { cur: 0 }
+    pub fn iter() -> MaxNumIter<N> {
+        MaxNumIter { cur: 0 }
     }
 }
 
@@ -58,11 +59,11 @@ impl<const N: usize> Hash for MaxNum<N> {
     }
 }
 
-pub struct NoteIter<const N: usize> {
+pub struct MaxNumIter<const N: usize> {
     cur: usize,
 }
 
-impl<const N: usize> Iterator for NoteIter<N> {
+impl<const N: usize> Iterator for MaxNumIter<N> {
     type Item = MaxNum<N>;
 
     fn next(&mut self) -> Option<Self::Item> {

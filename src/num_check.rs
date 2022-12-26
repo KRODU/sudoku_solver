@@ -177,7 +177,7 @@ impl<const N: usize> NumCheck<N> {
 
     /// 이 노트와 다른 노트를 비교하여 완전히 같은 경우 true
     pub fn is_same_note(&self, num_check: &NumCheck<N>) -> bool {
-        for n in MaxNum::<N>::note_iter() {
+        for n in MaxNum::<N>::iter() {
             if self.chk_list[n].is_some() != num_check.chk_list[n].is_some() {
                 return false;
             }
@@ -223,7 +223,7 @@ impl<const N: usize> NumCheck<N> {
             assert_eq!(self.get_minimum_chk().unwrap(), self.final_num.unwrap());
         }
 
-        for n in MaxNum::<N>::note_iter() {
+        for n in MaxNum::<N>::iter() {
             if let Some(index) = self.chk_list[n] {
                 assert_eq!(self.true_list[index], n);
             }

@@ -43,7 +43,7 @@ impl<'a, const N: usize> Solver<'a, N> {
                         let read = read.read_from_cell(c);
 
                         if let Some(num) = read.get_final_num() {
-                            cell_total += num.get_note();
+                            cell_total += num.get_value() + 1; // 값은 0부터 시작하므로 1을 더해야 함.
                         } else {
                             all_final = false;
 
@@ -52,7 +52,7 @@ impl<'a, const N: usize> Solver<'a, N> {
                                 return Some(c);
                             };
 
-                            cell_total += minimum.get_note();
+                            cell_total += minimum.get_value() + 1; // 값은 0부터 시작하므로 1을 더해야 함.
                         }
                     }
 
