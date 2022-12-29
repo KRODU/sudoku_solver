@@ -8,10 +8,18 @@ use crate::model::{
     zone::ZoneType,
 };
 use crate::num_check::NumCheck;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 impl<'a, const N: usize> Solver<'a, N> {
-    pub fn box_line_reduction(&self, read: &TableLockReadGuard<N>) -> Vec<SolverResult<'a, N>> {
+    pub fn box_line_reduction(
+        &self,
+        read: &TableLockReadGuard<N>,
+        is_break: &AtomicBool,
+    ) -> Vec<SolverResult<'a, N>> {
         for (z1, z1_cells) in &self.ordered_zone {
+            if is_break.load(Ordering::Relaxed) {
+                break;
+            }
             let ZoneType::Unique = z1.get_zone_type() else { continue; };
 
             if self.checked_zone_get_bool(z1, SolverSimple::BoxLineReduction) {
@@ -70,6 +78,7 @@ impl<'a, const N: usize> Solver<'a, N> {
                         }
 
                         if !effect_cells.is_empty() {
+                            is_break.store(true, Ordering::Relaxed);
                             return vec![SolverResult {
                                 solver_type: SolverResultDetail::BoxLineReduction {
                                     found_chk: note,

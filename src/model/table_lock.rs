@@ -151,13 +151,9 @@ impl<'a, const N: usize> Iterator for CellIter<'a, N> {
     type Item = &'a Cell<N>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.index >= self.t.len() {
-            return None;
-        }
-
-        let ret = &self.t[self.index];
+        let ret = self.t.get(self.index);
         self.index += 1;
-        Some(ret)
+        ret
     }
 }
 
@@ -181,6 +177,15 @@ impl<'a, 'b, const N: usize> TableLockReadGuard<'a, 'b, N> {
                 .get()
         }
     }
+
+    /// ReadLock을 WriteLock으로 업그레이드합니다. ReadLock을 Drop한 뒤 다시 WriteLock을 얻는 것과 같습니다.
+    pub fn upgrade_to_write<'c, 'd>(self) -> TableLockWriteGuard<'c, 'd, N>
+    where
+        'a: 'c + 'd,
+    {
+        drop(self._read_guard);
+        self.table_lock.write_lock()
+    }
 }
 
 pub struct TableLockWriteGuard<'a, 'b, const N: usize> {
@@ -189,6 +194,21 @@ pub struct TableLockWriteGuard<'a, 'b, const N: usize> {
 }
 
 impl<'a, 'b, const N: usize> TableLockWriteGuard<'a, 'b, N> {
+    pub fn read_from_cell(&self, cell: &Cell<N>) -> &NumCheck<N> {
+        self.table_lock.assert_cell_in_table(cell);
+        unsafe { &*cell.chk_unsafe.get() }
+    }
+
+    pub fn read_from_coordinate(&self, x: MaxNum<N>, y: MaxNum<N>) -> &NumCheck<N> {
+        unsafe {
+            &*self
+                .table_lock
+                .get_cell_from_coordinate(x, y)
+                .chk_unsafe
+                .get()
+        }
+    }
+
     pub fn write_from_cell(&mut self, cell: &Cell<N>) -> &mut NumCheck<N> {
         self.table_lock.assert_cell_in_table(cell);
         unsafe { &mut *cell.chk_unsafe.get() }

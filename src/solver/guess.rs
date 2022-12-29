@@ -2,7 +2,7 @@ use super::solver_history::{SolverHistory, SolverHistoryType};
 use super::Solver;
 use crate::model::cell::Cell;
 use crate::model::max_num::MaxNum;
-use crate::model::table_lock::TableLockReadGuard;
+use crate::model::table_lock::{TableLockReadGuard, TableLockWriteGuard};
 use rand::Rng;
 
 impl<'a, const N: usize> Solver<'a, N> {
@@ -45,9 +45,8 @@ impl<'a, const N: usize> Solver<'a, N> {
         // println!("{:?}", cell_notes);
         let note_pick = cell_notes[self.rng.gen_range(0..cell_notes.len())];
         // println!("{:?}", note_pick);
-        drop(read);
 
-        self.guess_mut_something(cell_pick, note_pick);
+        self.guess_mut_something(read.upgrade_to_write(), cell_pick, note_pick);
     }
 
     /// 특정 Cell의 값을 가정합니다. 불가능한 값일 경우 panic이 발생합니다.
@@ -55,8 +54,12 @@ impl<'a, const N: usize> Solver<'a, N> {
     /// 이 함수는 노트의 값을 변경시키기에 다른 스레드에서 값을 읽는중이면 안됩니다.
     ///
     /// 히스토리에 Guess를 추가합니다.
-    pub fn guess_mut_something(&mut self, cell: &'a Cell<N>, final_num: MaxNum<N>) {
-        let mut write = self.t.write_lock();
+    pub fn guess_mut_something(
+        &mut self,
+        mut write: TableLockWriteGuard<N>,
+        cell: &'a Cell<N>,
+        final_num: MaxNum<N>,
+    ) {
         let b = write.write_from_cell(cell);
 
         // 불가능한 값으로 guess할 경우 panic 발생

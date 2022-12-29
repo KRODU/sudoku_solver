@@ -18,7 +18,7 @@ hashbrown = "0.13"
 ahash = "0.8"
 rand = { version = "0.8", features = ["std_rng"] }
 enum-iterator = "1.2"
-scoped_threadpool = "0.1"
+rayon = "1"
 
 [dev-dependencies]
 criterion = "0.4"

@@ -2,14 +2,22 @@ use super::{solver_simple::SolverSimple, Solver};
 use crate::model::{
     array_note::ArrayNote, cell::Cell, table_lock::TableLockReadGuard, zone::ZoneType,
 };
+use std::sync::atomic::{AtomicBool, Ordering};
 
 impl<'a, const N: usize> Solver<'a, N> {
     /// 현재 스도쿠 퍼즐의 유효성 검사하여 에러셀을 반환.
     /// 에러셀이 없다면 None
-    pub fn find_error_cell(&self, read: &TableLockReadGuard<N>) -> Option<&Cell<N>> {
+    pub fn find_error_cell(
+        &self,
+        read: &TableLockReadGuard<N>,
+        is_break: &AtomicBool,
+    ) -> Option<&Cell<N>> {
         let mut unique_chk_arr: ArrayNote<bool, N>;
 
         for (zone, cells) in &self.ordered_zone {
+            if is_break.load(Ordering::Relaxed) {
+                break;
+            }
             if self.checked_zone_get_bool(zone, SolverSimple::Validate) {
                 continue;
             }
@@ -64,6 +72,7 @@ impl<'a, const N: usize> Solver<'a, N> {
                         // 미확정 cell이 있는 경우 cell_total과 sum은 다를 수 있음.
                         // 이 경우에도 cell_total이 sum을 넘어서면 안 됨
                     } else if cell_total > *sum {
+                        is_break.store(true, Ordering::Relaxed);
                         return Some(cells[0]);
                     }
                 }

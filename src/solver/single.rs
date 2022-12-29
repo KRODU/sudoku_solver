@@ -5,10 +5,19 @@ use crate::model::array_vector::ArrayVector;
 use crate::model::max_num::MaxNum;
 use crate::model::table_lock::TableLockReadGuard;
 use crate::model::{cell::Cell, zone::ZoneType};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 impl<'a, const N: usize> Solver<'a, N> {
-    pub fn single(&self, read: &TableLockReadGuard<N>) -> Vec<SolverResult<'a, N>> {
+    pub fn single(
+        &self,
+        read: &TableLockReadGuard<N>,
+        is_break: &AtomicBool,
+    ) -> Vec<SolverResult<'a, N>> {
         for (zone, cells) in &self.ordered_zone {
+            if is_break.load(Ordering::Relaxed) {
+                break;
+            }
+
             let ZoneType::Unique = zone.get_zone_type() else { continue; };
 
             if self.checked_zone_get_bool(zone, SolverSimple::Single) {
@@ -44,6 +53,7 @@ impl<'a, const N: usize> Solver<'a, N> {
                         effect_cells,
                     };
 
+                    is_break.store(true, Ordering::Relaxed);
                     return vec![solver_result];
                 }
             }

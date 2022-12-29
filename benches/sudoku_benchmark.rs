@@ -1,4 +1,5 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
+use std::hint::black_box;
 use sudoku_solver_lib::{self, model::table::Table, solver::Solver};
 
 fn bench_sudoku(c: &mut Criterion) {
@@ -7,8 +8,8 @@ fn bench_sudoku(c: &mut Criterion) {
             let mut t = Table::new_default_9();
             let mut solver = Solver::new(&mut t);
 
-            solver.set_random_seed(black_box(0)); // 실행시간 측정을 위한 시드 고정. 이걸 빼면 무작위 스도쿠 퍼즐이 만들어짐.
-            solver.fill_puzzle_with_timeout(std::time::Duration::MAX)
+            // solver.set_random_seed(black_box(0)); // 실행시간 측정을 위한 시드 고정. 이걸 빼면 무작위 스도쿠 퍼즐이 만들어짐.
+            black_box(solver.fill_puzzle_with_timeout(std::time::Duration::MAX))
         })
     });
 
@@ -17,8 +18,8 @@ fn bench_sudoku(c: &mut Criterion) {
             let mut t = Table::new_default_16();
             let mut solver = Solver::new(&mut t);
 
-            solver.set_random_seed(black_box(0)); // 실행시간 측정을 위한 시드 고정. 이걸 빼면 무작위 스도쿠 퍼즐이 만들어짐.
-            solver.fill_puzzle_with_timeout(std::time::Duration::MAX)
+            // solver.set_random_seed(black_box(0)); // 실행시간 측정을 위한 시드 고정. 이걸 빼면 무작위 스도쿠 퍼즐이 만들어짐.
+            black_box(solver.fill_puzzle_with_timeout(std::time::Duration::MAX))
         })
     });
 }

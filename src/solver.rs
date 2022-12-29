@@ -2,12 +2,12 @@ use self::solver_history::{SolverHistory, SolverHistoryType, SolverResult};
 use self::solver_simple::SolverSimple;
 use crate::model::array_vector::ArrayVector;
 use crate::model::max_num::MaxNum;
-use crate::model::table_lock::TableLock;
+use crate::model::table_lock::{TableLock, TableLockReadGuard};
 use crate::model::{cell::Cell, zone::Zone};
 use enum_iterator::{all, cardinality};
 use hashbrown::{HashMap, HashSet};
 use rand::{prelude::StdRng, RngCore, SeedableRng};
-use scoped_threadpool::Pool;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, RwLock};
 use std::time::{Duration, Instant};
 
@@ -34,7 +34,6 @@ pub struct Solver<'a, const N: usize> {
     hashed_zone: HashMap<&'a Zone, Vec<&'a Cell<N>>>,
     connect_zone: HashMap<&'a Zone, HashSet<&'a Zone>>,
     checked_zone: RwLock<HashMap<&'a Zone, HashMap<SolverSimple, bool>>>,
-    pool: Mutex<Pool>,
 }
 
 impl<'a, const N: usize> Solver<'a, N> {
@@ -54,7 +53,7 @@ impl<'a, const N: usize> Solver<'a, N> {
             // println!("{}", self.t);
             // println!("-----------------------------");
             // timeout 또는 모든 문제를 풀 수 없는 경우 return
-            if (Instant::now() - start) >= timeout || self.solve().is_none() {
+            if (Instant::now() - start) >= timeout || !self.solve() {
                 return unsolved_cell_cnt;
             }
         }
@@ -62,66 +61,86 @@ impl<'a, const N: usize> Solver<'a, N> {
         0
     }
 
-    pub fn solve(&mut self) -> Option<&SolverHistory<'a, N>> {
+    pub fn solve(&mut self) -> bool {
         debug_assert!(self.t.table_num_chk_validater());
         let read = self.t.read_lock();
 
-        // 먼저 오류가 있는지 체크하여 있을 경우 롤백
-        if self.find_error_cell(&read).is_some() {
+        let result_list: Mutex<Vec<SolverResult<N>>> = Mutex::new(Vec::new());
+        let mut error_cell: Option<&Cell<N>> = None;
+        let is_break = AtomicBool::new(false);
+
+        rayon::scope_fifo(|s| {
+            s.spawn_fifo(|_| {
+                // print!("VAL ");
+                // 먼저 오류가 있는지 체크하여 있을 경우 롤백
+                error_cell = self.find_error_cell(&read, &is_break);
+                if error_cell.is_some() {
+                    is_break.store(true, Ordering::Relaxed);
+                }
+            });
+
+            s.spawn_fifo(|_| {
+                // Single Solver 적용
+                // print!("SINGLE ");
+                let mut result = self.single(&read, &is_break);
+                if !result.is_empty() {
+                    let mut lock = result_list.lock().unwrap();
+                    lock.append(&mut result);
+                }
+            });
+
+            s.spawn_fifo(|s2| {
+                // Naked Solver 적용
+                // print!("NAKED ");
+                self.naked(&read, s2, &result_list, &is_break);
+            });
+
+            s.spawn_fifo(|_| {
+                // print!("BLR ");
+                // Box Line Reduction Solver 적용
+                let mut result = self.box_line_reduction(&read, &is_break);
+                if !result.is_empty() {
+                    let mut lock = result_list.lock().unwrap();
+                    lock.append(&mut result);
+                }
+            });
+
+            false
+        });
+
+        if error_cell.is_some() {
             // println!("ROLLBACK");
-            drop(read);
-            if self.history_rollback_last_guess() {
-                return self.solver_history_stack.last();
-            } else {
-                return None;
-            }
+            return self.history_rollback_last_guess(read);
         }
 
-        // Single Solver 적용
-        let mut result = self.single(&read);
-        if !result.is_empty() {
-            // println!("SINGLE");
-            drop(read);
-            self.solve_result_commit(result);
-            return self.solver_history_stack.last();
+        let result_list = result_list.into_inner().unwrap();
+        if result_list.is_empty() {
+            // 푸는게 실패할 경우 guess를 적용
+            self.changed_cell.clear();
+            self.guess_random(read);
+            self.guess_cnt += 1;
+        } else {
+            self.solve_result_commit(read, result_list);
         }
 
-        // Naked Solver 적용
-        result = self.naked(&read);
-        if !result.is_empty() {
-            // println!("NAKED");
-            drop(read);
-            self.solve_result_commit(result);
-            return self.solver_history_stack.last();
-        }
-
-        // Box Line Reduction Solver 적용
-        result = self.box_line_reduction(&read);
-        if !result.is_empty() {
-            drop(read);
-            self.solve_result_commit(result);
-            return self.solver_history_stack.last();
-        }
-
-        // 푸는게 실패할 경우 guess를 적용
-        // println!("GUESS");
-        self.changed_cell.clear();
-        self.guess_random(read);
-        self.guess_cnt += 1;
-        self.solver_history_stack.last()
+        true
     }
 
     /// 스도푸를 푼 경우 해당 결과를 적용합니다.
-    fn solve_result_commit(&mut self, mut result: Vec<SolverResult<'a, N>>) -> bool {
-        let mut commit_flag = false;
-        while let Some(solver_result) = result.pop() {
+    fn solve_result_commit(
+        &mut self,
+        read: TableLockReadGuard<N>,
+        result: Vec<SolverResult<'a, N>>,
+    ) {
+        let mut write = read.upgrade_to_write();
+
+        for solver_result in result {
             let history = {
                 let mut backup_chk: Vec<(&'a Cell<N>, ArrayVector<MaxNum<N>, N>)> =
                     Vec::with_capacity(solver_result.effect_cells.len());
 
-                let read = self.t.read_lock();
                 for (c, _) in &solver_result.effect_cells {
-                    let backup = read.read_from_cell(c).clone_chk_list();
+                    let backup = write.read_from_cell(c).clone_chk_list();
                     backup_chk.push((c, backup));
                 }
 
@@ -135,7 +154,6 @@ impl<'a, const N: usize> Solver<'a, N> {
                 unreachable!();
             };
 
-            let mut write = self.t.write_lock();
             for (c, v) in &solver_result.effect_cells {
                 let write_cell = write.write_from_cell(c);
                 write_cell.set_to_false_list(v);
@@ -151,15 +169,11 @@ impl<'a, const N: usize> Solver<'a, N> {
                 .unwrap() += 1;
 
             self.solver_history_stack.push(history);
-
-            commit_flag = true;
         }
-
-        commit_flag
     }
 
     /// 가장 최근의 guess까지 롤백
-    fn history_rollback_last_guess(&mut self) -> bool {
+    fn history_rollback_last_guess(&mut self, read: TableLockReadGuard<N>) -> bool {
         let no_guess = self
             .solver_history_stack
             .iter()
@@ -170,7 +184,7 @@ impl<'a, const N: usize> Solver<'a, N> {
             return false;
         }
 
-        let mut write = self.t.write_lock();
+        let mut write = read.upgrade_to_write();
         self.guess_rollback_cnt += 1;
         while let Some(history) = self.solver_history_stack.pop() {
             for (c, backup) in history.backup_chk {
@@ -253,7 +267,7 @@ impl<'a, const N: usize> Solver<'a, N> {
 
         Solver {
             t,
-            solver_history_stack: Vec::with_capacity(N * N * 2),
+            solver_history_stack: Vec::with_capacity(N * N * N),
             rng: rand::prelude::StdRng::seed_from_u64(rand_seed),
             rand_seed,
             guess_cnt: 0,
@@ -265,7 +279,6 @@ impl<'a, const N: usize> Solver<'a, N> {
             hashed_zone,
             connect_zone,
             checked_zone: RwLock::new(HashMap::with_capacity(zone_cnt)),
-            pool: Mutex::new(Pool::new(4)),
         }
     }
 
