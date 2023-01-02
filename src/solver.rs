@@ -220,7 +220,7 @@ impl<'a, const N: usize> Solver<'a, N> {
         true
     }
 
-    /// 이 스도쿠 퍼즐이 완성되었는지 여부를 반환
+    /// 이 스도쿠 퍼즐의 미완성 Cell 개수 반환
     #[must_use]
     pub fn get_unsolved_cell_cnt(&self) -> usize {
         let read = self.t.read_lock();

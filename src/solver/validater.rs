@@ -72,7 +72,6 @@ impl<'a, const N: usize> Solver<'a, N> {
                         // 미확정 cell이 있는 경우 cell_total과 sum은 다를 수 있음.
                         // 이 경우에도 cell_total이 sum을 넘어서면 안 됨
                     } else if cell_total > *sum {
-                        is_break.store(true, Ordering::Relaxed);
                         return Some(cells[0]);
                     }
                 }
