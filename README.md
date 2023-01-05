@@ -138,6 +138,7 @@ fn main() {
 * Naked Pair, Naked Triple, Naked Quad 등..
 * Box Line Reduction
 * 구현된 알고리즘으로 풀 수 없을 경우 무작위 Guess 및 Guess가 잘못되었을 경우 Rollback
+* 멀티스레딩 지원
 
 ## TODO
 * 더 많은 Solver 알고리즘 구현
