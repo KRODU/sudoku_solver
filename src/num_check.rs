@@ -69,6 +69,11 @@ impl<const N: usize> NumCheck<N> {
             .map(|(n, _)| MaxNum::new(n))
     }
 
+    #[must_use]
+    pub fn get_true_list(&self) -> &ArrayVector<MaxNum<N>, N> {
+        &self.true_list
+    }
+
     pub fn set_chk(&mut self, num: MaxNum<N>, chk: bool) {
         if chk {
             self.set_true(num);
@@ -161,21 +166,25 @@ impl<const N: usize> NumCheck<N> {
     }
 
     /// 이 노트의 값이 확정된 경우 true, 그렇지 않으면 false 입니다.
+    #[must_use]
     pub fn is_final_num(&self) -> bool {
         self.true_cnt == 1
     }
 
     /// true인 목록을 복사하여 반환합니다.
+    #[must_use]
     pub fn clone_chk_list(&self) -> ArrayVector<MaxNum<N>, N> {
         self.true_list.clone()
     }
 
     /// 최종 값을 반환합니다. 확정되지 않은 경우 None 입니다.
+    #[must_use]
     pub fn get_final_num(&self) -> Option<MaxNum<N>> {
         self.final_num
     }
 
     /// 이 노트와 다른 노트를 비교하여 완전히 같은 경우 true
+    #[must_use]
     pub fn is_same_note(&self, num_check: &NumCheck<N>) -> bool {
         for n in MaxNum::<N>::iter() {
             if self.chk_list[n].is_some() != num_check.chk_list[n].is_some() {
@@ -187,7 +196,8 @@ impl<const N: usize> NumCheck<N> {
     }
 
     /// 이 노트와 다른 노트를 비교하여 서로 겹치는 노트만 반환합니다.
-    pub fn intersection_note(&self, num_check: &NumCheck<N>) -> NumCheck<N> {
+    #[must_use]
+    pub fn intersection_num_check(&self, num_check: &NumCheck<N>) -> NumCheck<N> {
         let mut ret = NumCheck::new_with_false();
 
         for &true_value in &self.true_list {
@@ -200,7 +210,7 @@ impl<const N: usize> NumCheck<N> {
     }
 
     /// 이 노트와 다른 노트를 비교하여 합집합 노트를 만듭니다.
-    pub fn union_note(&self, num_check: &mut NumCheck<N>) {
+    pub fn union_note_num_check(&self, num_check: &mut NumCheck<N>) {
         for true_value in &self.true_list {
             num_check.set_true(*true_value);
         }

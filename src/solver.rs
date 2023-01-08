@@ -28,7 +28,6 @@ pub struct Solver<'a, const N: usize> {
     guess_cnt: u32,
     guess_rollback_cnt: u32,
     guess_backtrace_rollback_cnt: u32,
-    changed_cell: HashSet<&'a Cell<N>>,
     // Zone과 Zone에 속한 Cell 목록을 Vec로 정렬
     ordered_zone: Vec<(&'a Zone, Vec<&'a Cell<N>>)>,
     hashed_zone: HashMap<&'a Zone, Vec<&'a Cell<N>>>,
@@ -116,7 +115,6 @@ impl<'a, const N: usize> Solver<'a, N> {
         let result_list = result_list.into_inner().unwrap();
         if result_list.is_empty() {
             // 푸는게 실패할 경우 guess를 적용
-            self.changed_cell.clear();
             self.guess_random(read);
             self.guess_cnt += 1;
         } else {
@@ -157,7 +155,6 @@ impl<'a, const N: usize> Solver<'a, N> {
             for (c, v) in &solver_result.effect_cells {
                 let write_cell = write.write_from_cell(c);
                 write_cell.set_to_false_list(v);
-                self.changed_cell.insert(c);
                 self.checked_zone_clear(c);
             }
 
@@ -189,7 +186,6 @@ impl<'a, const N: usize> Solver<'a, N> {
         while let Some(history) = self.solver_history_stack.pop() {
             for (c, backup) in history.backup_chk {
                 write.write_from_cell(c).set_to_chk_list(&backup);
-                self.changed_cell.insert(c);
                 self.checked_zone_clear(c);
             }
 
@@ -239,11 +235,6 @@ impl<'a, const N: usize> Solver<'a, N> {
             solve_cnt.insert(n, 0u32);
         }
 
-        let mut changed_cell = HashSet::with_capacity(N * N);
-        for c in t.into_iter() {
-            changed_cell.insert(c);
-        }
-
         let hashed_zone = Solver::get_zone_hashmap(t);
         let zone_cnt = hashed_zone.len();
 
@@ -274,7 +265,6 @@ impl<'a, const N: usize> Solver<'a, N> {
             guess_rollback_cnt: 0,
             guess_backtrace_rollback_cnt: 0,
             solve_cnt,
-            changed_cell,
             ordered_zone,
             hashed_zone,
             connect_zone,

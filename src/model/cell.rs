@@ -10,18 +10,23 @@ pub struct Cell<const N: usize> {
     pub(crate) zone_vec: Vec<Zone>,
     x: MaxNum<N>,
     y: MaxNum<N>,
+    index: usize,
     _pin: PhantomPinned,
 }
 
 impl<const N: usize> Cell<N> {
     #[must_use]
     pub fn new(x: usize, y: usize, zone: Vec<Zone>) -> Self {
+        let x = MaxNum::new(x);
+        let y = MaxNum::new(y);
+
         Cell {
             chk_unsafe: UnsafeCellSync::new(NumCheck::<N>::new_with_true()),
             zone_set: zone.iter().cloned().collect(),
             zone_vec: zone,
-            x: MaxNum::new(x),
-            y: MaxNum::new(y),
+            x,
+            y,
+            index: x.get_value() * N + y.get_value(),
             _pin: PhantomPinned,
         }
     }
@@ -43,7 +48,6 @@ impl<const N: usize> Eq for Cell<N> {}
 
 impl<const N: usize> std::hash::Hash for Cell<N> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.x.hash(state);
-        self.y.hash(state);
+        self.index.hash(state);
     }
 }

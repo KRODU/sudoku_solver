@@ -75,7 +75,6 @@ impl<'a, const N: usize> Solver<'a, N> {
         let backup = b.clone_chk_list();
         let backup_chk = vec![(cell, backup)];
         b.set_to_value(final_num);
-        self.changed_cell.insert(cell);
         self.checked_zone_clear(cell);
 
         let history: SolverHistory<'a, N> = SolverHistory {

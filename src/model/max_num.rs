@@ -22,6 +22,7 @@ impl<const N: usize> MaxNum<N> {
         Self { num }
     }
 
+    #[inline]
     pub fn get_value(&self) -> usize {
         self.num
     }

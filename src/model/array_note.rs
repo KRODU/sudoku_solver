@@ -1,4 +1,4 @@
-use super::max_num::MaxNum;
+use super::{array_vector::ArrayVector, max_num::MaxNum};
 use std::ops::{Deref, DerefMut, Index, IndexMut};
 
 #[derive(Debug)]
@@ -56,3 +56,20 @@ where
 }
 
 impl<T, const N: usize> Eq for ArrayNote<T, N> where T: Eq {}
+
+impl<const N: usize> ArrayNote<bool, N> {
+    pub fn bool_array_note_to_array_vec(&self) -> ArrayVector<MaxNum<N>, N> {
+        let mut ret: ArrayVector<MaxNum<N>, N> = ArrayVector::new();
+
+        for (i, b) in self.iter().enumerate() {
+            if *b {
+                unsafe {
+                    // ret의 N과 self의 N은 같은것이 보장됨.
+                    ret.push_unchecked(MaxNum::new_unchecked(i));
+                }
+            }
+        }
+
+        ret
+    }
+}

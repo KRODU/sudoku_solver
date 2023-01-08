@@ -6,12 +6,12 @@ use super::{
     Solver,
 };
 use crate::model::{
+    array_note::ArrayNote,
     cell::Cell,
     max_num::MaxNum,
     table_lock::TableLockReadGuard,
     zone::{Zone, ZoneType},
 };
-use crate::num_check::NumCheck;
 use crate::{combinations::combinations, model::array_vector::ArrayVector};
 use std::sync::{
     atomic::{AtomicBool, Ordering},
@@ -49,7 +49,6 @@ impl<'a, const N: usize> Solver<'a, N> {
         read: &TableLockReadGuard<N>,
         is_break: &AtomicBool,
     ) -> Option<SolverResult<'a, N>> {
-        let mut union_node: NumCheck<N> = NumCheck::new_with_false();
         let mut ret: Option<SolverResult<'a, N>> = None;
         let mut comp_cell_target: Vec<&Cell<N>> = Vec::with_capacity(cells.len());
 
@@ -66,21 +65,26 @@ impl<'a, const N: usize> Solver<'a, N> {
             }));
 
             combinations(&comp_cell_target, i, |arr| {
-                if !arr.iter().any(|c| self.changed_cell.contains(*c)) {
-                    return true;
-                }
-
-                union_node.set_all_false();
+                let mut union_node = ArrayNote::new([false; N]);
+                let mut union_node_true_cnt = 0;
                 for c in arr {
                     let b = read.read_from_cell(c);
 
-                    b.union_note(&mut union_node);
-                    if union_node.get_true_cnt() > i {
-                        return true;
+                    for &true_note in b.get_true_list() {
+                        if union_node[true_note] {
+                            continue;
+                        } else {
+                            union_node[true_note] = true;
+                            union_node_true_cnt += 1;
+
+                            if union_node_true_cnt > i {
+                                return true;
+                            }
+                        }
                     }
                 }
 
-                if union_node.get_true_cnt() != i {
+                if union_node_true_cnt != i {
                     return true;
                 }
 
@@ -93,21 +97,25 @@ impl<'a, const N: usize> Solver<'a, N> {
                     }
 
                     let b = read.read_from_cell(zone_cell);
-                    let inter = b.intersection_note(&union_node);
+                    let mut inter: ArrayVector<MaxNum<N>, N> = ArrayVector::new();
+                    for &true_note in b.get_true_list() {
+                        if union_node[true_note] {
+                            inter.push(true_note);
+                        }
+                    }
 
                     // 제거할 노트를 발견한 경우
                     if !inter.is_empty() {
-                        let note: ArrayVector<MaxNum<N>, N> = inter.into_iter().collect();
-                        effect_cells.push((zone_cell, note));
+                        effect_cells.push((zone_cell, inter));
                     }
                 }
 
                 // effect_cells에 값이 존재하는 경우 제거한 노트를 발견한 것임.
                 if !effect_cells.is_empty() {
-                    let found_chks: ArrayVector<MaxNum<N>, N> =
-                        union_node.iter().copied().collect();
                     ret = Some(SolverResult {
-                        solver_type: SolverResultDetail::Naked { found_chks },
+                        solver_type: SolverResultDetail::Naked {
+                            found_chks: union_node.bool_array_note_to_array_vec(),
+                        },
                         effect_cells,
                     });
 
