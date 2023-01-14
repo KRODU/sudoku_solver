@@ -7,6 +7,8 @@ use crate::model::{cell::Cell, zone::Zone};
 use enum_iterator::{all, cardinality};
 use hashbrown::{HashMap, HashSet};
 use rand::{prelude::StdRng, RngCore, SeedableRng};
+use rayon::slice::ParallelSliceMut;
+use std::fmt::Debug;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, RwLock};
 use std::time::{Duration, Instant};
@@ -52,7 +54,7 @@ impl<'a, const N: usize> Solver<'a, N> {
             // println!("{}", self.t);
             // println!("-----------------------------");
             // timeout 또는 모든 문제를 풀 수 없는 경우 return
-            if (Instant::now() - start) >= timeout || !self.solve() {
+            if (Instant::now() - start) >= timeout || !self.fill_once() {
                 return unsolved_cell_cnt;
             }
         }
@@ -60,9 +62,25 @@ impl<'a, const N: usize> Solver<'a, N> {
         0
     }
 
+    /// solver를 적용하여 문제를 풉니다. solver가 풀지 못한 경우 guess합니다.
+    pub fn fill_once(&mut self) -> bool {
+        if self.solve() {
+            true
+        } else {
+            // 푸는게 실패할 경우 guess를 적용
+            if self.guess_random() {
+                self.guess_cnt += 1;
+                true
+            } else {
+                false
+            }
+        }
+    }
+
+    /// solver를 적용하여 문제를 풉니다. 문제는 푼 경우 true, 풀지 못한 경우 false를 반환합니다.
     pub fn solve(&mut self) -> bool {
-        debug_assert!(self.t.table_num_chk_validater());
         let read = self.t.read_lock();
+        debug_assert!(self.t.table_num_chk_validater());
 
         let result_list: Mutex<Vec<SolverResult<N>>> = Mutex::new(Vec::new());
         let mut error_cell: Option<&Cell<N>> = None;
@@ -94,15 +112,15 @@ impl<'a, const N: usize> Solver<'a, N> {
                 self.naked(&read, s2, &result_list, &is_break);
             });
 
-            s.spawn_fifo(|_| {
-                // print!("BLR ");
-                // Box Line Reduction Solver 적용
-                let mut result = self.box_line_reduction(&read, &is_break);
-                if !result.is_empty() {
-                    let mut lock = result_list.lock().unwrap();
-                    lock.append(&mut result);
-                }
-            });
+            // s.spawn_fifo(|_| {
+            //     // print!("BLR ");
+            //     // Box Line Reduction Solver 적용
+            //     let mut result = self.box_line_reduction(&read, &is_break);
+            //     if !result.is_empty() {
+            //         let mut lock = result_list.lock().unwrap();
+            //         lock.append(&mut result);
+            //     }
+            // });
 
             false
         });
@@ -114,14 +132,11 @@ impl<'a, const N: usize> Solver<'a, N> {
 
         let result_list = result_list.into_inner().unwrap();
         if result_list.is_empty() {
-            // 푸는게 실패할 경우 guess를 적용
-            self.guess_random(read);
-            self.guess_cnt += 1;
+            false
         } else {
             self.solve_result_commit(read, result_list);
+            true
         }
-
-        true
     }
 
     /// 스도푸를 푼 경우 해당 결과를 적용합니다.
@@ -242,7 +257,7 @@ impl<'a, const N: usize> Solver<'a, N> {
             .iter()
             .map(|(z, v)| (*z, v.clone()))
             .collect::<Vec<_>>();
-        ordered_zone.sort_unstable_by_key(|(z, _)| *z);
+        ordered_zone.par_sort_unstable_by_key(|(z, _)| *z);
 
         for (_, c) in &ordered_zone {
             if c.len() != N {
@@ -282,6 +297,7 @@ impl<'a, const N: usize> Solver<'a, N> {
             }
         }
 
+        hash.iter_mut().for_each(|(_, v)| v.par_sort_unstable());
         hash
     }
 
@@ -385,6 +401,20 @@ impl<'a, const N: usize> Solver<'a, N> {
     #[inline]
     pub fn guess_rollback_cnt(&self) -> u32 {
         self.guess_rollback_cnt
+    }
+}
+
+impl<'a, const N: usize> PartialEq for Solver<'a, N> {
+    fn eq(&self, other: &Self) -> bool {
+        self.t == other.t
+    }
+}
+
+impl<'a, const N: usize> Eq for Solver<'a, N> {}
+
+impl<'a, const N: usize> Debug for Solver<'a, N> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Solver").field("t", &self.t).finish()
     }
 }
 

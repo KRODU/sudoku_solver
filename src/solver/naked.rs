@@ -92,9 +92,12 @@ impl<'a, const N: usize> Solver<'a, N> {
                 // zone을 순회하며 삭제할 노트가 있는지 찾음
                 for zone_cell in cells {
                     // 순회 대상에서 자기 자신은 제외
-                    if arr.contains(&zone_cell) {
+                    // combinations 함수는 입력 배열이 정렬되어있을 경우 출력 배열 또한 정렬되어 있음
+                    // cells -> comp_cell_target -> combinations 함수로 데이터가 흘러가며 cells가 정렬되어있으니 combinations또한 정렬됨
+                    if arr.binary_search(&zone_cell).is_ok() {
                         continue;
                     }
+                    debug_assert!(!arr.contains(&zone_cell)); // 실수로 버그를 도입할 수 있으니 이중체크..
 
                     let b = read.read_from_cell(zone_cell);
                     let mut inter: ArrayVector<MaxNum<N>, N> = ArrayVector::new();
@@ -112,6 +115,22 @@ impl<'a, const N: usize> Solver<'a, N> {
 
                 // effect_cells에 값이 존재하는 경우 제거한 노트를 발견한 것임.
                 if !effect_cells.is_empty() {
+                    // println!("{}", self.t.note_fmt());
+                    // for i in MaxNum::<N>::iter() {
+                    //     if union_node[i] {
+                    //         print!("{},", i);
+                    //     }
+                    // }
+                    // println!("");
+                    // for eff in &effect_cells {
+                    //     let (x, y) = eff.0.get_coordinate();
+                    //     print!("x: {}, y: {} :: ", x, y);
+                    //     for n in &eff.1 {
+                    //         print!("{},", n)
+                    //     }
+                    //     println!("");
+                    // }
+
                     ret = Some(SolverResult {
                         solver_type: SolverResultDetail::Naked {
                             found_chks: union_node.bool_array_note_to_array_vec(),

@@ -73,6 +73,51 @@ impl<const N: usize> TableLock<N> {
                 .get_unchecked(x.get_value() * N + y.get_value())
         }
     }
+
+    pub fn note_fmt(&self) -> String {
+        let rec_size = (N as f64).sqrt().ceil() as usize;
+        let mut row_string: Vec<String> = Vec::with_capacity(N * 2);
+        let mut row_string_cursor = 0_usize;
+
+        let read = self.read_lock();
+
+        for x in MaxNum::<N>::iter() {
+            for _ in 0..rec_size {
+                row_string.push(String::with_capacity(N * 2));
+            }
+
+            for y in MaxNum::<N>::iter() {
+                let cell = read.read_from_coordinate(x, y);
+                let mut write_row_cursor = 0;
+                for n in MaxNum::<N>::iter() {
+                    if cell.get_chk(n) {
+                        row_string[row_string_cursor + write_row_cursor].push(n.get_char());
+                    } else {
+                        row_string[row_string_cursor + write_row_cursor].push(' ');
+                    }
+
+                    if (n.get_value() + 1) % rec_size == 0 {
+                        write_row_cursor += 1;
+                    }
+                }
+
+                for row in row_string.iter_mut().skip(row_string_cursor).take(rec_size) {
+                    row.push('|');
+                }
+            }
+            row_string.push("-".repeat(N * rec_size + N));
+            row_string_cursor += rec_size + 1;
+        }
+
+        let mut ret = String::with_capacity(N * N * N * 2);
+
+        for row in row_string {
+            ret.push_str(&row);
+            ret.push('\n');
+        }
+
+        ret
+    }
 }
 
 impl<const N: usize> Deref for TableLock<N> {
@@ -108,7 +153,7 @@ impl<const N: usize> Display for TableLock<N> {
 
 impl<const N: usize> Debug for TableLock<N> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        Display::fmt(&self, f)
+        Display::fmt(&self.note_fmt(), f)
     }
 }
 

@@ -46,6 +46,18 @@ impl<const N: usize> PartialEq for Cell<N> {
 
 impl<const N: usize> Eq for Cell<N> {}
 
+impl<const N: usize> PartialOrd for Cell<N> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.index.partial_cmp(&other.index)
+    }
+}
+
+impl<const N: usize> Ord for Cell<N> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.index.cmp(&other.index)
+    }
+}
+
 impl<const N: usize> std::hash::Hash for Cell<N> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.index.hash(state);

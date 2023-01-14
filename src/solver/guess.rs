@@ -2,12 +2,13 @@ use super::solver_history::{SolverHistory, SolverHistoryType};
 use super::Solver;
 use crate::model::cell::Cell;
 use crate::model::max_num::MaxNum;
-use crate::model::table_lock::{TableLockReadGuard, TableLockWriteGuard};
+use crate::model::table_lock::TableLockWriteGuard;
 use rand::Rng;
 
 impl<'a, const N: usize> Solver<'a, N> {
     /// 값이 확정되지 않은 cell중에 하나를 무작위로 guess하여 넣습니다.
-    pub fn guess_random(&mut self, read: TableLockReadGuard<N>) {
+    pub fn guess_random(&mut self) -> bool {
+        let write = self.t.write_lock();
         let mut minimum_note_cnt = usize::MAX;
         let mut minimum_note_list: Vec<&Cell<N>> = Vec::new();
 
@@ -15,7 +16,7 @@ impl<'a, const N: usize> Solver<'a, N> {
         // 이렇게하면 나중에 rollback이 필요할 가능성을 조금이라도 줄일 수 있음
         for (_, cells) in &self.ordered_zone {
             for c in cells {
-                let b = read.read_from_cell(c);
+                let b = write.read_from_cell(c);
                 let true_cnt = b.get_true_cnt();
                 if true_cnt <= 1 || true_cnt > minimum_note_cnt {
                     continue;
@@ -32,21 +33,18 @@ impl<'a, const N: usize> Solver<'a, N> {
 
         // 모든 스도쿠 퍼즐이 채워진 경우 return
         if minimum_note_list.is_empty() {
-            return;
+            return false;
         }
 
         let cell_pick = minimum_note_list[self.rng.gen_range(0..minimum_note_list.len())];
         // println!("{:?}", cell_pick.coordi);
-        let cell_notes = self
-            .t
-            .read_lock()
-            .read_from_cell(cell_pick)
-            .clone_chk_list();
+        let cell_notes = write.read_from_cell(cell_pick).clone_chk_list();
         // println!("{:?}", cell_notes);
         let note_pick = cell_notes[self.rng.gen_range(0..cell_notes.len())];
         // println!("{:?}", note_pick);
 
-        self.guess_mut_something(read.upgrade_to_write(), cell_pick, note_pick);
+        self.guess_mut_something(write, cell_pick, note_pick);
+        true
     }
 
     /// 특정 Cell의 값을 가정합니다. 불가능한 값일 경우 panic이 발생합니다.
