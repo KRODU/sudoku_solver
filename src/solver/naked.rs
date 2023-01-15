@@ -115,22 +115,6 @@ impl<'a, const N: usize> Solver<'a, N> {
 
                 // effect_cells에 값이 존재하는 경우 제거한 노트를 발견한 것임.
                 if !effect_cells.is_empty() {
-                    // println!("{}", self.t.note_fmt());
-                    // for i in MaxNum::<N>::iter() {
-                    //     if union_node[i] {
-                    //         print!("{},", i);
-                    //     }
-                    // }
-                    // println!("");
-                    // for eff in &effect_cells {
-                    //     let (x, y) = eff.0.get_coordinate();
-                    //     print!("x: {}, y: {} :: ", x, y);
-                    //     for n in &eff.1 {
-                    //         print!("{},", n)
-                    //     }
-                    //     println!("");
-                    // }
-
                     ret = Some(SolverResult {
                         solver_type: SolverResultDetail::Naked {
                             found_chks: union_node.bool_array_note_to_array_vec(),
