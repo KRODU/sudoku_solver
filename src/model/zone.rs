@@ -1,4 +1,7 @@
-use std::hash::{Hash, Hasher};
+use std::{
+    fmt::Debug,
+    hash::{Hash, Hasher},
+};
 
 #[derive(PartialOrd, Ord, Debug)]
 pub enum ZoneType {
@@ -35,7 +38,15 @@ impl Hash for ZoneType {
     }
 }
 
-#[derive(Debug)]
+impl Debug for Zone {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Zone")
+            .field("z", &self.z)
+            .field("zone_type", &self.zone_type)
+            .finish()
+    }
+}
+
 pub struct Zone {
     z: usize,
     zone_type: ZoneType,

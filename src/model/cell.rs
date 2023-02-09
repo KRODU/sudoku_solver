@@ -1,9 +1,8 @@
 use super::{max_num::MaxNum, unsafe_cell_sync::UnsafeCellSync, zone::Zone};
 use crate::num_check::NumCheck;
 use hashbrown::HashSet;
-use std::marker::PhantomPinned;
+use std::{fmt::Debug, marker::PhantomPinned};
 
-#[derive(Debug)]
 pub struct Cell<const N: usize> {
     pub(crate) chk_unsafe: UnsafeCellSync<NumCheck<N>>,
     pub(crate) zone_set: HashSet<Zone>,
@@ -33,6 +32,16 @@ impl<const N: usize> Cell<N> {
 
     pub fn get_coordinate(&self) -> (MaxNum<N>, MaxNum<N>) {
         (self.x, self.y)
+    }
+}
+
+impl<const N: usize> Debug for Cell<N> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Cell")
+            .field("zone_vec", &self.zone_vec)
+            .field("x", &self.x)
+            .field("y", &self.y)
+            .finish()
     }
 }
 

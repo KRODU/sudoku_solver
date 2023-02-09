@@ -1,5 +1,7 @@
 use core::panic;
 use enum_iterator::all;
+use std::fs::File;
+use std::io::{BufWriter, Write};
 use std::time::Instant;
 use sudoku_solver_lib::model::max_num::MaxNum;
 use sudoku_solver_lib::model::table::Table;
@@ -32,11 +34,16 @@ fn main() {
     println!("time: {}ms", (end - start).as_millis());
 
     drop(solver);
-    for _ in 1..=1000 {
+
+    let mut writer = BufWriter::new(File::create("log.txt").unwrap());
+    for _ in 0..0 {
         let mut t2 = Table::new_default_16();
         let mut t3 = Table::new_default_16();
 
         loop {
+            // let last_left = format!("{:?}", t2);
+            // let last_right = format!("{:?}", t3);
+
             let mut solver2 = Solver::new(&mut t2);
             solver2.set_random_seed(0);
             if !solver2.guess_random() {
@@ -51,6 +58,9 @@ fn main() {
                 break;
             }
             while solver3.solve() {}
+
+            let solver2_history = format!("{:?}", solver2.get_solver_history());
+            let solver3_history = format!("{:?}", solver3.get_solver_history());
             drop(solver2);
             drop(solver3);
 
@@ -64,20 +74,30 @@ fn main() {
                     let r2 = t3_read.read_from_coordinate(x, y);
 
                     if !r1.is_same_note(r2) {
-                        println!(" left Cell: {:?}", r1);
-                        println!("right: Cell {:?}", r2);
+                        wrtie_log(format!(" left Cell: {:?}", r1), &mut writer);
+                        wrtie_log(String::new(), &mut writer);
+                        wrtie_log(format!("right: Cell {:?}", r2), &mut writer);
                         diff_found = true;
                     }
                 }
             }
 
             if diff_found {
-                println!("left: {:?}", t2);
-                println!("right: {:?}", t3);
-                panic!("ERROR");
+                wrtie_log(format!("left: {:?}", t2), &mut writer);
+                wrtie_log(format!("right: {:?}", t3), &mut writer);
+                wrtie_log(format!("left: {}", solver2_history), &mut writer);
+                wrtie_log(String::new(), &mut writer);
+                wrtie_log(format!("right: {}", solver3_history), &mut writer);
+                // wrtie_log(format!("left_last: {}", last_left), &mut writer);
+                wrtie_log(String::new(), &mut writer);
+                // wrtie_log(format!("right_last: {}", last_right), &mut writer);
+                panic!("TABLE_NOT_SAME");
             }
         }
-
-        assert_eq!(t2, t3);
     }
+}
+
+fn wrtie_log(str: String, writer: &mut BufWriter<File>) {
+    writer.write_all(str.as_bytes()).unwrap();
+    writer.write_all(b"\n").unwrap();
 }

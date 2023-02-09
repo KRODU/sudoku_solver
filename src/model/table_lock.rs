@@ -55,15 +55,17 @@ impl<const N: usize> TableLock<N> {
         );
     }
 
-    pub fn table_num_chk_validater(&self) -> bool {
+    #[cfg(debug_assertions)]
+    pub fn table_debug_validater(&self) {
         let read = self.read_lock();
 
         for check in self {
             read.read_from_cell(check).validater();
         }
-
-        true
     }
+
+    #[cfg(not(debug_assertions))]
+    pub fn table_debug_validater(&self) {}
 
     pub fn get_cell_from_coordinate(&self, x: MaxNum<N>, y: MaxNum<N>) -> &Cell<N> {
         unsafe {
@@ -147,7 +149,7 @@ impl<const N: usize> Display for TableLock<N> {
         }
         ret.pop();
 
-        write!(f, "{}", ret)
+        write!(f, "{ret}")
     }
 }
 

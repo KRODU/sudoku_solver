@@ -174,7 +174,9 @@ impl<const N: usize> NumCheck<N> {
     /// true인 목록을 복사하여 반환합니다.
     #[must_use]
     pub fn clone_chk_list(&self) -> ArrayVector<MaxNum<N>, N> {
-        self.true_list.clone()
+        let mut ret = self.true_list.clone();
+        ret.sort_unstable();
+        ret
     }
 
     /// 최종 값을 반환합니다. 확정되지 않은 경우 None 입니다.
@@ -221,7 +223,7 @@ impl<const N: usize> NumCheck<N> {
         self.true_cnt
     }
 
-    pub fn validater(&self) -> bool {
+    pub fn validater(&self) {
         assert_eq!(self.true_cnt, self.true_list.len());
         assert_eq!(
             self.true_cnt,
@@ -238,8 +240,6 @@ impl<const N: usize> NumCheck<N> {
                 assert_eq!(self.true_list[index], n);
             }
         }
-
-        true
     }
 }
 

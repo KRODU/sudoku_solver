@@ -80,7 +80,7 @@ impl<'a, const N: usize> Solver<'a, N> {
     /// solver를 적용하여 문제를 풉니다. 문제는 푼 경우 true, 풀지 못한 경우 false를 반환합니다.
     pub fn solve(&mut self) -> bool {
         let read = self.t.read_lock();
-        debug_assert!(self.t.table_num_chk_validater());
+        self.t.table_debug_validater();
 
         let result_list: Mutex<Vec<SolverResult<N>>> = Mutex::new(Vec::new());
         let mut error_cell: Option<&Cell<N>> = None;
@@ -112,15 +112,11 @@ impl<'a, const N: usize> Solver<'a, N> {
                 self.naked(&read, s2, &result_list, &is_break);
             });
 
-            // s.spawn_fifo(|_| {
-            //     // print!("BLR ");
-            //     // Box Line Reduction Solver 적용
-            //     let mut result = self.box_line_reduction(&read, &is_break);
-            //     if !result.is_empty() {
-            //         let mut lock = result_list.lock().unwrap();
-            //         lock.append(&mut result);
-            //     }
-            // });
+            s.spawn_fifo(|s| {
+                // print!("BLR ");
+                // Box Line Reduction Solver 적용
+                self.box_line_reduction(&read, &s, &result_list, &is_break);
+            });
 
             false
         });
@@ -362,12 +358,19 @@ impl<'a, const N: usize> Solver<'a, N> {
         }
     }
 
+    #[must_use]
     pub fn get_table(&self) -> &TableLock<N> {
         self.t
     }
 
+    #[must_use]
     pub fn get_random_seed(&self) -> u64 {
         self.rand_seed
+    }
+
+    #[must_use]
+    pub fn get_solver_history(&self) -> &Vec<SolverHistory<'a, N>> {
+        &self.solver_history_stack
     }
 
     pub fn set_random_seed(&mut self, rand_seed: u64) {

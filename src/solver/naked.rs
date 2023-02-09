@@ -51,9 +51,11 @@ impl<'a, const N: usize> Solver<'a, N> {
     ) -> Option<SolverResult<'a, N>> {
         let mut ret: Option<SolverResult<'a, N>> = None;
         let mut comp_cell_target: Vec<&Cell<N>> = Vec::with_capacity(cells.len());
+        let mut chk_all = true;
 
         for i in 2..N / 2 {
             if is_break.load(Ordering::Relaxed) {
+                chk_all = false;
                 break;
             }
 
@@ -65,6 +67,7 @@ impl<'a, const N: usize> Solver<'a, N> {
             }));
 
             combinations(&comp_cell_target, i, |arr| {
+                debug_assert_eq!(i, arr.len());
                 let mut union_node = ArrayNote::new([false; N]);
                 let mut union_node_true_cnt = 0;
                 for c in arr {
@@ -115,9 +118,12 @@ impl<'a, const N: usize> Solver<'a, N> {
 
                 // effect_cells에 값이 존재하는 경우 제거한 노트를 발견한 것임.
                 if !effect_cells.is_empty() {
+                    let union_node_array_vec = union_node.bool_array_note_to_array_vec();
+                    debug_assert_eq!(union_node_array_vec.len(), union_node_true_cnt);
                     ret = Some(SolverResult {
                         solver_type: SolverResultDetail::Naked {
-                            found_chks: union_node.bool_array_note_to_array_vec(),
+                            found_chks: union_node_array_vec,
+                            found_cell: arr.iter().map(|c| **c).collect(),
                         },
                         effect_cells,
                     });
@@ -134,7 +140,11 @@ impl<'a, const N: usize> Solver<'a, N> {
             }
         }
 
-        self.checked_zone_set_bool_true(zone, SolverSimple::Naked);
+        // is_break가 true여서 중간에 break된 경우 checked_zone을 설정하면 안 됨..
+        if chk_all {
+            self.checked_zone_set_bool_true(zone, SolverSimple::Naked);
+        }
+
         None
     }
 }
