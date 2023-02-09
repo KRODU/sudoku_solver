@@ -57,8 +57,8 @@ impl<'a, const N: usize> Solver<'a, N> {
                     let ZoneType::Unique = z2.get_zone_type() else { continue; };
 
                     let Some(z2_cells) = self.hashed_zone.get(z2) else {
-                    continue;
-                };
+                        continue;
+                    };
 
                     for &note in &current_zone_union_note {
                         let target_this_note = !z1_cells.iter().any(|c| {
