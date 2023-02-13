@@ -1,5 +1,3 @@
-use rayon::ScopeFifo;
-
 use super::{
     solver_history::{SolverResult, SolverResultDetail},
     solver_simple::SolverSimple,
@@ -9,14 +7,13 @@ use crate::model::{
     array_note::ArrayNote,
     cell::Cell,
     max_num::MaxNum,
+    non_atomic_bool::NonAtomicBool,
     table_lock::TableLockReadGuard,
     zone::{Zone, ZoneType},
 };
 use crate::{combinations::combinations, model::array_vector::ArrayVector};
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Mutex,
-};
+use rayon::ScopeFifo;
+use std::sync::Mutex;
 
 impl<'a, const N: usize> Solver<'a, N> {
     pub fn naked<'scope, 'b: 'scope>(
@@ -24,7 +21,7 @@ impl<'a, const N: usize> Solver<'a, N> {
         read: &'b TableLockReadGuard<N>,
         s: &ScopeFifo<'scope>,
         result_list: &'b Mutex<Vec<SolverResult<'a, N>>>,
-        is_break: &'b AtomicBool,
+        is_break: &'b NonAtomicBool,
     ) {
         for (zone, cells) in &self.ordered_zone {
             let ZoneType::Unique = zone.get_zone_type() else { continue; };
@@ -44,21 +41,20 @@ impl<'a, const N: usize> Solver<'a, N> {
 
     fn naked_number_zone(
         &self,
-        zone: &'a Zone,
+        zone: &Zone,
         cells: &Vec<&'a Cell<N>>,
         read: &TableLockReadGuard<N>,
-        is_break: &AtomicBool,
+        is_break: &NonAtomicBool,
     ) -> Option<SolverResult<'a, N>> {
         let mut ret: Option<SolverResult<'a, N>> = None;
         let mut comp_cell_target: Vec<&Cell<N>> = Vec::with_capacity(cells.len());
         let mut chk_all = true;
 
         for i in 2..N / 2 {
-            if is_break.load(Ordering::Relaxed) {
+            if is_break.get() {
                 chk_all = false;
                 break;
             }
-
             comp_cell_target.clear();
             // 검증대상 cell 필터링 후 처리. 이렇게 하면 처리 시간을 많이 줄일 수 있음.
             comp_cell_target.extend(cells.iter().filter(|c| {
@@ -67,6 +63,11 @@ impl<'a, const N: usize> Solver<'a, N> {
             }));
 
             combinations(&comp_cell_target, i, |arr| {
+                if is_break.get() {
+                    chk_all = false;
+                    return true;
+                }
+
                 debug_assert_eq!(i, arr.len());
                 let mut union_node = ArrayNote::new([false; N]);
                 let mut union_node_true_cnt = 0;
@@ -135,14 +136,14 @@ impl<'a, const N: usize> Solver<'a, N> {
             });
 
             if ret.is_some() {
-                is_break.store(true, Ordering::Relaxed);
+                is_break.set(true);
                 return ret;
             }
         }
 
         // is_break가 true여서 중간에 break된 경우 checked_zone을 설정하면 안 됨..
         if chk_all {
-            self.checked_zone_set_bool_true(zone, SolverSimple::Naked);
+            self.checked_zone_set_bool_true(*zone, SolverSimple::Naked);
         }
 
         None

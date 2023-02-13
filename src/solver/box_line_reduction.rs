@@ -4,15 +4,12 @@ use super::{
     Solver,
 };
 use crate::model::{
-    array_vector::ArrayVector, cell::Cell, max_num::MaxNum, table_lock::TableLockReadGuard,
-    zone::ZoneType,
+    array_vector::ArrayVector, cell::Cell, max_num::MaxNum, non_atomic_bool::NonAtomicBool,
+    table_lock::TableLockReadGuard, zone::ZoneType,
 };
 use crate::num_check::NumCheck;
 use rayon::ScopeFifo;
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Mutex,
-};
+use std::sync::Mutex;
 
 impl<'a, const N: usize> Solver<'a, N> {
     pub fn box_line_reduction<'scope, 'b: 'scope>(
@@ -20,7 +17,7 @@ impl<'a, const N: usize> Solver<'a, N> {
         read: &'b TableLockReadGuard<N>,
         s: &ScopeFifo<'scope>,
         result_list: &'b Mutex<Vec<SolverResult<'a, N>>>,
-        is_break: &'b AtomicBool,
+        is_break: &'b NonAtomicBool,
     ) {
         for (z1, z1_cells) in &self.ordered_zone {
             let ZoneType::Unique = z1.get_zone_type() else { continue; };
@@ -29,12 +26,12 @@ impl<'a, const N: usize> Solver<'a, N> {
                 continue;
             };
 
-            if self.checked_zone_get_bool(z1, SolverSimple::BoxLineReduction) {
-                continue;
-            }
-
             s.spawn_fifo(move |_| {
-                if is_break.load(Ordering::Relaxed) {
+                if is_break.get() {
+                    return;
+                }
+
+                if self.checked_zone_get_bool(z1, SolverSimple::BoxLineReduction) {
                     return;
                 }
 
@@ -56,13 +53,13 @@ impl<'a, const N: usize> Solver<'a, N> {
                 for &z2 in connect_zone {
                     let ZoneType::Unique = z2.get_zone_type() else { continue; };
 
-                    let Some(z2_cells) = self.hashed_zone.get(z2) else {
-                        continue;
+                    let Some(z2_cells) = self.hashed_zone.get(&z2) else {
+                        unreachable!();
                     };
 
                     for &note in &current_zone_union_note {
                         let target_this_note = !z1_cells.iter().any(|c| {
-                            if c.zone_set.contains(z2) {
+                            if c.zone_set.contains(&z2) {
                                 return false;
                             }
 
@@ -74,7 +71,7 @@ impl<'a, const N: usize> Solver<'a, N> {
                                 Vec::new();
 
                             for z2_cell in z2_cells {
-                                if z2_cell.zone_set.contains(*z1) {
+                                if z2_cell.zone_set.contains(z1) {
                                     continue;
                                 }
 
@@ -86,7 +83,7 @@ impl<'a, const N: usize> Solver<'a, N> {
                             }
 
                             if !effect_cells.is_empty() {
-                                is_break.store(true, Ordering::Relaxed);
+                                is_break.set(true);
                                 let mut result_lock = result_list.lock().unwrap();
                                 result_lock.push(SolverResult {
                                     solver_type: SolverResultDetail::BoxLineReduction {
@@ -99,7 +96,7 @@ impl<'a, const N: usize> Solver<'a, N> {
                     }
                 }
 
-                self.checked_zone_set_bool_true(z1, SolverSimple::BoxLineReduction);
+                self.checked_zone_set_bool_true(*z1, SolverSimple::BoxLineReduction);
             });
         }
     }

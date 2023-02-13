@@ -1,8 +1,8 @@
 use super::{solver_simple::SolverSimple, Solver};
 use crate::model::{
-    array_note::ArrayNote, cell::Cell, table_lock::TableLockReadGuard, zone::ZoneType,
+    array_note::ArrayNote, cell::Cell, non_atomic_bool::NonAtomicBool,
+    table_lock::TableLockReadGuard, zone::ZoneType,
 };
-use std::sync::atomic::{AtomicBool, Ordering};
 
 impl<'a, const N: usize> Solver<'a, N> {
     /// 현재 스도쿠 퍼즐의 유효성 검사하여 에러셀을 반환.
@@ -10,12 +10,12 @@ impl<'a, const N: usize> Solver<'a, N> {
     pub fn find_error_cell(
         &self,
         read: &TableLockReadGuard<N>,
-        is_break: &AtomicBool,
+        is_break: &NonAtomicBool,
     ) -> Option<&Cell<N>> {
         let mut unique_chk_arr: ArrayNote<bool, N>;
 
         for (zone, cells) in &self.ordered_zone {
-            if is_break.load(Ordering::Relaxed) {
+            if is_break.get() {
                 break;
             }
             if self.checked_zone_get_bool(zone, SolverSimple::Validate) {
@@ -77,7 +77,7 @@ impl<'a, const N: usize> Solver<'a, N> {
                 }
             }
 
-            self.checked_zone_set_bool_true(zone, SolverSimple::Validate);
+            self.checked_zone_set_bool_true(*zone, SolverSimple::Validate);
         }
 
         None

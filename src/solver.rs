@@ -2,6 +2,7 @@ use self::solver_history::{SolverHistory, SolverHistoryType, SolverResult};
 use self::solver_simple::SolverSimple;
 use crate::model::array_vector::ArrayVector;
 use crate::model::max_num::MaxNum;
+use crate::model::non_atomic_bool::NonAtomicBool;
 use crate::model::table_lock::{TableLock, TableLockReadGuard};
 use crate::model::{cell::Cell, zone::Zone};
 use enum_iterator::{all, cardinality};
@@ -9,7 +10,6 @@ use hashbrown::{HashMap, HashSet};
 use rand::{prelude::StdRng, RngCore, SeedableRng};
 use rayon::slice::ParallelSliceMut;
 use std::fmt::Debug;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, RwLock};
 use std::time::{Duration, Instant};
 
@@ -31,10 +31,10 @@ pub struct Solver<'a, const N: usize> {
     guess_rollback_cnt: u32,
     guess_backtrace_rollback_cnt: u32,
     // Zone과 Zone에 속한 Cell 목록을 Vec로 정렬
-    ordered_zone: Vec<(&'a Zone, Vec<&'a Cell<N>>)>,
-    hashed_zone: HashMap<&'a Zone, Vec<&'a Cell<N>>>,
-    connect_zone: HashMap<&'a Zone, HashSet<&'a Zone>>,
-    checked_zone: RwLock<HashMap<&'a Zone, HashMap<SolverSimple, bool>>>,
+    ordered_zone: Vec<(Zone, Vec<&'a Cell<N>>)>,
+    hashed_zone: HashMap<Zone, Vec<&'a Cell<N>>>,
+    connect_zone: HashMap<Zone, HashSet<Zone>>,
+    checked_zone: HashMap<Zone, HashMap<SolverSimple, RwLock<bool>>>,
 }
 
 impl<'a, const N: usize> Solver<'a, N> {
@@ -84,7 +84,7 @@ impl<'a, const N: usize> Solver<'a, N> {
 
         let result_list: Mutex<Vec<SolverResult<N>>> = Mutex::new(Vec::new());
         let mut error_cell: Option<&Cell<N>> = None;
-        let is_break = AtomicBool::new(false);
+        let is_break = NonAtomicBool::new(false);
 
         rayon::scope_fifo(|s| {
             s.spawn_fifo(|_| {
@@ -92,30 +92,26 @@ impl<'a, const N: usize> Solver<'a, N> {
                 // 먼저 오류가 있는지 체크하여 있을 경우 롤백
                 error_cell = self.find_error_cell(&read, &is_break);
                 if error_cell.is_some() {
-                    is_break.store(true, Ordering::Relaxed);
+                    is_break.set(true);
                 }
             });
 
-            s.spawn_fifo(|_| {
+            s.spawn_fifo(|s| {
                 // Single Solver 적용
                 // print!("SINGLE ");
-                let mut result = self.single(&read, &is_break);
-                if !result.is_empty() {
-                    let mut lock = result_list.lock().unwrap();
-                    lock.append(&mut result);
-                }
+                self.single(&read, s, &result_list, &is_break);
             });
 
-            s.spawn_fifo(|s2| {
+            s.spawn_fifo(|s| {
                 // Naked Solver 적용
                 // print!("NAKED ");
-                self.naked(&read, s2, &result_list, &is_break);
+                self.naked(&read, s, &result_list, &is_break);
             });
 
             s.spawn_fifo(|s| {
                 // print!("BLR ");
                 // Box Line Reduction Solver 적용
-                self.box_line_reduction(&read, &s, &result_list, &is_break);
+                self.box_line_reduction(&read, s, &result_list, &is_break);
             });
 
             false
@@ -267,6 +263,18 @@ impl<'a, const N: usize> Solver<'a, N> {
 
         let connect_zone = Solver::<N>::get_connected_zone(&ordered_zone);
 
+        let mut checked_zone: HashMap<Zone, HashMap<SolverSimple, RwLock<bool>>> =
+            HashMap::with_capacity(zone_cnt);
+        for (z, _) in &ordered_zone {
+            checked_zone.insert(*z, HashMap::with_capacity(cardinality::<SolverSimple>()));
+        }
+
+        for (_, check_map) in checked_zone.iter_mut() {
+            for n in all::<SolverSimple>() {
+                check_map.insert(n, RwLock::new(false));
+            }
+        }
+
         Solver {
             t,
             solver_history_stack: Vec::with_capacity(N * N * N),
@@ -279,16 +287,16 @@ impl<'a, const N: usize> Solver<'a, N> {
             ordered_zone,
             hashed_zone,
             connect_zone,
-            checked_zone: RwLock::new(HashMap::with_capacity(zone_cnt)),
+            checked_zone,
         }
     }
 
     #[must_use]
-    fn get_zone_hashmap(t: &'a TableLock<N>) -> HashMap<&'a Zone, Vec<&Cell<N>>> {
-        let mut hash: HashMap<&'a Zone, Vec<&Cell<N>>> = HashMap::with_capacity(N * N);
+    fn get_zone_hashmap(t: &'a TableLock<N>) -> HashMap<Zone, Vec<&Cell<N>>> {
+        let mut hash: HashMap<Zone, Vec<&Cell<N>>> = HashMap::with_capacity(N * N);
         for cell in t {
             for z in &cell.zone_vec {
-                let row = hash.entry(z).or_insert_with(|| Vec::with_capacity(N));
+                let row = hash.entry(*z).or_insert_with(|| Vec::with_capacity(N));
                 row.push(cell);
             }
         }
@@ -299,17 +307,16 @@ impl<'a, const N: usize> Solver<'a, N> {
 
     #[must_use]
     fn get_connected_zone(
-        ordered_zone: &Vec<(&'a Zone, Vec<&'a Cell<N>>)>,
-    ) -> HashMap<&'a Zone, HashSet<&'a Zone>> {
-        let mut ret: HashMap<&'a Zone, HashSet<&'a Zone>> =
-            HashMap::with_capacity(ordered_zone.len());
+        ordered_zone: &Vec<(Zone, Vec<&'a Cell<N>>)>,
+    ) -> HashMap<Zone, HashSet<Zone>> {
+        let mut ret: HashMap<Zone, HashSet<Zone>> = HashMap::with_capacity(ordered_zone.len());
 
         for (z1, _) in ordered_zone {
             for (z2, c2_list) in ordered_zone {
-                let connected = c2_list.iter().any(|c2| c2.zone_set.contains(*z1));
+                let connected = c2_list.iter().any(|c2| c2.zone_set.contains(z1));
 
                 if connected {
-                    ret.entry(z1).or_insert_with(HashSet::new).insert(z2);
+                    ret.entry(*z1).or_insert_with(HashSet::new).insert(*z2);
                 }
             }
         }
@@ -320,41 +327,36 @@ impl<'a, const N: usize> Solver<'a, N> {
     /// 특정 zone에 대한 checked 여부를 반환
     #[must_use]
     fn checked_zone_get_bool(&self, z: &Zone, solver: SolverSimple) -> bool {
-        let read = self.checked_zone.read().unwrap();
-
-        let Some(map) = read.get(z) else {
-            return false;
-        };
-
-        let Some(bool) = map.get(&solver) else {
-            return false;
-        };
-
-        *bool
+        *self
+            .checked_zone
+            .get(z)
+            .unwrap()
+            .get(&solver)
+            .unwrap()
+            .read()
+            .unwrap()
     }
 
     /// 특정 zone에 대한 checked 여부를 true로 설정
-    fn checked_zone_set_bool_true(&self, z: &'a Zone, solver: SolverSimple) {
-        let mut write = self.checked_zone.write().unwrap();
-
-        write
-            .entry(z)
-            .or_insert_with(|| HashMap::with_capacity(cardinality::<SolverSimple>()))
-            .insert(solver, true);
+    fn checked_zone_set_bool_true(&self, z: Zone, solver: SolverSimple) {
+        *self
+            .checked_zone
+            .get(&z)
+            .unwrap()
+            .get(&solver)
+            .unwrap()
+            .write()
+            .unwrap() = true;
     }
 
     /// 특정 zone에 대한 checked를 모두 초기화
     fn checked_zone_clear(&self, c: &Cell<N>) {
-        let mut write = self.checked_zone.write().unwrap();
-
         for z in &c.zone_vec {
-            let Some(simple_hashmap) = write.get_mut(z) else {
-                continue;
-            };
+            let simple_hashmap = self.checked_zone.get(z).unwrap();
 
             simple_hashmap
-                .iter_mut()
-                .for_each(|(_, value)| *value = false);
+                .iter()
+                .for_each(|(_, value)| *value.write().unwrap() = false);
         }
     }
 

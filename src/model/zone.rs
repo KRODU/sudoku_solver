@@ -3,19 +3,10 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-#[derive(PartialOrd, Ord, Debug)]
+#[derive(PartialOrd, Ord, Debug, Clone, Copy)]
 pub enum ZoneType {
     Unique,
     Sum { sum: usize },
-}
-
-impl Clone for ZoneType {
-    fn clone(&self) -> Self {
-        match self {
-            Self::Unique => Self::Unique,
-            Self::Sum { sum } => Self::Sum { sum: *sum },
-        }
-    }
 }
 
 impl Default for ZoneType {
@@ -47,43 +38,28 @@ impl Debug for Zone {
     }
 }
 
+#[derive(Clone, Copy, Default)]
 pub struct Zone {
-    z: usize,
+    z: u16,
     zone_type: ZoneType,
-    hash_cache: u64,
 }
 
 impl Zone {
     pub fn new_unique_from_num(z: usize) -> Zone {
-        let mut state = ahash::AHasher::default();
-        z.hash(&mut state);
-        ZoneType::Unique.hash(&mut state);
-
         Zone {
-            z,
+            z: z.try_into().expect("can not convert from usize to u16"),
             zone_type: ZoneType::Unique,
-            hash_cache: state.finish(),
         }
     }
 
     #[must_use]
-    pub fn get_zone_num(&self) -> usize {
+    pub fn get_zone_num(&self) -> u16 {
         self.z
     }
 
     #[must_use]
     pub fn get_zone_type(&self) -> &ZoneType {
         &self.zone_type
-    }
-}
-
-impl Clone for Zone {
-    fn clone(&self) -> Self {
-        Self {
-            z: self.z,
-            zone_type: self.zone_type.clone(),
-            hash_cache: self.hash_cache,
-        }
     }
 }
 
@@ -97,7 +73,7 @@ impl Eq for Zone {}
 
 impl std::hash::Hash for Zone {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        state.write_u64(self.hash_cache);
+        state.write_u16(self.z);
     }
 }
 
