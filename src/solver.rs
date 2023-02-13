@@ -34,7 +34,7 @@ pub struct Solver<'a, const N: usize> {
     ordered_zone: Vec<(Zone, Vec<&'a Cell<N>>)>,
     hashed_zone: HashMap<Zone, Vec<&'a Cell<N>>>,
     connect_zone: HashMap<Zone, HashSet<Zone>>,
-    checked_zone: HashMap<Zone, HashMap<SolverSimple, RwLock<bool>>>,
+    checked_zone: HashMap<Zone, RwLock<HashMap<SolverSimple, bool>>>,
 }
 
 impl<'a, const N: usize> Solver<'a, N> {
@@ -162,8 +162,8 @@ impl<'a, const N: usize> Solver<'a, N> {
             for (c, v) in &solver_result.effect_cells {
                 let write_cell = write.write_from_cell(c);
                 write_cell.set_to_false_list(v);
-                self.checked_zone_clear(c);
             }
+            self.checked_zone_clear(solver_result.effect_cells.iter().map(|(c, _)| *c));
 
             *self
                 .solve_cnt
@@ -191,10 +191,11 @@ impl<'a, const N: usize> Solver<'a, N> {
         let mut write = read.upgrade_to_write();
         self.guess_rollback_cnt += 1;
         while let Some(history) = self.solver_history_stack.pop() {
-            for (c, backup) in history.backup_chk {
-                write.write_from_cell(c).set_to_chk_list(&backup);
-                self.checked_zone_clear(c);
+            for (c, backup) in &history.backup_chk {
+                write.write_from_cell(c).set_to_chk_list(backup);
             }
+
+            self.checked_zone_clear(history.backup_chk.iter().map(|(c, _)| *c));
 
             if let SolverHistoryType::GuessBacktrace { .. } = history.history_type {
                 self.guess_backtrace_rollback_cnt += 1;
@@ -263,15 +264,19 @@ impl<'a, const N: usize> Solver<'a, N> {
 
         let connect_zone = Solver::<N>::get_connected_zone(&ordered_zone);
 
-        let mut checked_zone: HashMap<Zone, HashMap<SolverSimple, RwLock<bool>>> =
+        let mut checked_zone: HashMap<Zone, RwLock<HashMap<SolverSimple, bool>>> =
             HashMap::with_capacity(zone_cnt);
         for (z, _) in &ordered_zone {
-            checked_zone.insert(*z, HashMap::with_capacity(cardinality::<SolverSimple>()));
+            checked_zone.insert(
+                *z,
+                RwLock::new(HashMap::with_capacity(cardinality::<SolverSimple>())),
+            );
         }
 
         for (_, check_map) in checked_zone.iter_mut() {
+            let mut check_map_lock = check_map.write().unwrap();
             for n in all::<SolverSimple>() {
-                check_map.insert(n, RwLock::new(false));
+                check_map_lock.insert(n, false);
             }
         }
 
@@ -331,32 +336,35 @@ impl<'a, const N: usize> Solver<'a, N> {
             .checked_zone
             .get(z)
             .unwrap()
-            .get(&solver)
-            .unwrap()
             .read()
+            .unwrap()
+            .get(&solver)
             .unwrap()
     }
 
     /// 특정 zone에 대한 checked 여부를 true로 설정
     fn checked_zone_set_bool_true(&self, z: Zone, solver: SolverSimple) {
-        *self
-            .checked_zone
+        self.checked_zone
             .get(&z)
             .unwrap()
-            .get(&solver)
-            .unwrap()
             .write()
-            .unwrap() = true;
+            .unwrap()
+            .insert(solver, true);
     }
 
     /// 특정 zone에 대한 checked를 모두 초기화
-    fn checked_zone_clear(&self, c: &Cell<N>) {
-        for z in &c.zone_vec {
-            let simple_hashmap = self.checked_zone.get(z).unwrap();
+    fn checked_zone_clear<'b>(&self, cells: impl Iterator<Item = &'b Cell<N>>) {
+        let mut changed_zone_set: HashSet<Zone> = HashSet::new();
 
-            simple_hashmap
-                .iter()
-                .for_each(|(_, value)| *value.write().unwrap() = false);
+        for c in cells {
+            for z in &c.zone_vec {
+                if changed_zone_set.contains(z) {
+                    continue;
+                }
+                let mut wrtie_lock = self.checked_zone.get(z).unwrap().write().unwrap();
+                wrtie_lock.iter_mut().for_each(|(_, value)| *value = false);
+                changed_zone_set.insert(*z);
+            }
         }
     }
 
