@@ -43,6 +43,7 @@ impl<'a, const N: usize> Solver<'a, N> {
 
                         // 찾음
                         if read.read_from_cell(c_comp).get_chk(final_num) {
+                            is_break.set(true);
                             let mut note_vec = ArrayVector::new();
                             note_vec.push(final_num);
                             effect_cells.push((c_comp, note_vec));
@@ -55,6 +56,18 @@ impl<'a, const N: usize> Solver<'a, N> {
                             if z2 == zone {
                                 continue;
                             }
+
+                            for c_comp in self.hashed_zone.get(z2).unwrap() {
+                                if c_comp == c {
+                                    continue;
+                                }
+
+                                if read.read_from_cell(c_comp).get_chk(final_num) {
+                                    let mut note_vec = ArrayVector::new();
+                                    note_vec.push(final_num);
+                                    effect_cells.push((c_comp, note_vec));
+                                }
+                            }
                         }
                         let solver_result: SolverResult<'a, N> = SolverResult {
                             solver_type: SolverResultDetail::Single {
@@ -63,7 +76,6 @@ impl<'a, const N: usize> Solver<'a, N> {
                             effect_cells,
                         };
 
-                        is_break.set(true);
                         let mut lock = result_list.lock().unwrap();
                         lock.push(solver_result);
                     }

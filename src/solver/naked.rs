@@ -113,6 +113,7 @@ impl<'a, const N: usize> Solver<'a, N> {
 
                     // 제거할 노트를 발견한 경우
                     if !inter.is_empty() {
+                        is_break.set(true);
                         effect_cells.push((zone_cell, inter));
                     }
                 }
@@ -136,7 +137,6 @@ impl<'a, const N: usize> Solver<'a, N> {
             });
 
             if ret.is_some() {
-                is_break.set(true);
                 return ret;
             }
         }

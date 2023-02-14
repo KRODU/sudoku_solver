@@ -76,6 +76,7 @@ impl<'a, const N: usize> Solver<'a, N> {
                                 }
 
                                 if read.read_from_cell(z2_cell).get_chk(note) {
+                                    is_break.set(true);
                                     let mut note_vec = ArrayVector::new();
                                     note_vec.push(note);
                                     effect_cells.push((z2_cell, note_vec));
@@ -83,7 +84,6 @@ impl<'a, const N: usize> Solver<'a, N> {
                             }
 
                             if !effect_cells.is_empty() {
-                                is_break.set(true);
                                 let mut result_lock = result_list.lock().unwrap();
                                 result_lock.push(SolverResult {
                                     solver_type: SolverResultDetail::BoxLineReduction {

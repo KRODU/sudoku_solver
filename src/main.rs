@@ -8,6 +8,8 @@ use sudoku_solver_lib::model::table::Table;
 use sudoku_solver_lib::solver::solver_simple::SolverSimple;
 use sudoku_solver_lib::solver::Solver;
 
+const TEST_SAME_PUZZLE: bool = false;
+
 fn main() {
     std::env::set_var("RUST_BACKTRACE", "full");
 
@@ -33,10 +35,14 @@ fn main() {
     );
     println!("time: {}ms", (end - start).as_millis());
 
-    drop(solver);
+    if TEST_SAME_PUZZLE {
+        test_same_puzzle();
+    }
+}
 
+fn test_same_puzzle() {
     let mut writer = BufWriter::new(File::create("log.txt").unwrap());
-    for _ in 0..0 {
+    for _ in 0..1000 {
         let mut t2 = Table::new_default_16();
         let mut t3 = Table::new_default_16();
 
@@ -45,7 +51,6 @@ fn main() {
             // let last_right = format!("{:?}", t3);
 
             let mut solver2 = Solver::new(&mut t2);
-            solver2.set_random_seed(0);
             if !solver2.guess_random() {
                 break;
             }
@@ -53,7 +58,7 @@ fn main() {
             while solver2.solve() {}
 
             let mut solver3 = Solver::new(&mut t3);
-            solver3.set_random_seed(0);
+            solver3.set_random_seed(solver2.get_random_seed());
             if !solver3.guess_random() {
                 break;
             }
