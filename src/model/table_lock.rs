@@ -55,6 +55,7 @@ impl<const N: usize> TableLock<N> {
         );
     }
 
+    /// 테이블 전체 NumCheck가 올바른지 검사합니다. 디버그 빌드에서만 검사합니다.
     #[cfg(debug_assertions)]
     pub fn table_debug_validater(&self) {
         let read = self.read_lock();

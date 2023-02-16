@@ -30,8 +30,16 @@ impl<const N: usize> Cell<N> {
         }
     }
 
+    #[must_use]
+    #[inline]
     pub fn get_coordinate(&self) -> (MaxNum<N>, MaxNum<N>) {
         (self.x, self.y)
+    }
+
+    #[must_use]
+    #[inline]
+    pub fn get_zone(&self) -> &Vec<Zone> {
+        &self.zone_vec
     }
 }
 

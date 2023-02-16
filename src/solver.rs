@@ -4,6 +4,7 @@ use crate::model::array_vector::ArrayVector;
 use crate::model::max_num::MaxNum;
 use crate::model::non_atomic_bool::NonAtomicBool;
 use crate::model::table_lock::{TableLock, TableLockReadGuard};
+use crate::model::zone::ZoneType;
 use crate::model::{cell::Cell, zone::Zone};
 use enum_iterator::{all, cardinality};
 use hashbrown::{HashMap, HashSet};
@@ -22,7 +23,7 @@ pub mod solver_simple;
 pub mod validater;
 
 pub struct Solver<'a, const N: usize> {
-    t: &'a TableLock<N>,
+    table: &'a TableLock<N>,
     solver_history_stack: Vec<SolverHistory<'a, N>>,
     rng: StdRng,
     rand_seed: u64,
@@ -79,8 +80,8 @@ impl<'a, const N: usize> Solver<'a, N> {
 
     /// solver를 적용하여 문제를 풉니다. 문제는 푼 경우 true, 풀지 못한 경우 false를 반환합니다.
     pub fn solve(&mut self) -> bool {
-        let read = self.t.read_lock();
-        self.t.table_debug_validater();
+        let read = self.table.read_lock();
+        self.table.table_debug_validater();
 
         let result_list: Mutex<Vec<SolverResult<N>>> = Mutex::new(Vec::new());
         let mut error_cell: Option<&Cell<N>> = None;
@@ -90,7 +91,7 @@ impl<'a, const N: usize> Solver<'a, N> {
             s.spawn_fifo(|_| {
                 // print!("VAL ");
                 // 먼저 오류가 있는지 체크하여 있을 경우 롤백
-                error_cell = self.find_error_cell(&read, &is_break);
+                error_cell = self.validater_inner(&read, &is_break);
                 if error_cell.is_some() {
                     is_break.set(true);
                 }
@@ -138,32 +139,41 @@ impl<'a, const N: usize> Solver<'a, N> {
         result: Vec<SolverResult<'a, N>>,
     ) {
         let mut write = read.upgrade_to_write();
+        let mut changed_zone_set: HashSet<Zone> = HashSet::new();
 
-        for solver_result in result {
-            let history = {
-                let mut backup_chk: Vec<(&'a Cell<N>, ArrayVector<MaxNum<N>, N>)> =
-                    Vec::with_capacity(solver_result.effect_cells.len());
+        for mut solver_result in result {
+            let mut backup_chk: Vec<(&'a Cell<N>, ArrayVector<MaxNum<N>, N>)> =
+                Vec::with_capacity(solver_result.effect_cells.len());
 
-                for (c, _) in &solver_result.effect_cells {
-                    let backup = write.read_from_cell(c).clone_chk_list();
-                    backup_chk.push((c, backup));
+            for (c, effect_note) in &mut solver_result.effect_cells {
+                let cell = write.write_from_cell(c);
+
+                effect_note.r_loop_swap_remove(|&n| !cell.get_chk(n));
+
+                if effect_note.is_empty() {
+                    continue;
                 }
 
-                SolverHistory {
-                    history_type: SolverHistoryType::Solve { solver_result },
-                    backup_chk,
+                let backup = cell.clone_chk_list_rand();
+                backup_chk.push((c, backup));
+
+                cell.set_to_false_list(effect_note);
+
+                for zone in &c.zone_vec {
+                    if !changed_zone_set.contains(zone) {
+                        let mut zone_write_lock =
+                            self.checked_zone.get(zone).unwrap().write().unwrap();
+                        zone_write_lock
+                            .iter_mut()
+                            .for_each(|(_, value)| *value = false);
+                        changed_zone_set.insert(*zone);
+                    }
                 }
-            };
-
-            let SolverHistoryType::Solve { ref solver_result } = history.history_type else {
-                unreachable!();
-            };
-
-            for (c, v) in &solver_result.effect_cells {
-                let write_cell = write.write_from_cell(c);
-                write_cell.set_to_false_list(v);
             }
-            self.checked_zone_clear(solver_result.effect_cells.iter().map(|(c, _)| *c));
+
+            if backup_chk.is_empty() {
+                continue;
+            }
 
             *self
                 .solve_cnt
@@ -172,7 +182,10 @@ impl<'a, const N: usize> Solver<'a, N> {
                 ))
                 .unwrap() += 1;
 
-            self.solver_history_stack.push(history);
+            self.solver_history_stack.push(SolverHistory {
+                history_type: SolverHistoryType::Solve { solver_result },
+                backup_chk,
+            });
         }
     }
 
@@ -206,7 +219,7 @@ impl<'a, const N: usize> Solver<'a, N> {
             if let SolverHistoryType::Guess { cell, final_num } = history.history_type {
                 let mut_chk = write.write_from_cell(cell);
 
-                let backup_chk_list = mut_chk.clone_chk_list();
+                let backup_chk_list = mut_chk.clone_chk_list_rand();
                 let backup = vec![(cell, backup_chk_list)];
                 mut_chk.set_false(final_num);
 
@@ -227,8 +240,8 @@ impl<'a, const N: usize> Solver<'a, N> {
     /// 이 스도쿠 퍼즐의 미완성 Cell 개수 반환
     #[must_use]
     pub fn get_unsolved_cell_cnt(&self) -> usize {
-        let read = self.t.read_lock();
-        self.t
+        let read = self.table.read_lock();
+        self.table
             .into_iter()
             .filter(|c| !read.read_from_cell(c).is_final_num())
             .count()
@@ -252,7 +265,9 @@ impl<'a, const N: usize> Solver<'a, N> {
             .collect::<Vec<_>>();
         ordered_zone.par_sort_unstable_by_key(|(z, _)| *z);
 
-        for (_, c) in &ordered_zone {
+        for (z, c) in &ordered_zone {
+            let ZoneType::Unique = z.get_zone_type() else { continue; };
+
             if c.len() != N {
                 panic!(
                     "Unique 타입의 개수는 퍼즐 사이즈와 동일해야 함! 사이즈:{}, 실제 갯수: {}",
@@ -281,7 +296,7 @@ impl<'a, const N: usize> Solver<'a, N> {
         }
 
         Solver {
-            t,
+            table: t,
             solver_history_stack: Vec::with_capacity(N * N * N),
             rng: rand::prelude::StdRng::seed_from_u64(rand_seed),
             rand_seed,
@@ -370,7 +385,7 @@ impl<'a, const N: usize> Solver<'a, N> {
 
     #[must_use]
     pub fn get_table(&self) -> &TableLock<N> {
-        self.t
+        self.table
     }
 
     #[must_use]
@@ -419,7 +434,7 @@ impl<'a, const N: usize> Solver<'a, N> {
 
 impl<'a, const N: usize> PartialEq for Solver<'a, N> {
     fn eq(&self, other: &Self) -> bool {
-        self.t == other.t
+        self.table == other.table
     }
 }
 
@@ -427,7 +442,7 @@ impl<'a, const N: usize> Eq for Solver<'a, N> {}
 
 impl<'a, const N: usize> Debug for Solver<'a, N> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Solver").field("t", &self.t).finish()
+        f.debug_struct("Solver").field("t", &self.table).finish()
     }
 }
 

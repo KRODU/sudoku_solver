@@ -9,6 +9,7 @@ use sudoku_solver_lib::solver::solver_simple::SolverSimple;
 use sudoku_solver_lib::solver::Solver;
 
 const TEST_SAME_PUZZLE: bool = false;
+const TEST_SAME_PUZZLE_HISTORY: bool = false;
 
 fn main() {
     std::env::set_var("RUST_BACKTRACE", "full");
@@ -17,7 +18,7 @@ fn main() {
     let mut solver = Solver::new(&mut t);
 
     let start = Instant::now();
-    solver.set_random_seed(0); // 실행시간 측정을 위한 시드 고정. 이걸 빼면 무작위 스도쿠 퍼즐이 만들어짐.
+    // solver.set_random_seed(0); // 실행시간 측정을 위한 시드 고정. 이걸 빼면 무작위 스도쿠 퍼즐이 만들어짐.
     solver.fill_puzzle_with_timeout(std::time::Duration::MAX);
     let end = Instant::now();
     println!("{}", solver.get_table());
@@ -38,34 +39,90 @@ fn main() {
     if TEST_SAME_PUZZLE {
         test_same_puzzle();
     }
+
+    if TEST_SAME_PUZZLE_HISTORY {
+        test_same_puzzle_history();
+    }
 }
 
 fn test_same_puzzle() {
-    let mut writer = BufWriter::new(File::create("log.txt").unwrap());
     for _ in 0..1000 {
         let mut t2 = Table::new_default_16();
         let mut t3 = Table::new_default_16();
 
+        let mut solver2 = Solver::new(&mut t2);
+        solver2.fill_puzzle_with_timeout(std::time::Duration::MAX);
+
+        let mut solver3 = Solver::new(&mut t3);
+        solver3.set_random_seed(solver2.get_random_seed());
+        solver3.fill_puzzle_with_timeout(std::time::Duration::MAX);
+
+        drop(solver2);
+        drop(solver3);
+
+        assert_eq!(t2, t3);
+    }
+}
+
+fn test_same_puzzle_history() {
+    let mut writer = BufWriter::new(File::create("log.txt").unwrap());
+    for _ in 0..100 {
+        let mut t2 = Table::new_default_16();
+        let mut t3 = Table::new_default_16();
+
+        let mut solver2_history: String = String::with_capacity(10_0000);
+        let mut solver3_history: String = String::with_capacity(10_0000);
+
         loop {
-            // let last_left = format!("{:?}", t2);
-            // let last_right = format!("{:?}", t3);
+            solver2_history.clear();
+            solver3_history.clear();
+
+            let last_left = format!("{:?}", t2);
+            let last_right = format!("{:?}", t3);
 
             let mut solver2 = Solver::new(&mut t2);
+            if solver2.validater().is_some() {
+                println!("INVALID_TABLE");
+                continue;
+            }
             if !solver2.guess_random() {
                 break;
             }
 
-            while solver2.solve() {}
+            solver2_history.push_str(&format!(
+                "{:?}",
+                solver2.get_solver_history().last().unwrap()
+            ));
+            solver2_history.push('\n');
+
+            while solver2.solve() {
+                solver2_history.push_str(&format!(
+                    "{:?}",
+                    solver2.get_solver_history().last().unwrap()
+                ));
+                solver2_history.push('\n');
+            }
 
             let mut solver3 = Solver::new(&mut t3);
             solver3.set_random_seed(solver2.get_random_seed());
             if !solver3.guess_random() {
                 break;
             }
-            while solver3.solve() {}
 
-            let solver2_history = format!("{:?}", solver2.get_solver_history());
-            let solver3_history = format!("{:?}", solver3.get_solver_history());
+            solver3_history.push_str(&format!(
+                "{:?}",
+                solver3.get_solver_history().last().unwrap()
+            ));
+            solver3_history.push('\n');
+
+            while solver3.solve() {
+                solver3_history.push_str(&format!(
+                    "{:?}",
+                    solver3.get_solver_history().last().unwrap()
+                ));
+                solver3_history.push('\n');
+            }
+
             drop(solver2);
             drop(solver3);
 
@@ -93,9 +150,9 @@ fn test_same_puzzle() {
                 wrtie_log(format!("left: {}", solver2_history), &mut writer);
                 wrtie_log(String::new(), &mut writer);
                 wrtie_log(format!("right: {}", solver3_history), &mut writer);
-                // wrtie_log(format!("left_last: {}", last_left), &mut writer);
+                wrtie_log(format!("left_last: {}", last_left), &mut writer);
                 wrtie_log(String::new(), &mut writer);
-                // wrtie_log(format!("right_last: {}", last_right), &mut writer);
+                wrtie_log(format!("right_last: {}", last_right), &mut writer);
                 panic!("TABLE_NOT_SAME");
             }
         }

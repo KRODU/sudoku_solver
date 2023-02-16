@@ -21,6 +21,7 @@ impl<T, const N: usize> ArrayVector<T, N> {
         }
     }
 
+    #[inline]
     pub fn push(&mut self, val: T) {
         if self.len == N {
             panic!("ArrayVector의 사이즈는 const N을 초과할 수 없음");
@@ -34,6 +35,7 @@ impl<T, const N: usize> ArrayVector<T, N> {
     /// # Safety
     ///
     /// len == N 상태일 때 호출하면 UB
+    #[inline]
     pub unsafe fn push_unchecked(&mut self, val: T) {
         debug_assert!(self.len < N);
 
@@ -43,6 +45,7 @@ impl<T, const N: usize> ArrayVector<T, N> {
         }
     }
 
+    #[inline]
     pub fn pop(&mut self) -> Option<T> {
         if self.len == 0 {
             return None;
@@ -54,20 +57,32 @@ impl<T, const N: usize> ArrayVector<T, N> {
         }
     }
 
+    #[inline]
     pub fn len(&self) -> usize {
         self.len
     }
 
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self.len == 0
     }
 
+    #[inline]
     pub fn get(&self, index: usize) -> Option<&T> {
         if index >= self.len {
             return None;
         }
 
-        unsafe { Some(self.arr.get_unchecked(index).assume_init_ref()) }
+        unsafe { Some(self.get_unchecked(index)) }
+    }
+
+    /// # Safety
+    ///
+    /// index는 len보다 작아야 함.
+    #[inline]
+    pub unsafe fn get_unchecked(&self, index: usize) -> &T {
+        debug_assert!(index < self.len);
+        unsafe { self.arr.get_unchecked(index).assume_init_ref() }
     }
 
     pub fn get_mut(&mut self, index: usize) -> Option<&mut T> {
@@ -78,6 +93,7 @@ impl<T, const N: usize> ArrayVector<T, N> {
         unsafe { Some(self.arr.get_unchecked_mut(index).assume_init_mut()) }
     }
 
+    #[inline]
     pub fn clear(&mut self) {
         unsafe {
             ptr::drop_in_place(self.get_mut_slice_ptr());
@@ -85,16 +101,19 @@ impl<T, const N: usize> ArrayVector<T, N> {
         }
     }
 
+    #[inline]
     pub fn get_slice(&self) -> &[T] {
         unsafe { &*(self.arr.get_unchecked(..self.len) as *const [MaybeUninit<T>] as *const [T]) }
     }
 
+    #[inline]
     pub fn get_mut_slice(&mut self) -> &mut [T] {
         unsafe {
             &mut *(self.arr.get_unchecked_mut(..self.len) as *mut [MaybeUninit<T>] as *mut [T])
         }
     }
 
+    #[inline]
     pub fn get_mut_slice_ptr(&mut self) -> *mut [T] {
         unsafe { self.arr.get_unchecked_mut(..self.len) as *mut [MaybeUninit<T>] as *mut [T] }
     }
@@ -129,6 +148,23 @@ impl<T, const N: usize> ArrayVector<T, N> {
             Some(ret)
         }
     }
+
+    /// 매개변수로 함수 f를 이용하여 배열을 오른쪽에서부터 테스트하며, f가 true를 반환할 경우 해당 요소를 배열에서 제거합니다.
+    /// 이때 제거는 swap_remove로 동작합니다.
+    pub fn r_loop_swap_remove(&mut self, mut f: impl FnMut(&T) -> bool) {
+        for index in (0..self.len).rev() {
+            unsafe {
+                if f(self.get_unchecked(index)) {
+                    let base_ptr = self.arr.as_mut_ptr() as *mut T;
+                    let dst = base_ptr.add(index);
+                    ptr::drop_in_place(dst);
+                    self.len -= 1;
+                    let src = base_ptr.add(self.len);
+                    ptr::copy(src, dst, 1);
+                }
+            }
+        }
+    }
 }
 
 impl<T, const N: usize> Default for ArrayVector<T, N> {
@@ -152,10 +188,10 @@ where
     fn clone(&self) -> Self {
         let mut ret = ArrayVector::new();
 
-        for ele in self {
+        for element in self {
             // 반환할 ArrayVector의 N과 self의 N은 무조건 동일하므로 safe
             unsafe {
-                ret.push_unchecked(ele.clone());
+                ret.push_unchecked(element.clone());
             }
         }
 
@@ -436,6 +472,30 @@ mod array_vector_test {
         vec.remove(3);
         drop(vec);
         assert_eq!(*drop_order.borrow(), "6,3,0,1,2,4,5,");
+        drop_order.borrow_mut().clear();
+
+        // r_loop_remove로 짝수를 제거할 경우의 drop order 테스트
+        let mut vec = get_drop_test_vec(&drop_order);
+        vec.r_loop_swap_remove(|v| v.num % 2 == 0);
+        assert_eq!(*drop_order.borrow(), "6,4,2,0,");
+        drop_order.borrow_mut().clear();
+        drop(vec);
+        assert_eq!(*drop_order.borrow(), "3,1,5,");
+        drop_order.borrow_mut().clear();
+
+        // r_loop_remove로 홀수를 제거할 경우의 drop order 테스트
+        let mut vec = get_drop_test_vec(&drop_order);
+        vec.r_loop_swap_remove(|v| v.num % 2 != 0);
+        assert_eq!(*drop_order.borrow(), "5,3,1,");
+        drop_order.borrow_mut().clear();
+        drop(vec);
+        assert_eq!(*drop_order.borrow(), "0,4,2,6,");
+        drop_order.borrow_mut().clear();
+
+        // r_loop_remove를 할 경우의 drop order 테스트
+        let mut vec = get_drop_test_vec(&drop_order);
+        vec.r_loop_swap_remove(|_| true);
+        assert_eq!(*drop_order.borrow(), "6,5,4,3,2,1,0,");
         drop_order.borrow_mut().clear();
 
         // 0 크기의 빈 배열에서의 메모리 해제 테스트

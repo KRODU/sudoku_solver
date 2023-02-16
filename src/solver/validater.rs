@@ -5,9 +5,16 @@ use crate::model::{
 };
 
 impl<'a, const N: usize> Solver<'a, N> {
+    pub fn validater(&self) -> Option<&Cell<N>> {
+        let read = self.table.read_lock();
+        let is_break = NonAtomicBool::new(false);
+
+        self.validater_inner(&read, &is_break)
+    }
+
     /// 현재 스도쿠 퍼즐의 유효성 검사하여 에러셀을 반환.
     /// 에러셀이 없다면 None
-    pub fn find_error_cell(
+    pub(crate) fn validater_inner(
         &self,
         read: &TableLockReadGuard<N>,
         is_break: &NonAtomicBool,

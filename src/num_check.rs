@@ -8,7 +8,7 @@ use std::ops::Deref;
 #[derive(Debug)]
 pub struct NumCheck<const N: usize> {
     chk_list: ArrayNote<Option<usize>, N>,
-    /// 값의 순서는 무작위로 섞일 수 있습니다.
+    /// true_list 내의 값 순서는 무작위로 섞일 수 있습니다.
     true_list: ArrayVector<MaxNum<N>, N>,
     true_cnt: usize,
     final_num: Option<MaxNum<N>>,
@@ -53,7 +53,9 @@ impl<const N: usize> NumCheck<N> {
         }
     }
 
+    /// num의 노트값이 true인지를 반환합니다.
     #[must_use]
+    #[inline]
     pub fn get_chk(&self, num: MaxNum<N>) -> bool {
         self.chk_list[num].is_some()
     }
@@ -70,10 +72,12 @@ impl<const N: usize> NumCheck<N> {
     }
 
     #[must_use]
+    #[inline]
     pub fn get_true_list(&self) -> &ArrayVector<MaxNum<N>, N> {
         &self.true_list
     }
 
+    #[inline]
     pub fn set_chk(&mut self, num: MaxNum<N>, chk: bool) {
         if chk {
             self.set_true(num);
@@ -157,6 +161,7 @@ impl<const N: usize> NumCheck<N> {
     }
 
     /// 값이 하나만 남은 경우 final_num으로 확정합니다.
+    #[inline]
     fn set_to_final_num(&mut self) {
         self.final_num = if self.true_cnt == 1 {
             Some(*self.true_list.first().unwrap())
@@ -167,16 +172,16 @@ impl<const N: usize> NumCheck<N> {
 
     /// 이 노트의 값이 확정된 경우 true, 그렇지 않으면 false 입니다.
     #[must_use]
+    #[inline]
     pub fn is_final_num(&self) -> bool {
         self.true_cnt == 1
     }
 
-    /// true인 목록을 복사하여 반환합니다.
+    /// true인 목록을 복사하여 반환합니다. 데이터는 무작위로 섞여있을 수 있습니다.
     #[must_use]
-    pub fn clone_chk_list(&self) -> ArrayVector<MaxNum<N>, N> {
-        let mut ret = self.true_list.clone();
-        ret.sort_unstable();
-        ret
+    #[inline]
+    pub fn clone_chk_list_rand(&self) -> ArrayVector<MaxNum<N>, N> {
+        self.true_list.clone()
     }
 
     /// 최종 값을 반환합니다. 확정되지 않은 경우 None 입니다.
@@ -219,6 +224,7 @@ impl<const N: usize> NumCheck<N> {
     }
 
     #[must_use]
+    #[inline]
     pub fn get_true_cnt(&self) -> usize {
         self.true_cnt
     }

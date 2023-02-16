@@ -8,27 +8,25 @@ use rand::Rng;
 impl<'a, const N: usize> Solver<'a, N> {
     /// 값이 확정되지 않은 cell중에 하나를 무작위로 guess하여 넣습니다.
     pub fn guess_random(&mut self) -> bool {
-        let write = self.t.write_lock();
+        let write = self.table.write_lock();
         let mut minimum_note_cnt = usize::MAX;
-        let mut minimum_note_list: Vec<&Cell<N>> = Vec::new();
+        let mut minimum_note_list: Vec<&Cell<N>> = Vec::with_capacity(N * N);
 
         // 모든 cell중에서 무작위로 선택하는 대신 후보숫자가 가장 적은 cell중에 무작위 선택
         // 이렇게하면 나중에 rollback이 필요할 가능성을 조금이라도 줄일 수 있음
-        for (_, cells) in &self.ordered_zone {
-            for c in cells {
-                let b = write.read_from_cell(c);
-                let true_cnt = b.get_true_cnt();
-                if true_cnt <= 1 || true_cnt > minimum_note_cnt {
-                    continue;
-                }
-
-                if true_cnt < minimum_note_cnt {
-                    minimum_note_list.clear();
-                    minimum_note_cnt = true_cnt;
-                }
-
-                minimum_note_list.push(c);
+        for c in self.table {
+            let b = write.read_from_cell(c);
+            let true_cnt = b.get_true_cnt();
+            if true_cnt <= 1 || true_cnt > minimum_note_cnt {
+                continue;
             }
+
+            if true_cnt < minimum_note_cnt {
+                minimum_note_list.clear();
+                minimum_note_cnt = true_cnt;
+            }
+
+            minimum_note_list.push(c);
         }
 
         // 모든 스도쿠 퍼즐이 채워진 경우 return
@@ -38,7 +36,8 @@ impl<'a, const N: usize> Solver<'a, N> {
 
         let cell_pick = minimum_note_list[self.rng.gen_range(0..minimum_note_list.len())];
         // println!("{:?}", cell_pick.coordi);
-        let cell_notes = write.read_from_cell(cell_pick).clone_chk_list();
+        let mut cell_notes = write.read_from_cell(cell_pick).clone_chk_list_rand();
+        cell_notes.sort_unstable();
         // println!("{:?}", cell_notes);
         let note_pick = cell_notes[self.rng.gen_range(0..cell_notes.len())];
         // println!("{:?}", note_pick);
@@ -70,7 +69,7 @@ impl<'a, const N: usize> Solver<'a, N> {
             return;
         }
 
-        let backup = b.clone_chk_list();
+        let backup = b.clone_chk_list_rand();
         let backup_chk = vec![(cell, backup)];
         b.set_to_value(final_num);
         self.checked_zone_clear(std::iter::once(cell));

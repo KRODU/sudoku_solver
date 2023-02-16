@@ -10,7 +10,7 @@ name = "sudoku_solver_lib"
 path = "src/lib.rs"
 
 [[bin]]
-name = "sudoku_solver_bin"
+name = "sudoku_solver"
 path = "src/main.rs"
 
 [dependencies]
