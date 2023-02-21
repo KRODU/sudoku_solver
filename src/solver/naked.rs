@@ -3,15 +3,18 @@ use super::{
     solver_simple::SolverSimple,
     Solver,
 };
-use crate::model::{
-    array_note::ArrayNote,
-    cell::Cell,
-    max_num::MaxNum,
-    non_atomic_bool::NonAtomicBool,
-    table_lock::TableLockReadGuard,
-    zone::{Zone, ZoneType},
+use crate::model::array_vector::ArrayVector;
+use crate::{
+    combinations::Combination,
+    model::{
+        array_note::ArrayNote,
+        cell::Cell,
+        max_num::MaxNum,
+        non_atomic_bool::NonAtomicBool,
+        table_lock::TableLockReadGuard,
+        zone::{Zone, ZoneType},
+    },
 };
-use crate::{combinations::combinations, model::array_vector::ArrayVector};
 use rayon::ScopeFifo;
 use std::sync::Mutex;
 
@@ -47,7 +50,6 @@ impl<'a, const N: usize> Solver<'a, N> {
         read: &TableLockReadGuard<N>,
         is_break: &NonAtomicBool,
     ) -> Option<SolverResult<'a, N>> {
-        let mut ret: Option<SolverResult<'a, N>> = None;
         let mut comp_cell_target: Vec<&Cell<N>> = Vec::with_capacity(cells.len());
         let mut chk_all = true;
 
@@ -59,10 +61,12 @@ impl<'a, const N: usize> Solver<'a, N> {
                 true_cnt <= i && true_cnt > 1
             }));
 
-            combinations(&comp_cell_target, i, |arr| {
+            let mut comb_iter = Combination::new(&comp_cell_target, i);
+
+            'comb_loop: while let Some(arr) = comb_iter.next_comb() {
                 if is_break.get() {
                     chk_all = false;
-                    return true;
+                    break 'comb_loop;
                 }
 
                 debug_assert_eq!(i, arr.len());
@@ -79,14 +83,14 @@ impl<'a, const N: usize> Solver<'a, N> {
                             union_node_true_cnt += 1;
 
                             if union_node_true_cnt > i {
-                                return true;
+                                continue 'comb_loop;
                             }
                         }
                     }
                 }
 
                 if union_node_true_cnt != i {
-                    return true;
+                    continue 'comb_loop;
                 }
 
                 let mut effect_cells: Vec<(&Cell<N>, ArrayVector<MaxNum<N>, N>)> = Vec::new();
@@ -119,22 +123,14 @@ impl<'a, const N: usize> Solver<'a, N> {
                 if !effect_cells.is_empty() {
                     let union_node_array_vec = union_node.bool_array_note_to_array_vec();
                     debug_assert_eq!(union_node_array_vec.len(), union_node_true_cnt);
-                    ret = Some(SolverResult {
+                    return Some(SolverResult {
                         solver_type: SolverResultDetail::Naked {
                             found_chks: union_node_array_vec,
                             found_cell: arr.iter().map(|c| **c).collect(),
                         },
                         effect_cells,
                     });
-
-                    return false;
                 }
-
-                true
-            });
-
-            if ret.is_some() {
-                return ret;
             }
         }
 
