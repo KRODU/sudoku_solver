@@ -50,13 +50,22 @@ impl<'a, const N: usize> Solver<'a, N> {
         read: &TableLockReadGuard<N>,
         is_break: &NonAtomicBool,
     ) -> Option<SolverResult<'a, N>> {
+        if is_break.get() {
+            return None;
+        }
+
+        let non_final_cells = cells
+            .iter()
+            .copied()
+            .filter(|c| read.read_from_cell(c).get_true_cnt() > 1)
+            .collect::<Vec<_>>();
         let mut comp_cell_target: Vec<&Cell<N>> = Vec::with_capacity(cells.len());
         let mut chk_all = true;
 
-        for i in 2..N / 2 {
+        'comb_len_loop: for i in 2..N / 2 {
             comp_cell_target.clear();
             // 검증대상 cell 필터링 후 처리. 이렇게 하면 처리 시간을 많이 줄일 수 있음.
-            comp_cell_target.extend(cells.iter().filter(|c| {
+            comp_cell_target.extend(non_final_cells.iter().filter(|c| {
                 let true_cnt = read.read_from_cell(c).get_true_cnt();
                 true_cnt <= i && true_cnt > 1
             }));
@@ -66,7 +75,7 @@ impl<'a, const N: usize> Solver<'a, N> {
             'comb_loop: while let Some(arr) = comb_iter.next_comb() {
                 if is_break.get() {
                     chk_all = false;
-                    break 'comb_loop;
+                    break 'comb_len_loop;
                 }
 
                 debug_assert_eq!(i, arr.len());
