@@ -27,9 +27,11 @@ impl<'a, T> Combination<'a, T> {
                 return None;
             }
 
-            for (i, t) in self.arr.iter().take(self.len).enumerate() {
+            for i in 0..self.len {
                 self.cursor.push(i);
-                self.result.push(t);
+                unsafe {
+                    self.result.push(self.arr.get_unchecked(i));
+                }
             }
 
             Some(&self.result)
@@ -37,13 +39,8 @@ impl<'a, T> Combination<'a, T> {
             for (i, rev) in (0..self.len).rev().enumerate() {
                 unsafe {
                     let mut this = self.cursor.get_unchecked(rev) + 1;
-                    let prev = if rev == 0 {
-                        0
-                    } else {
-                        *self.cursor.get_unchecked(rev - 1)
-                    };
 
-                    if this > prev && this + i < self.arr.len() {
+                    if this + i < self.arr.len() {
                         for j in rev..self.len {
                             *self.result.get_unchecked_mut(j) = self.arr.get_unchecked(this);
                             *self.cursor.get_unchecked_mut(j) = this;

@@ -54,28 +54,32 @@ impl<'a, const N: usize> Solver<'a, N> {
             return None;
         }
 
-        let non_final_cells = cells
-            .iter()
-            .copied()
-            .filter(|c| read.read_from_cell(c).get_true_cnt() > 1)
-            .collect::<Vec<_>>();
-        let mut comp_cell_target: Vec<&Cell<N>> = Vec::with_capacity(cells.len());
-        let mut chk_all = true;
+        let non_final_cells = {
+            let mut non_final_cells: Vec<&Cell<N>> = Vec::with_capacity(cells.len());
+            non_final_cells.extend(
+                cells
+                    .iter()
+                    .copied()
+                    .filter(|c| read.read_from_cell(c).get_true_cnt() > 1),
+            );
+            non_final_cells
+        };
+        let mut comp_cell_target: Vec<&Cell<N>> = Vec::with_capacity(non_final_cells.len());
 
-        'comb_len_loop: for i in 2..N / 2 {
+        for i in 2..N / 2 {
             comp_cell_target.clear();
             // 검증대상 cell 필터링 후 처리. 이렇게 하면 처리 시간을 많이 줄일 수 있음.
-            comp_cell_target.extend(non_final_cells.iter().filter(|c| {
-                let true_cnt = read.read_from_cell(c).get_true_cnt();
-                true_cnt <= i && true_cnt > 1
-            }));
+            comp_cell_target.extend(
+                non_final_cells
+                    .iter()
+                    .filter(|c| read.read_from_cell(c).get_true_cnt() <= i),
+            );
 
             let mut comb_iter = Combination::new(&comp_cell_target, i);
 
             'comb_loop: while let Some(arr) = comb_iter.next_comb() {
                 if is_break.get() {
-                    chk_all = false;
-                    break 'comb_len_loop;
+                    return None;
                 }
 
                 debug_assert_eq!(i, arr.len());
@@ -124,6 +128,9 @@ impl<'a, const N: usize> Solver<'a, N> {
                     // 제거할 노트를 발견한 경우
                     if !inter.is_empty() {
                         is_break.set(true);
+                        if effect_cells.is_empty() {
+                            effect_cells.reserve(cells.len());
+                        }
                         effect_cells.push((zone_cell, inter));
                     }
                 }
@@ -143,11 +150,7 @@ impl<'a, const N: usize> Solver<'a, N> {
             }
         }
 
-        // is_break가 true여서 중간에 break된 경우 checked_zone을 설정하면 안 됨..
-        if chk_all {
-            self.checked_zone_set_bool_true(*zone, SolverSimple::Naked);
-        }
-
+        self.checked_zone_set_bool_true(*zone, SolverSimple::Naked);
         None
     }
 }

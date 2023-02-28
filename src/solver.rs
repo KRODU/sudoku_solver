@@ -8,7 +8,8 @@ use crate::model::zone::ZoneType;
 use crate::model::{cell::Cell, zone::Zone};
 use enum_iterator::{all, cardinality};
 use hashbrown::{HashMap, HashSet};
-use rand::{prelude::StdRng, RngCore, SeedableRng};
+use rand::rngs::SmallRng;
+use rand::{RngCore, SeedableRng};
 use rayon::slice::ParallelSliceMut;
 use std::fmt::Debug;
 use std::sync::{Mutex, RwLock};
@@ -25,7 +26,7 @@ pub mod validater;
 pub struct Solver<'a, const N: usize> {
     table: &'a TableLock<N>,
     solver_history_stack: Vec<SolverHistory<'a, N>>,
-    rng: StdRng,
+    rng: SmallRng,
     rand_seed: u64,
     solve_cnt: HashMap<SolverSimple, u32>,
     guess_cnt: u32,
@@ -250,7 +251,11 @@ impl<'a, const N: usize> Solver<'a, N> {
     // TableLock을 mut로 받을 필요는 없으나, 동일한 Table에 대해 여러 Solver를 생성하는 것을 방지하기 위해 일부러 mut로 받음
     #[must_use]
     pub fn new(t: &'a mut TableLock<N>) -> Self {
-        let rand_seed: u64 = StdRng::from_entropy().next_u64();
+        let rand_seed = SmallRng::from_entropy().next_u64();
+        Self::new_with_seed(t, rand_seed)
+    }
+
+    pub fn new_with_seed(t: &'a mut TableLock<N>, rand_seed: u64) -> Self {
         let mut solve_cnt: HashMap<SolverSimple, u32> = HashMap::new();
         for n in all::<SolverSimple>() {
             solve_cnt.insert(n, 0u32);
@@ -298,7 +303,7 @@ impl<'a, const N: usize> Solver<'a, N> {
         Solver {
             table: t,
             solver_history_stack: Vec::with_capacity(N * N * N),
-            rng: rand::prelude::StdRng::seed_from_u64(rand_seed),
+            rng: SmallRng::seed_from_u64(rand_seed),
             rand_seed,
             guess_cnt: 0,
             guess_rollback_cnt: 0,
@@ -399,7 +404,7 @@ impl<'a, const N: usize> Solver<'a, N> {
     }
 
     pub fn set_random_seed(&mut self, rand_seed: u64) {
-        self.rng = rand::prelude::StdRng::seed_from_u64(rand_seed);
+        self.rng = SmallRng::seed_from_u64(rand_seed);
         self.rand_seed = rand_seed;
     }
 
