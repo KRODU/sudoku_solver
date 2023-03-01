@@ -46,6 +46,9 @@ impl<'a, const N: usize> Solver<'a, N> {
                             is_break.set(true);
                             let mut note_vec = ArrayVector::new();
                             note_vec.push(final_num);
+                            if effect_cells.is_empty() {
+                                effect_cells.reserve_exact(c.zone_vec.len() * N);
+                            }
                             effect_cells.push((c_comp, note_vec));
                         }
                     }

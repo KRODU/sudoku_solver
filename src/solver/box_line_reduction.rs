@@ -53,9 +53,7 @@ impl<'a, const N: usize> Solver<'a, N> {
                 for &z2 in connect_zone {
                     let ZoneType::Unique = z2.get_zone_type() else { continue; };
 
-                    let Some(z2_cells) = self.hashed_zone.get(&z2) else {
-                        unreachable!();
-                    };
+                    let z2_cells = self.hashed_zone.get(&z2).unwrap();
 
                     for &note in &current_zone_union_note {
                         let target_this_note = !z1_cells.iter().any(|c| {
@@ -78,6 +76,9 @@ impl<'a, const N: usize> Solver<'a, N> {
                                 if read.read_from_cell(z2_cell).get_chk(note) {
                                     is_break.set(true);
                                     let mut note_vec = ArrayVector::new();
+                                    if effect_cells.is_empty() {
+                                        effect_cells.reserve_exact(N);
+                                    }
                                     note_vec.push(note);
                                     effect_cells.push((z2_cell, note_vec));
                                 }

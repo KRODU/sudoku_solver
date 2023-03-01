@@ -129,7 +129,7 @@ impl<'a, const N: usize> Solver<'a, N> {
                     if !inter.is_empty() {
                         is_break.set(true);
                         if effect_cells.is_empty() {
-                            effect_cells.reserve(cells.len());
+                            effect_cells.reserve_exact(N);
                         }
                         effect_cells.push((zone_cell, inter));
                     }

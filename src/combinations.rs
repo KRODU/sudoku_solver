@@ -14,34 +14,45 @@ impl<'a, T> Combination<'a, T> {
     pub fn new(arr: &'a [T], len: usize) -> Self {
         Self {
             arr,
-            result: Vec::with_capacity(len),
-            cursor: Vec::with_capacity(len),
+            result: Vec::new(),
+            cursor: Vec::new(),
             len,
         }
     }
 
     pub fn next_comb(&mut self) -> Option<&Vec<&T>> {
+        let len = self.len;
+
         if self.result.is_empty() {
             // 최초 next
-            if self.arr.len() < self.len || self.len == 0 {
+            if self.arr.len() < len || len == 0 {
                 return None;
             }
 
-            for i in 0..self.len {
-                self.cursor.push(i);
-                unsafe {
-                    self.result.push(self.arr.get_unchecked(i));
+            self.cursor.reserve_exact(len);
+            self.result.reserve_exact(len);
+
+            let cursor_ptr = self.cursor.as_mut_ptr();
+            let result_ptr = self.result.as_mut_ptr();
+
+            unsafe {
+                for i in 0..len {
+                    *cursor_ptr.add(i) = i;
+                    *result_ptr.add(i) = self.arr.get_unchecked(i);
                 }
+
+                self.cursor.set_len(len);
+                self.result.set_len(len);
             }
 
             Some(&self.result)
         } else {
-            for (i, rev) in (0..self.len).rev().enumerate() {
+            for (i, rev) in (0..len).rev().enumerate() {
                 unsafe {
                     let mut this = self.cursor.get_unchecked(rev) + 1;
 
                     if this + i < self.arr.len() {
-                        for j in rev..self.len {
+                        for j in rev..len {
                             *self.result.get_unchecked_mut(j) = self.arr.get_unchecked(this);
                             *self.cursor.get_unchecked_mut(j) = this;
                             this += 1;
