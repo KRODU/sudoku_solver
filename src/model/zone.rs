@@ -1,3 +1,4 @@
+use crate::model::index_key_map::IndexKey;
 use std::{
     fmt::Debug,
     hash::{Hash, Hasher},
@@ -94,5 +95,11 @@ impl Ord for Zone {
             ord => return ord,
         }
         self.zone_type.cmp(&other.zone_type)
+    }
+}
+
+impl IndexKey for Zone {
+    fn index(&self) -> u16 {
+        self.get_zone_num()
     }
 }

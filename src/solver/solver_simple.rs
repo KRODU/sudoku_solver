@@ -1,7 +1,8 @@
 use super::solver_history::SolverResultDetail;
+use crate::model::index_key_map::IndexKey;
 use enum_iterator::Sequence;
 
-#[derive(Sequence, Debug)]
+#[derive(Sequence, Debug, Clone, Copy)]
 pub enum SolverSimple {
     Validate,
     Single,
@@ -33,13 +34,8 @@ impl std::hash::Hash for SolverSimple {
     }
 }
 
-impl Clone for SolverSimple {
-    fn clone(&self) -> Self {
-        match self {
-            Self::Validate => Self::Validate,
-            Self::Single => Self::Single,
-            Self::Naked => Self::Naked,
-            Self::BoxLineReduction => Self::BoxLineReduction,
-        }
+impl IndexKey for SolverSimple {
+    fn index(&self) -> u16 {
+        *self as u16
     }
 }
