@@ -26,7 +26,7 @@ impl<'a, const N: usize> Solver<'a, N> {
         result_list: &'b Mutex<Vec<SolverResult<'a, N>>>,
         is_break: &'b NonAtomicBool,
     ) {
-        for (zone, cells) in &self.ordered_zone {
+        for (zone, cells) in &self.zone {
             let ZoneType::Unique = zone.get_zone_type() else { continue; };
 
             if self.checked_zone_get_bool(zone, SolverSimple::Naked) {

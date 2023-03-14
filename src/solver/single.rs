@@ -17,7 +17,7 @@ impl<'a, const N: usize> Solver<'a, N> {
         result_list: &'b Mutex<Vec<SolverResult<'a, N>>>,
         is_break: &'b NonAtomicBool,
     ) {
-        for (zone, cells) in &self.ordered_zone {
+        for (zone, cells) in &self.zone {
             let ZoneType::Unique = zone.get_zone_type() else { continue; };
 
             s.spawn_fifo(move |_| {
@@ -60,7 +60,7 @@ impl<'a, const N: usize> Solver<'a, N> {
                                 continue;
                             }
 
-                            for c_comp in self.hashed_zone.get(z2).unwrap() {
+                            for c_comp in &self.zone[*z2] {
                                 if c_comp == c {
                                     continue;
                                 }

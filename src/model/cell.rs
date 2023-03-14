@@ -1,11 +1,12 @@
-use super::{max_num::MaxNum, unsafe_cell_sync::UnsafeCellSync, zone::Zone};
+use super::{
+    index_key_map::IndexKeySet, max_num::MaxNum, unsafe_cell_sync::UnsafeCellSync, zone::Zone,
+};
 use crate::num_check::NumCheck;
-use hashbrown::HashSet;
 use std::{fmt::Debug, marker::PhantomPinned};
 
 pub struct Cell<const N: usize> {
     pub(crate) chk_unsafe: UnsafeCellSync<NumCheck<N>>,
-    pub(crate) zone_set: HashSet<Zone>,
+    pub(crate) zone_set: IndexKeySet<Zone>,
     pub(crate) zone_vec: Vec<Zone>,
     x: MaxNum<N>,
     y: MaxNum<N>,

@@ -19,7 +19,7 @@ impl<'a, const N: usize> Solver<'a, N> {
         result_list: &'b Mutex<Vec<SolverResult<'a, N>>>,
         is_break: &'b NonAtomicBool,
     ) {
-        for (z1, z1_cells) in &self.ordered_zone {
+        for (z1, z1_cells) in &self.zone {
             let ZoneType::Unique = z1.get_zone_type() else { continue; };
 
             let Some(connect_zone) = self.connect_zone.get(z1) else {
@@ -53,7 +53,7 @@ impl<'a, const N: usize> Solver<'a, N> {
                 for &z2 in connect_zone {
                     let ZoneType::Unique = z2.get_zone_type() else { continue; };
 
-                    let z2_cells = self.hashed_zone.get(&z2).unwrap();
+                    let z2_cells = &self.zone[z2];
 
                     for &note in &current_zone_union_note {
                         let target_this_note = !z1_cells.iter().any(|c| {

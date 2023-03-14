@@ -1,4 +1,4 @@
-use std::ops::Index;
+use std::{hint::unreachable_unchecked, ops::Index};
 
 pub trait IndexKey {
     fn index(&self) -> u16;
@@ -15,18 +15,18 @@ impl<K, V> IndexKeyMap<K, V>
 where
     K: IndexKey,
 {
+    #[must_use]
+    #[inline]
     pub fn new() -> Self {
         Self { arr: Vec::new() }
     }
 
-    pub fn new_with_capacity(capacity: usize) -> Self {
-        let mut arr: Vec<Option<(K, V)>> = Vec::with_capacity(capacity);
-
-        for _ in 0..capacity {
-            arr.push(None);
+    #[must_use]
+    #[inline]
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self {
+            arr: Vec::with_capacity(capacity),
         }
-
-        Self { arr }
     }
 
     pub fn insert_new(&mut self, k: K, v: V) {
@@ -62,7 +62,9 @@ where
         }
     }
 
-    pub fn get(&self, k: K) -> Option<&V> {
+    #[must_use]
+    #[inline]
+    pub fn get(&self, k: &K) -> Option<&V> {
         let index = k.index() as usize;
 
         if let Some((_, v)) = self.arr.get(index)? {
@@ -72,7 +74,21 @@ where
         }
     }
 
-    pub fn contains(&self, k: K) -> bool {
+    #[must_use]
+    #[inline]
+    pub fn get_mut(&mut self, k: &K) -> Option<&mut V> {
+        let index = k.index() as usize;
+
+        if let Some((_, v)) = self.arr.get_mut(index)? {
+            Some(v)
+        } else {
+            None
+        }
+    }
+
+    #[must_use]
+    #[inline]
+    pub fn contains(&self, k: &K) -> bool {
         let index = k.index() as usize;
         let Some(option) = self.arr.get(index) else {
             return false;
@@ -81,10 +97,56 @@ where
         option.is_some()
     }
 
+    #[must_use]
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.arr.len()
+    }
+
+    #[must_use]
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.arr.len() == 0
+    }
+
+    pub fn entry_or_insert_with<F>(&mut self, k: K, f: F) -> &mut V
+    where
+        F: FnOnce() -> V,
+    {
+        let index = k.index() as usize;
+
+        if self.arr.len() <= index {
+            while self.arr.len() < index {
+                self.arr.push(None);
+            }
+
+            self.arr.push(Some((k, f())));
+            if let Some(Some((_, v))) = self.arr.last_mut() {
+                v
+            } else {
+                unsafe { unreachable_unchecked() }
+            }
+        } else {
+            let mut_index = &mut self.arr[index];
+            if let Some((_, v)) = mut_index {
+                return v;
+            }
+
+            *mut_index = Some((k, f()));
+            if let Some((_, v)) = mut_index {
+                v
+            } else {
+                unsafe { unreachable_unchecked() }
+            }
+        }
+    }
+
+    #[inline]
     pub fn iter(&self) -> impl Iterator<Item = &(K, V)> + '_ {
         self.arr.iter().flatten()
     }
 
+    #[inline]
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut (K, V)> + '_ {
         self.arr.iter_mut().flatten()
     }
@@ -96,6 +158,7 @@ where
 {
     type Output = V;
 
+    #[inline]
     fn index(&self, k: K) -> &Self::Output {
         let index = k.index() as usize;
 
@@ -139,32 +202,56 @@ impl<K> IndexKeySet<K>
 where
     K: IndexKey,
 {
+    #[must_use]
+    #[inline]
     pub fn new() -> Self {
         Self {
             map: IndexKeyMap::new(),
         }
     }
 
+    #[must_use]
+    #[inline]
     pub fn new_with_capacity(capacity: usize) -> Self {
         Self {
-            map: IndexKeyMap::new_with_capacity(capacity),
+            map: IndexKeyMap::with_capacity(capacity),
         }
     }
 
+    #[inline]
     pub fn insert_new(&mut self, k: K) {
         self.map.insert_new(k, ());
     }
 
+    #[inline]
     pub fn insert(&mut self, k: K) {
         self.map.insert(k, ());
     }
 
-    pub fn contains(&self, k: K) -> bool {
+    #[must_use]
+    #[inline]
+    pub fn contains(&self, k: &K) -> bool {
         self.map.contains(k)
     }
 
+    #[inline]
     pub fn iter(&self) -> impl Iterator<Item = &K> + '_ {
         self.map.iter().map(|(k, _)| k)
+    }
+}
+
+impl<K> FromIterator<K> for IndexKeySet<K>
+where
+    K: IndexKey,
+{
+    fn from_iter<T: IntoIterator<Item = K>>(iter: T) -> Self {
+        let mut ret = IndexKeySet::new();
+
+        for k in iter {
+            ret.insert(k);
+        }
+
+        ret
     }
 }
 

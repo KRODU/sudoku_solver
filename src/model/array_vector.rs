@@ -85,6 +85,7 @@ impl<T, const N: usize> ArrayVector<T, N> {
         unsafe { self.arr.get_unchecked(index).assume_init_ref() }
     }
 
+    #[inline]
     pub fn get_mut(&mut self, index: usize) -> Option<&mut T> {
         if index >= self.len {
             return None;
@@ -96,8 +97,11 @@ impl<T, const N: usize> ArrayVector<T, N> {
     #[inline]
     pub fn clear(&mut self) {
         unsafe {
-            ptr::drop_in_place(self.get_mut_slice_ptr());
+            let ptr = self.get_mut_slice_ptr();
             self.len = 0;
+            // len을 0으로 설정한 다음 drop해야 함..
+            // drop후 len을 0으로 설정할 경우 drop에서 panic 발생시 double-free
+            ptr::drop_in_place(ptr);
         }
     }
 
@@ -157,7 +161,9 @@ impl<T, const N: usize> ArrayVector<T, N> {
                 if f(self.get_unchecked(index)) {
                     let base_ptr = self.arr.as_mut_ptr() as *mut T;
                     let dst = base_ptr.add(index);
-                    ptr::drop_in_place(dst);
+                    // 여기서 바로 drop하는 대신 일부러 drop을 늦춤..
+                    // 그렇지 않으면 drop에서 panic이 발생시 double-free가 발생할 수 있음
+                    let _late_drop = ptr::read(dst);
                     self.len -= 1;
                     let src = base_ptr.add(self.len);
                     ptr::copy(src, dst, 1);

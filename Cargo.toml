@@ -14,8 +14,6 @@ name = "sudoku_solver"
 path = "src/main.rs"
 
 [dependencies]
-hashbrown = "0.13"
-ahash = "0.8"
 rand = { version = "0.8", features = ["std_rng", "small_rng"] }
 enum-iterator = "1"
 rayon = "1"

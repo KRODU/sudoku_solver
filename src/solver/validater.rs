@@ -21,7 +21,7 @@ impl<'a, const N: usize> Solver<'a, N> {
     ) -> Option<&Cell<N>> {
         let mut unique_chk_arr: ArrayNote<bool, N>;
 
-        for (zone, cells) in &self.ordered_zone {
+        for (zone, cells) in &self.zone {
             if is_break.get() {
                 break;
             }

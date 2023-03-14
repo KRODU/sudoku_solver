@@ -25,7 +25,7 @@ fn main() {
 
     println!("puzzle seed: {}", solver.get_random_seed());
     for n in all::<SolverSimple>() {
-        println!("{:?}: {}", n, solver.solve_cnt(&n));
+        println!("{:?}: {}", n, solver.solve_cnt(n));
     }
 
     println!(

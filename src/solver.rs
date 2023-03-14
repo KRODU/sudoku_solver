@@ -1,13 +1,13 @@
 use self::solver_history::{SolverHistory, SolverHistoryType, SolverResult};
 use self::solver_simple::SolverSimple;
 use crate::model::array_vector::ArrayVector;
+use crate::model::index_key_map::{IndexKeyMap, IndexKeySet};
 use crate::model::max_num::MaxNum;
 use crate::model::non_atomic_bool::NonAtomicBool;
 use crate::model::table_lock::{TableLock, TableLockReadGuard};
 use crate::model::zone::ZoneType;
 use crate::model::{cell::Cell, zone::Zone};
 use enum_iterator::{all, cardinality};
-use hashbrown::{HashMap, HashSet};
 use rand::rngs::SmallRng;
 use rand::{RngCore, SeedableRng};
 use rayon::slice::ParallelSliceMut;
@@ -28,15 +28,14 @@ pub struct Solver<'a, const N: usize> {
     solver_history_stack: Vec<SolverHistory<'a, N>>,
     rng: SmallRng,
     rand_seed: u64,
-    solve_cnt: HashMap<SolverSimple, u32>,
+    solve_cnt: IndexKeyMap<SolverSimple, u32>,
     guess_cnt: u32,
     guess_rollback_cnt: u32,
     guess_backtrace_rollback_cnt: u32,
     // Zone과 Zone에 속한 Cell 목록을 Vec로 정렬
-    ordered_zone: Vec<(Zone, Vec<&'a Cell<N>>)>,
-    hashed_zone: HashMap<Zone, Vec<&'a Cell<N>>>,
-    connect_zone: HashMap<Zone, HashSet<Zone>>,
-    checked_zone: HashMap<Zone, RwLock<HashMap<SolverSimple, bool>>>,
+    zone: IndexKeyMap<Zone, Vec<&'a Cell<N>>>,
+    connect_zone: IndexKeyMap<Zone, IndexKeySet<Zone>>,
+    checked_zone: IndexKeyMap<Zone, RwLock<IndexKeyMap<SolverSimple, bool>>>,
 }
 
 impl<'a, const N: usize> Solver<'a, N> {
@@ -140,7 +139,7 @@ impl<'a, const N: usize> Solver<'a, N> {
         result: Vec<SolverResult<'a, N>>,
     ) {
         let mut write = read.upgrade_to_write();
-        let mut changed_zone_set: HashSet<Zone> = HashSet::new();
+        let mut changed_zone_set: IndexKeySet<Zone> = IndexKeySet::new();
 
         for mut solver_result in result {
             let mut backup_chk: Vec<(&'a Cell<N>, ArrayVector<MaxNum<N>, N>)> =
@@ -256,21 +255,15 @@ impl<'a, const N: usize> Solver<'a, N> {
     }
 
     pub fn new_with_seed(t: &'a mut TableLock<N>, rand_seed: u64) -> Self {
-        let mut solve_cnt: HashMap<SolverSimple, u32> = HashMap::new();
+        let mut solve_cnt: IndexKeyMap<SolverSimple, u32> = IndexKeyMap::new();
         for n in all::<SolverSimple>() {
             solve_cnt.insert(n, 0u32);
         }
 
-        let hashed_zone = Solver::get_zone_hashmap(t);
-        let zone_cnt = hashed_zone.len();
+        let zone = Solver::get_zone_map(t);
+        let zone_cnt = zone.len();
 
-        let mut ordered_zone = hashed_zone
-            .iter()
-            .map(|(z, v)| (*z, v.clone()))
-            .collect::<Vec<_>>();
-        ordered_zone.par_sort_unstable_by_key(|(z, _)| *z);
-
-        for (z, c) in &ordered_zone {
+        for (z, c) in &zone {
             let ZoneType::Unique = z.get_zone_type() else { continue; };
 
             if c.len() != N {
@@ -282,14 +275,14 @@ impl<'a, const N: usize> Solver<'a, N> {
             }
         }
 
-        let connect_zone = Solver::<N>::get_connected_zone(&ordered_zone);
+        let connect_zone = Solver::<N>::get_connected_zone(&zone);
 
-        let mut checked_zone: HashMap<Zone, RwLock<HashMap<SolverSimple, bool>>> =
-            HashMap::with_capacity(zone_cnt);
-        for (z, _) in &ordered_zone {
+        let mut checked_zone: IndexKeyMap<Zone, RwLock<IndexKeyMap<SolverSimple, bool>>> =
+            IndexKeyMap::with_capacity(zone_cnt);
+        for (z, _) in &zone {
             checked_zone.insert(
                 *z,
-                RwLock::new(HashMap::with_capacity(cardinality::<SolverSimple>())),
+                RwLock::new(IndexKeyMap::with_capacity(cardinality::<SolverSimple>())),
             );
         }
 
@@ -309,39 +302,41 @@ impl<'a, const N: usize> Solver<'a, N> {
             guess_rollback_cnt: 0,
             guess_backtrace_rollback_cnt: 0,
             solve_cnt,
-            ordered_zone,
-            hashed_zone,
+            zone,
             connect_zone,
             checked_zone,
         }
     }
 
     #[must_use]
-    fn get_zone_hashmap(t: &'a TableLock<N>) -> HashMap<Zone, Vec<&Cell<N>>> {
-        let mut hash: HashMap<Zone, Vec<&Cell<N>>> = HashMap::with_capacity(N * N);
+    fn get_zone_map(t: &'a TableLock<N>) -> IndexKeyMap<Zone, Vec<&Cell<N>>> {
+        let mut index_vec: IndexKeyMap<Zone, Vec<&Cell<N>>> = IndexKeyMap::with_capacity(N * N);
         for cell in t {
             for z in &cell.zone_vec {
-                let row = hash.entry(*z).or_insert_with(|| Vec::with_capacity(N));
+                let row = index_vec.entry_or_insert_with(*z, || Vec::with_capacity(N));
                 row.push(cell);
             }
         }
 
-        hash.iter_mut().for_each(|(_, v)| v.par_sort_unstable());
-        hash
+        index_vec
+            .iter_mut()
+            .for_each(|(_, v)| v.par_sort_unstable());
+        index_vec
     }
 
     #[must_use]
     fn get_connected_zone(
-        ordered_zone: &Vec<(Zone, Vec<&'a Cell<N>>)>,
-    ) -> HashMap<Zone, HashSet<Zone>> {
-        let mut ret: HashMap<Zone, HashSet<Zone>> = HashMap::with_capacity(ordered_zone.len());
+        ordered_zone: &IndexKeyMap<Zone, Vec<&Cell<N>>>,
+    ) -> IndexKeyMap<Zone, IndexKeySet<Zone>> {
+        let mut ret: IndexKeyMap<Zone, IndexKeySet<Zone>> =
+            IndexKeyMap::with_capacity(ordered_zone.len());
 
         for (z1, _) in ordered_zone {
             for (z2, c2_list) in ordered_zone {
                 let connected = c2_list.iter().any(|c2| c2.zone_set.contains(z1));
 
                 if connected {
-                    ret.entry(*z1).or_insert_with(HashSet::new).insert(*z2);
+                    ret.entry_or_insert_with(*z1, IndexKeySet::new).insert(*z2);
                 }
             }
         }
@@ -374,7 +369,7 @@ impl<'a, const N: usize> Solver<'a, N> {
 
     /// 특정 zone에 대한 checked를 모두 초기화
     fn checked_zone_clear<'b>(&self, cells: impl Iterator<Item = &'b Cell<N>>) {
-        let mut changed_zone_set: HashSet<Zone> = HashSet::new();
+        let mut changed_zone_set: IndexKeySet<Zone> = IndexKeySet::new();
 
         for c in cells {
             for z in &c.zone_vec {
@@ -411,7 +406,7 @@ impl<'a, const N: usize> Solver<'a, N> {
     /// Get the solver's solve cnt.
     #[must_use]
     #[inline]
-    pub fn solve_cnt(&self, result_simple: &SolverSimple) -> u32 {
+    pub fn solve_cnt(&self, result_simple: SolverSimple) -> u32 {
         self.solve_cnt[result_simple]
     }
 
