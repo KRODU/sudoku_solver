@@ -92,7 +92,10 @@ impl<const N: usize> NumCheck<N> {
         }
 
         self.true_cnt += 1;
-        self.true_list.push(num);
+        unsafe {
+            // 이미 true인 경우 위에서 return하므로 괜찮음
+            self.true_list.push_unchecked(num);
+        }
         self.chk_list[num] = Some(self.true_list.len() - 1);
 
         self.set_to_final_num();
@@ -104,7 +107,9 @@ impl<const N: usize> NumCheck<N> {
         };
 
         self.true_cnt -= 1;
-        self.true_list.swap_remove(remove_index);
+        unsafe {
+            self.true_list.swap_remove_unchecked(remove_index);
+        }
         if let Some(swap_node) = self.true_list.get(remove_index) {
             self.chk_list[*swap_node] = Some(remove_index);
         }
@@ -125,7 +130,10 @@ impl<const N: usize> NumCheck<N> {
             }
 
             self.chk_list[n] = Some(self.true_cnt);
-            self.true_list.push(n);
+            unsafe {
+                // true인 경우 위에서 continue하므로 괜찮음
+                self.true_list.push_unchecked(n);
+            }
             self.true_cnt += 1;
         }
 
@@ -164,7 +172,7 @@ impl<const N: usize> NumCheck<N> {
     #[inline]
     fn set_to_final_num(&mut self) {
         self.final_num = if self.true_cnt == 1 {
-            Some(*self.true_list.first().unwrap())
+            unsafe { Some(*self.true_list.get_unchecked(0)) }
         } else {
             None
         };
@@ -251,7 +259,7 @@ impl<const N: usize> NumCheck<N> {
 
 impl<const N: usize> Default for NumCheck<N> {
     fn default() -> Self {
-        Self::new_with_false()
+        Self::new_with_true()
     }
 }
 

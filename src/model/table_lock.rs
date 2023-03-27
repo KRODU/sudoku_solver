@@ -30,6 +30,7 @@ impl<const N: usize> TableLock<N> {
         }
     }
 
+    #[inline]
     pub fn read_lock(&self) -> TableLockReadGuard<N> {
         TableLockReadGuard {
             table_lock: self,
@@ -37,6 +38,7 @@ impl<const N: usize> TableLock<N> {
         }
     }
 
+    #[inline]
     pub fn write_lock(&self) -> TableLockWriteGuard<N> {
         TableLockWriteGuard {
             table_lock: self,
@@ -47,6 +49,7 @@ impl<const N: usize> TableLock<N> {
     /// cell은 table에 속해있어야만 함. 그렇지 않으면 panic 발생.
     ///
     /// 다른 table에 속한 cell을 여기서 read, write하는 걸 방지하기 위함.
+    #[inline]
     fn assert_cell_in_table(&self, cell: &Cell<N>) {
         let cell_addr = cell as *const _ as usize;
         assert!(
@@ -68,6 +71,8 @@ impl<const N: usize> TableLock<N> {
     #[cfg(not(debug_assertions))]
     pub fn table_debug_validater(&self) {}
 
+    #[must_use]
+    #[inline]
     pub fn get_cell_from_coordinate(&self, x: MaxNum<N>, y: MaxNum<N>) -> &Cell<N> {
         unsafe {
             // MaxNum<N>의 값은 N보다 작은 것이 보장됨
@@ -211,11 +216,15 @@ pub struct TableLockReadGuard<'a, 'b, const N: usize> {
 }
 
 impl<'a, 'b, const N: usize> TableLockReadGuard<'a, 'b, N> {
+    #[must_use]
+    #[inline]
     pub fn read_from_cell(&self, cell: &Cell<N>) -> &NumCheck<N> {
         self.table_lock.assert_cell_in_table(cell);
         unsafe { &*cell.chk_unsafe.get() }
     }
 
+    #[must_use]
+    #[inline]
     pub fn read_from_coordinate(&self, x: MaxNum<N>, y: MaxNum<N>) -> &NumCheck<N> {
         unsafe {
             &*self
@@ -227,6 +236,8 @@ impl<'a, 'b, const N: usize> TableLockReadGuard<'a, 'b, N> {
     }
 
     /// ReadLock을 WriteLock으로 업그레이드합니다. ReadLock을 Drop한 뒤 다시 WriteLock을 얻는 것과 같습니다.
+    #[must_use]
+    #[inline]
     pub fn upgrade_to_write<'c, 'd>(self) -> TableLockWriteGuard<'c, 'd, N>
     where
         'a: 'c + 'd,
@@ -242,11 +253,15 @@ pub struct TableLockWriteGuard<'a, 'b, const N: usize> {
 }
 
 impl<'a, 'b, const N: usize> TableLockWriteGuard<'a, 'b, N> {
+    #[must_use]
+    #[inline]
     pub fn read_from_cell(&self, cell: &Cell<N>) -> &NumCheck<N> {
         self.table_lock.assert_cell_in_table(cell);
         unsafe { &*cell.chk_unsafe.get() }
     }
 
+    #[must_use]
+    #[inline]
     pub fn read_from_coordinate(&self, x: MaxNum<N>, y: MaxNum<N>) -> &NumCheck<N> {
         unsafe {
             &*self
@@ -257,11 +272,15 @@ impl<'a, 'b, const N: usize> TableLockWriteGuard<'a, 'b, N> {
         }
     }
 
+    #[must_use]
+    #[inline]
     pub fn write_from_cell(&mut self, cell: &Cell<N>) -> &mut NumCheck<N> {
         self.table_lock.assert_cell_in_table(cell);
         unsafe { &mut *cell.chk_unsafe.get() }
     }
 
+    #[must_use]
+    #[inline]
     pub fn write_from_coordinate(&mut self, x: MaxNum<N>, y: MaxNum<N>) -> &mut NumCheck<N> {
         unsafe {
             &mut *self

@@ -122,10 +122,21 @@ impl<T, const N: usize> ArrayVector<T, N> {
         unsafe { self.arr.get_unchecked_mut(..self.len) as *mut [MaybeUninit<T>] as *mut [T] }
     }
 
+    #[inline]
     pub fn swap_remove(&mut self, index: usize) -> Option<T> {
         if index >= self.len {
             return None;
         }
+
+        unsafe { Some(self.swap_remove_unchecked(index)) }
+    }
+
+    /// # Safety
+    ///
+    /// index는 len보다 작아야 함.
+    #[inline]
+    pub unsafe fn swap_remove_unchecked(&mut self, index: usize) -> T {
+        debug_assert!(index < self.len);
 
         unsafe {
             let base_ptr = self.arr.as_mut_ptr() as *mut T;
@@ -134,7 +145,7 @@ impl<T, const N: usize> ArrayVector<T, N> {
             self.len -= 1;
             let src = base_ptr.add(self.len);
             ptr::copy(src, dst, 1);
-            Some(ret)
+            ret
         }
     }
 
@@ -162,7 +173,7 @@ impl<T, const N: usize> ArrayVector<T, N> {
                     let base_ptr = self.arr.as_mut_ptr() as *mut T;
                     let dst = base_ptr.add(index);
                     // 여기서 바로 drop하는 대신 일부러 drop을 늦춤..
-                    // 그렇지 않으면 drop에서 panic이 발생시 double-free가 발생할 수 있음
+                    // 그렇지 않으면 drop에서 panic 발생시 double-free가 발생할 수 있음
                     let _late_drop = ptr::read(dst);
                     self.len -= 1;
                     let src = base_ptr.add(self.len);

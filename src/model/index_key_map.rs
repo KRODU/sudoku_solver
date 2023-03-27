@@ -67,7 +67,7 @@ where
     pub fn get(&self, k: &K) -> Option<&V> {
         let index = k.index() as usize;
 
-        if let Some((_, v)) = self.arr.get(index)? {
+        if let Some(Some((_, v))) = self.arr.get(index) {
             Some(v)
         } else {
             None
@@ -79,7 +79,7 @@ where
     pub fn get_mut(&mut self, k: &K) -> Option<&mut V> {
         let index = k.index() as usize;
 
-        if let Some((_, v)) = self.arr.get_mut(index)? {
+        if let Some(Some((_, v))) = self.arr.get_mut(index) {
             Some(v)
         } else {
             None
@@ -124,6 +124,7 @@ where
             if let Some(Some((_, v))) = self.arr.last_mut() {
                 v
             } else {
+                debug_assert!(false, "unreachable");
                 unsafe { unreachable_unchecked() }
             }
         } else {
@@ -136,6 +137,7 @@ where
             if let Some((_, v)) = mut_index {
                 v
             } else {
+                debug_assert!(false, "unreachable");
                 unsafe { unreachable_unchecked() }
             }
         }
