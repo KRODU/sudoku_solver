@@ -31,6 +31,7 @@ where
 
     pub fn insert_new(&mut self, k: K, v: V) {
         let index = k.index() as usize;
+        self.arr.reserve(index.saturating_sub(self.arr.len()));
 
         if self.arr.len() <= index {
             while self.arr.len() < index {
@@ -50,6 +51,7 @@ where
 
     pub fn insert(&mut self, k: K, v: V) {
         let index = k.index() as usize;
+        self.arr.reserve(index.saturating_sub(self.arr.len()));
 
         if self.arr.len() <= index {
             while self.arr.len() < index {
@@ -114,6 +116,7 @@ where
         F: FnOnce() -> V,
     {
         let index = k.index() as usize;
+        self.arr.reserve(index.saturating_sub(self.arr.len()));
 
         if self.arr.len() <= index {
             while self.arr.len() < index {
