@@ -18,7 +18,9 @@ impl<'a, const N: usize> Solver<'a, N> {
         is_break: &'b NonAtomicBool,
     ) {
         for (zone, cells) in &self.zone {
-            let ZoneType::Unique = zone.get_zone_type() else { continue; };
+            let ZoneType::Unique = zone.get_zone_type() else {
+                continue;
+            };
 
             s.spawn_fifo(move |_| {
                 if is_break.get() {
@@ -30,7 +32,9 @@ impl<'a, const N: usize> Solver<'a, N> {
                 }
 
                 for c in cells {
-                    let Some(final_num) = read.read_from_cell(c).get_final_num() else { continue; };
+                    let Some(final_num) = read.read_from_cell(c).get_final_num() else {
+                        continue;
+                    };
                     let mut effect_cells: Vec<(&Cell<N>, ArrayVector<MaxNum<N>, N>)> = Vec::new();
 
                     for c_comp in cells {

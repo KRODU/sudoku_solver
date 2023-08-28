@@ -111,7 +111,7 @@ impl<const N: usize> Ord for MaxNum<N> {
 
 impl<const N: usize> Clone for MaxNum<N> {
     fn clone(&self) -> Self {
-        Self { num: self.num }
+        *self
     }
 }
 

@@ -264,7 +264,9 @@ impl<'a, const N: usize> Solver<'a, N> {
         let zone_cnt = zone.len();
 
         for (z, c) in &zone {
-            let ZoneType::Unique = z.get_zone_type() else { continue; };
+            let ZoneType::Unique = z.get_zone_type() else {
+                continue;
+            };
 
             if c.len() != N {
                 panic!(

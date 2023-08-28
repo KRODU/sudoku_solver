@@ -20,7 +20,9 @@ impl<'a, const N: usize> Solver<'a, N> {
         is_break: &'b NonAtomicBool,
     ) {
         for (z1, z1_cells) in &self.zone {
-            let ZoneType::Unique = z1.get_zone_type() else { continue; };
+            let ZoneType::Unique = z1.get_zone_type() else {
+                continue;
+            };
 
             let Some(connect_zone) = self.connect_zone.get(z1) else {
                 continue;
@@ -51,7 +53,9 @@ impl<'a, const N: usize> Solver<'a, N> {
                 // 2. 서로 연결된 두 Zone을 z1, z2라 할 경우, 특정 노트 N은 z1에게 있어서 z2와 겹쳐지는 영역 내에서만 존재하는 노트일 수 있다.
                 // 3. 이때 z1와 z2가 겹쳐지는 영역을 제외한 나머지 z2의 영역에서 노트 N이 발견되는 경우, 해당 노트는 제거할 수 있다.
                 for &z2 in connect_zone {
-                    let ZoneType::Unique = z2.get_zone_type() else { continue; };
+                    let ZoneType::Unique = z2.get_zone_type() else {
+                        continue;
+                    };
 
                     let z2_cells = &self.zone[z2];
 
