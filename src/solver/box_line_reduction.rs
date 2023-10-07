@@ -57,7 +57,7 @@ impl<'a, const N: usize> Solver<'a, N> {
                         continue;
                     };
 
-                    let z2_cells = &self.zone[z2];
+                    let z2_cells = &self.zone[&z2];
 
                     for &note in &current_zone_union_note {
                         let target_this_note = !z1_cells.iter().any(|c| {

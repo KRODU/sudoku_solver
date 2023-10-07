@@ -11,14 +11,14 @@ pub struct MaxNum<const N: usize> {
 impl<const N: usize> MaxNum<N> {
     /// num의 값은 num < N을 충족해야 함. 그렇지 않을 경우 panic
     #[must_use]
-    pub fn new(num: usize) -> Self {
+    pub const fn new(num: usize) -> Self {
         assert!(num < N);
         Self { num }
     }
 
     /// num의 값은 num < N을 충족해야 함. 그렇지 않을 경우 None
     #[must_use]
-    pub fn new_optional(num: usize) -> Option<Self> {
+    pub const fn new_optional(num: usize) -> Option<Self> {
         if num < N {
             Some(Self { num })
         } else {
@@ -28,7 +28,7 @@ impl<const N: usize> MaxNum<N> {
 
     /// MaxNum에 value를 더한 값을 반환합니다. N을 초과하게 될 경우 None
     #[must_use]
-    pub fn offset(&self, value: i64) -> Option<MaxNum<N>> {
+    pub const fn offset(&self, value: i64) -> Option<MaxNum<N>> {
         MaxNum::new_optional((self.get_value() as i64 + value) as usize)
     }
 
@@ -36,14 +36,14 @@ impl<const N: usize> MaxNum<N> {
     ///
     /// num의 값은 num < N을 충족해야 함.
     #[must_use]
-    pub unsafe fn new_unchecked(num: usize) -> Self {
+    pub const unsafe fn new_unchecked(num: usize) -> Self {
         debug_assert!(num < N);
         Self { num }
     }
 
     #[must_use]
     #[inline]
-    pub fn get_value(&self) -> usize {
+    pub const fn get_value(&self) -> usize {
         if self.num >= N {
             unsafe { unreachable_unchecked() }
         }
@@ -52,7 +52,7 @@ impl<const N: usize> MaxNum<N> {
 
     #[must_use]
     #[inline]
-    pub fn get_char(&self) -> char {
+    pub const fn get_char(&self) -> char {
         const CHAR_ARR: [char; 27] = [
             '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F', 'G',
             'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q',
@@ -99,7 +99,7 @@ impl<const N: usize> MaxNum<N> {
 
 impl<const N: usize> PartialOrd for MaxNum<N> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.num.partial_cmp(&other.num)
+        Some(self.cmp(other))
     }
 }
 

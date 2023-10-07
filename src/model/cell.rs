@@ -55,6 +55,7 @@ impl<const N: usize> Debug for Cell<N> {
 }
 
 impl<const N: usize> PartialEq for Cell<N> {
+    #[inline]
     fn eq(&self, other: &Self) -> bool {
         // eq는 포인터 주소가 일치하는지를 비교
         // 좌표가 같더라도 다른 테이블에 속한 cell과는 동일하지 않으므로 일부러 이렇게 함..
@@ -65,18 +66,21 @@ impl<const N: usize> PartialEq for Cell<N> {
 impl<const N: usize> Eq for Cell<N> {}
 
 impl<const N: usize> PartialOrd for Cell<N> {
+    #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.index.partial_cmp(&other.index)
+        Some(self.cmp(other))
     }
 }
 
 impl<const N: usize> Ord for Cell<N> {
+    #[inline]
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.index.cmp(&other.index)
     }
 }
 
 impl<const N: usize> std::hash::Hash for Cell<N> {
+    #[inline]
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.index.hash(state);
     }

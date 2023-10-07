@@ -12,7 +12,7 @@ use rand::rngs::SmallRng;
 use rand::{RngCore, SeedableRng};
 use rayon::slice::ParallelSliceMut;
 use std::fmt::Debug;
-use std::sync::{Mutex, RwLock};
+use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 pub mod box_line_reduction;
@@ -35,7 +35,7 @@ pub struct Solver<'a, const N: usize> {
     // Zone과 Zone에 속한 Cell 목록을 Vec로 정렬
     zone: IndexKeyMap<Zone, Vec<&'a Cell<N>>>,
     connect_zone: IndexKeyMap<Zone, IndexKeySet<Zone>>,
-    checked_zone: IndexKeyMap<Zone, RwLock<IndexKeyMap<SolverSimple, bool>>>,
+    checked_zone: IndexKeyMap<Zone, IndexKeyMap<SolverSimple, NonAtomicBool>>,
 }
 
 impl<'a, const N: usize> Solver<'a, N> {
@@ -161,11 +161,9 @@ impl<'a, const N: usize> Solver<'a, N> {
 
                 for zone in &c.zone_vec {
                     if !changed_zone_set.contains(zone) {
-                        let mut zone_write_lock =
-                            self.checked_zone.get(zone).unwrap().write().unwrap();
-                        zone_write_lock
-                            .iter_mut()
-                            .for_each(|(_, value)| *value = false);
+                        self.checked_zone[zone]
+                            .iter()
+                            .for_each(|(_, value)| value.set(false));
                         changed_zone_set.insert(*zone);
                     }
                 }
@@ -279,19 +277,18 @@ impl<'a, const N: usize> Solver<'a, N> {
 
         let connect_zone = Solver::<N>::get_connected_zone(&zone);
 
-        let mut checked_zone: IndexKeyMap<Zone, RwLock<IndexKeyMap<SolverSimple, bool>>> =
+        let mut checked_zone: IndexKeyMap<Zone, IndexKeyMap<SolverSimple, NonAtomicBool>> =
             IndexKeyMap::with_capacity(zone_cnt);
         for (z, _) in &zone {
             checked_zone.insert(
                 *z,
-                RwLock::new(IndexKeyMap::with_capacity(cardinality::<SolverSimple>())),
+                IndexKeyMap::with_capacity(cardinality::<SolverSimple>()),
             );
         }
 
         for (_, check_map) in checked_zone.iter_mut() {
-            let mut check_map_lock = check_map.write().unwrap();
             for n in all::<SolverSimple>() {
-                check_map_lock.insert(n, false);
+                check_map.insert(n, NonAtomicBool::new(false));
             }
         }
 
@@ -349,24 +346,12 @@ impl<'a, const N: usize> Solver<'a, N> {
     /// 특정 zone에 대한 checked 여부를 반환
     #[must_use]
     fn checked_zone_get_bool(&self, z: &Zone, solver: SolverSimple) -> bool {
-        *self
-            .checked_zone
-            .get(z)
-            .unwrap()
-            .read()
-            .unwrap()
-            .get(&solver)
-            .unwrap()
+        self.checked_zone[z][&solver].get()
     }
 
     /// 특정 zone에 대한 checked 여부를 true로 설정
     fn checked_zone_set_bool_true(&self, z: Zone, solver: SolverSimple) {
-        self.checked_zone
-            .get(&z)
-            .unwrap()
-            .write()
-            .unwrap()
-            .insert(solver, true);
+        self.checked_zone[&z][&solver].set(true);
     }
 
     /// 특정 zone에 대한 checked를 모두 초기화
@@ -378,8 +363,9 @@ impl<'a, const N: usize> Solver<'a, N> {
                 if changed_zone_set.contains(z) {
                     continue;
                 }
-                let mut wrtie_lock = self.checked_zone.get(z).unwrap().write().unwrap();
-                wrtie_lock.iter_mut().for_each(|(_, value)| *value = false);
+                self.checked_zone[z]
+                    .iter()
+                    .for_each(|(_, value)| value.set(false));
                 changed_zone_set.insert(*z);
             }
         }
@@ -409,7 +395,7 @@ impl<'a, const N: usize> Solver<'a, N> {
     #[must_use]
     #[inline]
     pub fn solve_cnt(&self, result_simple: SolverSimple) -> u32 {
-        self.solve_cnt[result_simple]
+        self.solve_cnt[&result_simple]
     }
 
     /// Get the solver's guess cnt.

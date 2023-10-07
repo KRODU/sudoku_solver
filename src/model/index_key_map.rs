@@ -157,14 +157,14 @@ where
     }
 }
 
-impl<K, V> Index<K> for IndexKeyMap<K, V>
+impl<K, V> Index<&K> for IndexKeyMap<K, V>
 where
     K: IndexKey,
 {
     type Output = V;
 
     #[inline]
-    fn index(&self, k: K) -> &Self::Output {
+    fn index(&self, k: &K) -> &Self::Output {
         let index = k.index() as usize;
 
         if let Some((_, v)) = &self.arr[index] {

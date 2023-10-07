@@ -5,7 +5,8 @@ pub struct NonAtomicBool {
 }
 
 impl NonAtomicBool {
-    pub fn new(value: bool) -> Self {
+    #[inline]
+    pub const fn new(value: bool) -> Self {
         Self {
             bool: UnsafeCell::new(if value { 1 } else { 0 }),
         }

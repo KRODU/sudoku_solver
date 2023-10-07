@@ -27,9 +27,9 @@ impl Table<9> {
                 let index = zone[x + y * 9];
 
                 let this_zone = vec![
-                    Zone::new_unique_from_num(index),
-                    Zone::new_unique_from_num(x + 10),
-                    Zone::new_unique_from_num(y + 19),
+                    Zone::new_unique_from_usize(index),
+                    Zone::new_unique_from_usize(x + 10),
+                    Zone::new_unique_from_usize(y + 19),
                 ];
                 let cell = Cell::new(x, y, this_zone);
 
@@ -64,9 +64,9 @@ impl Table<16> {
                 let index = zone[x + y * 16];
 
                 let this_zone = vec![
-                    Zone::new_unique_from_num(index),
-                    Zone::new_unique_from_num(x + 17),
-                    Zone::new_unique_from_num(y + 33),
+                    Zone::new_unique_from_usize(index),
+                    Zone::new_unique_from_usize(x + 17),
+                    Zone::new_unique_from_usize(y + 33),
                 ];
 
                 let cell = Cell::new(x, y, this_zone);

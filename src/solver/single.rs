@@ -64,7 +64,7 @@ impl<'a, const N: usize> Solver<'a, N> {
                                 continue;
                             }
 
-                            for c_comp in &self.zone[*z2] {
+                            for c_comp in &self.zone[z2] {
                                 if c_comp == c {
                                     continue;
                                 }

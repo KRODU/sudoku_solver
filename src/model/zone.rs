@@ -46,7 +46,14 @@ pub struct Zone {
 }
 
 impl Zone {
-    pub fn new_unique_from_num(z: usize) -> Zone {
+    pub const fn new_unique_from_u16(z: u16) -> Zone {
+        Zone {
+            z,
+            zone_type: ZoneType::Unique,
+        }
+    }
+
+    pub fn new_unique_from_usize(z: usize) -> Zone {
         Zone {
             z: z.try_into().expect("can not convert from usize to u16"),
             zone_type: ZoneType::Unique,
@@ -54,11 +61,13 @@ impl Zone {
     }
 
     #[must_use]
+    #[inline]
     pub fn get_zone_num(&self) -> u16 {
         self.z
     }
 
     #[must_use]
+    #[inline]
     pub fn get_zone_type(&self) -> &ZoneType {
         &self.zone_type
     }
@@ -79,16 +88,14 @@ impl std::hash::Hash for Zone {
 }
 
 impl PartialOrd for Zone {
+    #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        match self.z.partial_cmp(&other.z) {
-            Some(core::cmp::Ordering::Equal) => {}
-            ord => return ord,
-        }
-        self.zone_type.partial_cmp(&other.zone_type)
+        Some(self.cmp(other))
     }
 }
 
 impl Ord for Zone {
+    #[inline]
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         match self.z.cmp(&other.z) {
             core::cmp::Ordering::Equal => {}
@@ -99,6 +106,7 @@ impl Ord for Zone {
 }
 
 impl IndexKey for Zone {
+    #[inline]
     fn index(&self) -> u16 {
         self.get_zone_num()
     }
