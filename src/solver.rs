@@ -248,7 +248,7 @@ impl<'a, const N: usize> Solver<'a, N> {
     // TableLock을 mut로 받을 필요는 없으나, 동일한 Table에 대해 여러 Solver를 생성하는 것을 방지하기 위해 일부러 mut로 받음
     #[must_use]
     pub fn new(t: &'a mut TableLock<N>) -> Self {
-        let rand_seed = SmallRng::from_entropy().next_u64();
+        let rand_seed = rand::rngs::OsRng.next_u64();
         Self::new_with_seed(t, rand_seed)
     }
 

@@ -20,7 +20,7 @@ impl<'a, T> Combination<'a, T> {
         }
     }
 
-    pub fn next_comb(&mut self) -> Option<&Vec<&T>> {
+    pub fn next_comb(&mut self) -> Option<&[&T]> {
         let len = self.len;
 
         if self.result.is_empty() {

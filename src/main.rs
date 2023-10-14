@@ -14,8 +14,14 @@ const TEST_SAME_PUZZLE_HISTORY: bool = false;
 fn main() {
     std::env::set_var("RUST_BACKTRACE", "full");
 
+    let seed_arg = std::env::args().find_map(|arg| arg.parse::<u64>().ok());
+
     let mut t = Table::new_default_16();
-    let mut solver = Solver::new(&mut t);
+    let mut solver = if let Some(seed) = seed_arg {
+        Solver::new_with_seed(&mut t, seed)
+    } else {
+        Solver::new(&mut t)
+    };
 
     let start = Instant::now();
     // solver.set_random_seed(0); // 실행시간 측정을 위한 시드 고정. 이걸 빼면 무작위 스도쿠 퍼즐이 만들어짐.
