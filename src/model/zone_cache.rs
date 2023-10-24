@@ -125,6 +125,12 @@ impl<'a, const N: usize> ZoneCache<'a, N> {
         }
     }
 
+    pub fn checked_zone_all_clear(&self) {
+        for (_, map) in &self.checked_zone {
+            map.iter().for_each(|(_, value)| value.set(false));
+        }
+    }
+
     #[must_use]
     #[inline]
     pub fn zone(&self) -> &IndexKeyMap<Zone, Vec<&'a Cell<N>>> {

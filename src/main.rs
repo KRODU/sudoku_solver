@@ -40,8 +40,14 @@ fn main() {
         solver.guess_rollback_cnt(),
         solver.guess_backtrace_rollback_cnt()
     );
-    println!("time: {}ms", (end - start).as_millis());
+    println!("solver time: {}ms", (end - start).as_millis());
 
+    let start: Instant = Instant::now();
+    let mut punch = solver.into_punch();
+    punch.punch_all();
+    let end = Instant::now();
+    println!("{}", punch.get_table());
+    println!("punch time: {}ms", (end - start).as_millis());
     if TEST_SAME_PUZZLE {
         test_same_puzzle();
     }

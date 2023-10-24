@@ -1,3 +1,11 @@
+pub mod box_line_reduction;
+pub mod guess;
+pub mod naked;
+pub mod single;
+pub mod solver_history;
+pub mod solver_simple;
+pub mod validater;
+
 use self::solver_history::{SolverHistory, SolverHistoryType, SolverResult};
 use self::solver_simple::SolverSimple;
 use crate::model::array_vector::ArrayVector;
@@ -7,20 +15,13 @@ use crate::model::non_atomic_bool::NonAtomicBool;
 use crate::model::table_lock::{TableLock, TableLockReadGuard};
 use crate::model::zone_cache::ZoneCache;
 use crate::model::{cell::Cell, zone::Zone};
+use crate::punch::Punch;
 use enum_iterator::all;
 use rand::rngs::SmallRng;
 use rand::{RngCore, SeedableRng};
 use std::fmt::Debug;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
-
-pub mod box_line_reduction;
-pub mod guess;
-pub mod naked;
-pub mod single;
-pub mod solver_history;
-pub mod solver_simple;
-pub mod validater;
 
 pub struct Solver<'a, const N: usize> {
     table: &'a TableLock<N>,
@@ -266,6 +267,12 @@ impl<'a, const N: usize> Solver<'a, N> {
             solve_cnt,
             zone_cache: ZoneCache::new(t),
         }
+    }
+
+    #[must_use]
+    #[inline]
+    pub fn into_punch(self) -> Punch<'a, N> {
+        Punch::new(self.table, self.rng, self.zone_cache)
     }
 
     #[must_use]

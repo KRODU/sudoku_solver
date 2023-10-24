@@ -39,7 +39,7 @@ impl<const N: usize> Cell<N> {
 
     #[must_use]
     #[inline]
-    pub fn get_zone(&self) -> &Vec<Zone> {
+    pub fn get_zone(&self) -> &[Zone] {
         &self.zone_vec
     }
 }
