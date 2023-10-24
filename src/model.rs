@@ -8,3 +8,4 @@ pub mod table;
 pub mod table_lock;
 pub mod unsafe_cell_sync;
 pub mod zone;
+pub mod zone_cache;

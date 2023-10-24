@@ -21,11 +21,14 @@ impl<'a, const N: usize> Solver<'a, N> {
     ) -> Option<&Cell<N>> {
         let mut unique_chk_arr: ArrayNote<bool, N>;
 
-        for (zone, cells) in &self.zone {
+        for (zone, cells) in self.zone_cache.zone() {
             if is_break.get() {
                 break;
             }
-            if self.checked_zone_get_bool(zone, SolverSimple::Validate) {
+            if self
+                .zone_cache
+                .checked_zone_get_bool(zone, SolverSimple::Validate)
+            {
                 continue;
             }
 
@@ -84,7 +87,8 @@ impl<'a, const N: usize> Solver<'a, N> {
                 }
             }
 
-            self.checked_zone_set_bool_true(*zone, SolverSimple::Validate);
+            self.zone_cache
+                .checked_zone_set_bool_true(*zone, SolverSimple::Validate);
         }
 
         None

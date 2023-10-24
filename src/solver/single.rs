@@ -17,7 +17,7 @@ impl<'a, const N: usize> Solver<'a, N> {
         result_list: &'b Mutex<Vec<SolverResult<'a, N>>>,
         is_break: &'b NonAtomicBool,
     ) {
-        for (zone, cells) in &self.zone {
+        for (zone, cells) in self.zone_cache.zone() {
             let ZoneType::Unique = zone.get_zone_type() else {
                 continue;
             };
@@ -27,7 +27,10 @@ impl<'a, const N: usize> Solver<'a, N> {
                     return;
                 }
 
-                if self.checked_zone_get_bool(zone, SolverSimple::Single) {
+                if self
+                    .zone_cache
+                    .checked_zone_get_bool(zone, SolverSimple::Single)
+                {
                     return;
                 }
 
@@ -64,7 +67,7 @@ impl<'a, const N: usize> Solver<'a, N> {
                                 continue;
                             }
 
-                            for c_comp in &self.zone[z2] {
+                            for c_comp in &self.zone_cache.zone()[z2] {
                                 if c_comp == c {
                                     continue;
                                 }
@@ -88,7 +91,8 @@ impl<'a, const N: usize> Solver<'a, N> {
                     }
                 }
 
-                self.checked_zone_set_bool_true(*zone, SolverSimple::Single);
+                self.zone_cache
+                    .checked_zone_set_bool_true(*zone, SolverSimple::Single);
             });
         }
     }
