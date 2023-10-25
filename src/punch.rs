@@ -1,14 +1,11 @@
 pub mod naked_single;
 
-use crate::{
-    model::{
-        cell::Cell,
-        table_lock::{TableLock, TableLockReadGuard},
-        zone_cache::ZoneCache,
-    },
-    rng_util::RngUtil,
+use crate::model::{
+    cell::Cell,
+    table_lock::{TableLock, TableLockReadGuard},
+    zone_cache::ZoneCache,
 };
-use rand::rngs::SmallRng;
+use rand::{rngs::SmallRng, seq::SliceRandom};
 
 pub struct Punch<'a, const N: usize> {
     table: &'a TableLock<N>,
@@ -51,7 +48,7 @@ impl<'a, const N: usize> Punch<'a, N> {
 
     #[inline]
     fn punch_cell_commit(&mut self, read: TableLockReadGuard<N>, cells: &[&Cell<N>]) {
-        let pick = self.rng.pick_one_from_slice(cells);
+        let pick = cells.choose(&mut self.rng).expect("cells is empty");
         let mut write = read.upgrade_to_write();
 
         let pick_write = write.write_from_cell(pick);

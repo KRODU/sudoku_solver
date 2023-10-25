@@ -3,7 +3,7 @@ use super::Solver;
 use crate::model::cell::Cell;
 use crate::model::max_num::MaxNum;
 use crate::model::table_lock::TableLockWriteGuard;
-use crate::rng_util::RngUtil;
+use rand::seq::SliceRandom;
 use rayon::slice::ParallelSliceMut;
 
 impl<'a, const N: usize> Solver<'a, N> {
@@ -35,13 +35,17 @@ impl<'a, const N: usize> Solver<'a, N> {
             return false;
         }
 
-        let cell_pick = *self.rng.pick_one_from_slice(&minimum_note_list);
+        let cell_pick = *minimum_note_list
+            .choose(&mut self.rng)
+            .expect("minimum_note_list is empty");
 
         let mut cell_notes = write.read_from_cell(cell_pick).clone_chk_list_rand();
         // 여기서 cell_notes는 무작위로 섞여 있으므로 정렬이 필요.. 정렬하지 않을 경우 동일한 시드에 대해 다른 결과가 나옴.
         cell_notes.par_sort_unstable();
 
-        let note_pick = *self.rng.pick_one_from_slice(&cell_notes);
+        let note_pick = *cell_notes
+            .choose(&mut self.rng)
+            .expect("cell_notes is empty");
 
         self.guess_mut_something(write, cell_pick, note_pick);
         true
