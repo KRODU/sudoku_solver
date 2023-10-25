@@ -1,20 +1,15 @@
 use super::Punch;
-use crate::model::{
-    cell::Cell,
-    table_lock::{TableLock, TableLockReadGuard},
-    zone_cache::ZoneCache,
-};
+use crate::model::{cell::Cell, table_lock::TableLockReadGuard, zone_cache::ZoneCache};
 
 impl<'a, const N: usize> Punch<'a, N> {
     pub fn naked_single_punch(
-        table: &'a TableLock<N>,
         zone_cache: &ZoneCache<'a, N>,
-        read: &TableLockReadGuard<N>,
+        read: &TableLockReadGuard<'a, '_, N>,
     ) -> Vec<&'a Cell<N>> {
         let mut target_cell: Vec<&Cell<N>> = Vec::new();
 
-        for cell in table {
-            if !read.read_from_cell(cell).is_final_num() {
+        for (cell, chk) in read {
+            if chk.fixed_final_num().is_none() || !chk.is_final_num() {
                 continue;
             }
 

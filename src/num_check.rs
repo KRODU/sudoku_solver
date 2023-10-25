@@ -12,6 +12,7 @@ pub struct NumCheck<const N: usize> {
     true_list: ArrayVector<MaxNum<N>, N>,
     true_cnt: usize,
     final_num: Option<MaxNum<N>>,
+    fixed_final_num: Option<MaxNum<N>>,
 }
 
 impl<const N: usize> NumCheck<N> {
@@ -34,6 +35,7 @@ impl<const N: usize> NumCheck<N> {
             true_list,
             true_cnt: N,
             final_num: None,
+            fixed_final_num: None,
         }
     }
 
@@ -50,6 +52,7 @@ impl<const N: usize> NumCheck<N> {
             true_list,
             true_cnt: N,
             final_num: None,
+            fixed_final_num: None,
         }
     }
 
@@ -254,6 +257,18 @@ impl<const N: usize> NumCheck<N> {
                 assert_eq!(self.true_list[index], n);
             }
         }
+    }
+
+    pub fn fixed_final_num(&self) -> Option<MaxNum<N>> {
+        self.fixed_final_num
+    }
+
+    pub fn fixed_final_num_set_none(&mut self) {
+        self.fixed_final_num = None;
+    }
+
+    pub fn fixed_final_num_set_dup(&mut self) {
+        self.fixed_final_num = self.final_num;
     }
 }
 

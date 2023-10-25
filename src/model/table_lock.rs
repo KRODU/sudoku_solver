@@ -139,22 +139,7 @@ impl<const N: usize> Deref for TableLock<N> {
 impl<const N: usize> Display for TableLock<N> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let read = self.read_lock();
-        let mut ret = String::new();
-        for x in MaxNum::<N>::iter() {
-            for y in MaxNum::<N>::iter() {
-                let final_num = read.read_from_coordinate(x, y).get_final_num();
-                if let Some(num) = final_num {
-                    ret.push_str((num.get_value() + 1).to_string().as_str());
-                } else {
-                    ret.push(' ');
-                }
-                ret.push('\t');
-            }
-            ret.pop();
-            ret.push('\n');
-        }
-        ret.pop();
-
+        let ret = read.make_string(NumCheck::get_final_num);
         write!(f, "{ret}")
     }
 }
@@ -188,19 +173,19 @@ impl<const N: usize> Eq for TableLock<N> {}
 
 impl<'a, const N: usize> IntoIterator for &'a TableLock<N> {
     type Item = &'a Cell<N>;
-    type IntoIter = CellIter<'a, N>;
+    type IntoIter = TableCellIter<'a, N>;
 
     fn into_iter(self) -> Self::IntoIter {
-        CellIter { index: 0, t: self }
+        TableCellIter { index: 0, t: self }
     }
 }
 
-pub struct CellIter<'a, const N: usize> {
+pub struct TableCellIter<'a, const N: usize> {
     index: usize,
     t: &'a [Cell<N>],
 }
 
-impl<'a, const N: usize> Iterator for CellIter<'a, N> {
+impl<'a, const N: usize> Iterator for TableCellIter<'a, N> {
     type Item = &'a Cell<N>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -218,14 +203,23 @@ pub struct TableLockReadGuard<'a, 'b, const N: usize> {
 impl<'a, 'b, const N: usize> TableLockReadGuard<'a, 'b, N> {
     #[must_use]
     #[inline]
-    pub fn read_from_cell(&self, cell: &Cell<N>) -> &NumCheck<N> {
+    pub fn read_from_cell(&self, cell: &Cell<N>) -> &'a NumCheck<N> {
         self.table_lock.assert_cell_in_table(cell);
+        unsafe { &*cell.chk_unsafe.get() }
+    }
+
+    /// # Safety
+    ///
+    /// Table 내에 속한 Cell로만 이 함수를 호출해야 함.
+    #[must_use]
+    #[inline]
+    pub unsafe fn read_from_cell_unchecked(&self, cell: &Cell<N>) -> &'a NumCheck<N> {
         unsafe { &*cell.chk_unsafe.get() }
     }
 
     #[must_use]
     #[inline]
-    pub fn read_from_coordinate(&self, x: MaxNum<N>, y: MaxNum<N>) -> &NumCheck<N> {
+    pub fn read_from_coordinate(&self, x: MaxNum<N>, y: MaxNum<N>) -> &'a NumCheck<N> {
         unsafe {
             &*self
                 .table_lock
@@ -244,6 +238,71 @@ impl<'a, 'b, const N: usize> TableLockReadGuard<'a, 'b, N> {
     {
         drop(self._read_guard);
         self.table_lock.write_lock()
+    }
+
+    fn make_string(&self, final_fn: impl Fn(&NumCheck<N>) -> Option<MaxNum<N>>) -> String {
+        let mut ret = String::new();
+        for x in MaxNum::<N>::iter() {
+            for y in MaxNum::<N>::iter() {
+                let cell = self.read_from_coordinate(x, y);
+                let final_num = final_fn(cell);
+                if let Some(num) = final_num {
+                    ret.push_str((num.get_value() + 1).to_string().as_str());
+                } else {
+                    ret.push(' ');
+                }
+
+                ret.push('\t');
+            }
+            ret.pop();
+            ret.push('\n');
+        }
+        ret.pop();
+        ret
+    }
+
+    pub fn to_string_with_punch(&self) -> String {
+        self.make_string(NumCheck::fixed_final_num)
+    }
+}
+
+impl<'a, 'b, const N: usize> Display for TableLockReadGuard<'a, 'b, N> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let ret = self.make_string(NumCheck::get_final_num);
+        write!(f, "{ret}")
+    }
+}
+
+impl<'a, 'b, 'c, const N: usize> IntoIterator for &'c TableLockReadGuard<'a, 'b, N> {
+    type Item = (&'a Cell<N>, &'a NumCheck<N>);
+
+    type IntoIter = ReadCellIter<'a, 'b, 'c, N>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        ReadCellIter {
+            read: self,
+            index: 0,
+            cells: &self.table_lock.table.cells,
+        }
+    }
+}
+
+pub struct ReadCellIter<'a, 'b, 'c, const N: usize> {
+    read: &'c TableLockReadGuard<'a, 'b, N>,
+    index: usize,
+    cells: &'a [Cell<N>],
+}
+
+impl<'a, 'b, 'c, const N: usize> Iterator for ReadCellIter<'a, 'b, 'c, N> {
+    type Item = (&'a Cell<N>, &'a NumCheck<N>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let Some(cell) = self.cells.get(self.index) else {
+            return None;
+        };
+        self.index += 1;
+
+        unsafe { Some((cell, self.read.read_from_cell_unchecked(cell))) }
     }
 }
 
@@ -274,14 +333,23 @@ impl<'a, 'b, const N: usize> TableLockWriteGuard<'a, 'b, N> {
 
     #[must_use]
     #[inline]
-    pub fn write_from_cell(&mut self, cell: &Cell<N>) -> &mut NumCheck<N> {
+    pub fn write_from_cell(&mut self, cell: &Cell<N>) -> &'a mut NumCheck<N> {
         self.table_lock.assert_cell_in_table(cell);
+        unsafe { &mut *cell.chk_unsafe.get() }
+    }
+
+    /// # Safety
+    ///
+    /// Table 내에 속한 Cell로만 이 함수를 호출해야 함.
+    #[must_use]
+    #[inline]
+    pub unsafe fn write_from_cell_unchecked(&mut self, cell: &Cell<N>) -> &'a mut NumCheck<N> {
         unsafe { &mut *cell.chk_unsafe.get() }
     }
 
     #[must_use]
     #[inline]
-    pub fn write_from_coordinate(&mut self, x: MaxNum<N>, y: MaxNum<N>) -> &mut NumCheck<N> {
+    pub fn write_from_coordinate(&mut self, x: MaxNum<N>, y: MaxNum<N>) -> &'a mut NumCheck<N> {
         unsafe {
             &mut *self
                 .table_lock
@@ -289,5 +357,36 @@ impl<'a, 'b, const N: usize> TableLockWriteGuard<'a, 'b, N> {
                 .chk_unsafe
                 .get()
         }
+    }
+}
+
+impl<'a, 'b, 'c, const N: usize> IntoIterator for &'c mut TableLockWriteGuard<'a, 'b, N> {
+    type Item = (&'a Cell<N>, &'a mut NumCheck<N>);
+
+    type IntoIter = WriteCellIter<'a, 'b, 'c, N>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        WriteCellIter {
+            write: self,
+            index: 0,
+        }
+    }
+}
+
+pub struct WriteCellIter<'a, 'b, 'c, const N: usize> {
+    write: &'c mut TableLockWriteGuard<'a, 'b, N>,
+    index: usize,
+}
+
+impl<'a, 'b, 'c, const N: usize> Iterator for WriteCellIter<'a, 'b, 'c, N> {
+    type Item = (&'a Cell<N>, &'a mut NumCheck<N>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let Some(cell) = self.write.table_lock.table.cells.get(self.index) else {
+            return None;
+        };
+        self.index += 1;
+
+        unsafe { Some((cell, self.write.write_from_cell_unchecked(cell))) }
     }
 }

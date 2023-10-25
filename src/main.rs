@@ -24,7 +24,7 @@ fn main() {
     };
 
     let start = Instant::now();
-    // solver.set_random_seed(0); // 실행시간 측정을 위한 시드 고정. 이걸 빼면 무작위 스도쿠 퍼즐이 만들어짐.
+    solver.set_random_seed(11151576802745503641); // 실행시간 측정을 위한 시드 고정. 이걸 빼면 무작위 스도쿠 퍼즐이 만들어짐.
     solver.fill_puzzle_with_timeout(std::time::Duration::MAX);
     let end = Instant::now();
     println!("{}", solver.get_table());
@@ -46,7 +46,7 @@ fn main() {
     let mut punch = solver.into_punch();
     punch.punch_all();
     let end = Instant::now();
-    println!("{}", punch.get_table());
+    println!("{}", punch.get_table().read_lock().to_string_with_punch());
     println!("punch time: {}ms", (end - start).as_millis());
     if TEST_SAME_PUZZLE {
         test_same_puzzle();
