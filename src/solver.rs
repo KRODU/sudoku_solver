@@ -250,6 +250,7 @@ impl<'a, const N: usize> Solver<'a, N> {
         Self::new_with_seed(t, rand_seed)
     }
 
+    #[must_use]
     pub fn new_with_seed(t: &'a mut TableLock<N>, rand_seed: u64) -> Self {
         let mut solve_cnt: IndexKeyMap<SolverSimple, u32> = IndexKeyMap::new();
         for n in all::<SolverSimple>() {
@@ -266,6 +267,27 @@ impl<'a, const N: usize> Solver<'a, N> {
             guess_backtrace_rollback_cnt: 0,
             solve_cnt,
             zone_cache: ZoneCache::new(t),
+        }
+    }
+
+    #[must_use]
+    pub(crate) fn new_with_cache(t: &'a TableLock<N>, zone_cache: ZoneCache<'a, N>) -> Self {
+        let mut solve_cnt: IndexKeyMap<SolverSimple, u32> = IndexKeyMap::new();
+        for n in all::<SolverSimple>() {
+            solve_cnt.insert(n, 0u32);
+        }
+        let rand_seed = rand::rngs::OsRng.next_u64();
+
+        Solver {
+            table: t,
+            solver_history_stack: Vec::with_capacity(N * N * N),
+            rng: SmallRng::seed_from_u64(rand_seed),
+            rand_seed,
+            guess_cnt: 0,
+            guess_rollback_cnt: 0,
+            guess_backtrace_rollback_cnt: 0,
+            solve_cnt,
+            zone_cache,
         }
     }
 

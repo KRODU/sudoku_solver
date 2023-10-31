@@ -15,13 +15,13 @@ impl NonAtomicBool {
     #[inline]
     #[must_use]
     pub fn get(&self) -> bool {
-        unsafe { *self.bool.get() != 0 }
+        unsafe { std::ptr::read_volatile(self.bool.get()) != 0 }
     }
 
     #[inline]
     pub fn set(&self, value: bool) {
         unsafe {
-            *self.bool.get() = if value { 1 } else { 0 };
+            std::ptr::write_volatile(self.bool.get(), value as u8);
         }
     }
 }

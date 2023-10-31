@@ -241,6 +241,8 @@ impl<'a, 'b, const N: usize> TableLockReadGuard<'a, 'b, N> {
     }
 
     fn make_string(&self, final_fn: impl Fn(&NumCheck<N>) -> Option<MaxNum<N>>) -> String {
+        let mut some = 0u32;
+        let mut none = 0u32;
         let mut ret = String::new();
         for x in MaxNum::<N>::iter() {
             for y in MaxNum::<N>::iter() {
@@ -248,8 +250,10 @@ impl<'a, 'b, const N: usize> TableLockReadGuard<'a, 'b, N> {
                 let final_num = final_fn(cell);
                 if let Some(num) = final_num {
                     ret.push_str((num.get_value() + 1).to_string().as_str());
+                    some += 1;
                 } else {
                     ret.push(' ');
+                    none += 1;
                 }
 
                 ret.push('\t');
@@ -257,7 +261,12 @@ impl<'a, 'b, const N: usize> TableLockReadGuard<'a, 'b, N> {
             ret.pop();
             ret.push('\n');
         }
-        ret.pop();
+        ret.push_str("some: ");
+        ret.push_str(&some.to_string());
+        ret.push('\t');
+        ret.push_str("none: ");
+        ret.push_str(&none.to_string());
+
         ret
     }
 

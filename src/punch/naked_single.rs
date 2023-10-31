@@ -9,7 +9,7 @@ impl<'a, const N: usize> Punch<'a, N> {
         let mut target_cell: Vec<&Cell<N>> = Vec::new();
 
         for (cell, chk) in read {
-            if chk.fixed_final_num().is_none() || !chk.is_final_num() {
+            if chk.fixed_final_num().is_none() {
                 continue;
             }
 
@@ -19,7 +19,11 @@ impl<'a, const N: usize> Punch<'a, N> {
                         continue;
                     }
 
-                    if !read.read_from_cell(zone_in_cell).is_final_num() {
+                    if read
+                        .read_from_cell(zone_in_cell)
+                        .fixed_final_num()
+                        .is_none()
+                    {
                         continue 'zone_iter;
                     }
                 }
