@@ -6,11 +6,12 @@ use std::{fmt::Debug, marker::PhantomPinned};
 
 pub struct Cell<const N: usize> {
     pub(crate) chk_unsafe: UnsafeCellSync<NumCheck<N>>,
+    pub(crate) rep_zone: Option<Zone>,
     pub(crate) zone_set: IndexKeySet<Zone>,
     pub(crate) zone_vec: Vec<Zone>,
-    x: MaxNum<N>,
-    y: MaxNum<N>,
-    index: usize,
+    pub(crate) x: MaxNum<N>,
+    pub(crate) y: MaxNum<N>,
+    pub(crate) index: usize,
     _pin: PhantomPinned,
 }
 
@@ -20,15 +21,19 @@ impl<const N: usize> Cell<N> {
         let x = MaxNum::new(x);
         let y = MaxNum::new(y);
 
-        Cell {
+        let ret = Cell {
             chk_unsafe: UnsafeCellSync::new(NumCheck::<N>::new_with_true()),
-            zone_set: zone.iter().cloned().collect(),
+            rep_zone: zone.first().copied(),
+            zone_set: zone.iter().copied().collect(),
             zone_vec: zone,
             x,
             y,
-            index: x.get_value() * N + y.get_value(),
+            index: x.get_value() + y.get_value() * N,
             _pin: PhantomPinned,
-        }
+        };
+
+        assert_eq!(ret.zone_set.iter().count(), ret.zone_vec.len());
+        ret
     }
 
     #[must_use]
@@ -41,6 +46,12 @@ impl<const N: usize> Cell<N> {
     #[inline]
     pub fn get_zone(&self) -> &[Zone] {
         &self.zone_vec
+    }
+
+    #[must_use]
+    #[inline]
+    pub fn rep_zone(&self) -> Option<Zone> {
+        self.rep_zone
     }
 }
 
@@ -76,12 +87,5 @@ impl<const N: usize> Ord for Cell<N> {
     #[inline]
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.index.cmp(&other.index)
-    }
-}
-
-impl<const N: usize> std::hash::Hash for Cell<N> {
-    #[inline]
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.index.hash(state);
     }
 }

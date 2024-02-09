@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod exam;
+
 use core::panic;
 use enum_iterator::all;
 use std::fs::File;

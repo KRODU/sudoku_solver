@@ -12,6 +12,7 @@ pub struct NumCheck<const N: usize> {
     true_list: ArrayVector<MaxNum<N>, N>,
     true_cnt: usize,
     final_num: Option<MaxNum<N>>,
+    /// 완성된 스도쿠에 구멍을 뚫는 경우, 본래 정답을 fixed_final_num에 저장해놓음.
     fixed_final_num: Option<MaxNum<N>>,
 }
 
@@ -76,7 +77,7 @@ impl<const N: usize> NumCheck<N> {
 
     #[must_use]
     #[inline]
-    pub fn get_true_list(&self) -> &ArrayVector<MaxNum<N>, N> {
+    pub fn get_true_list(&self) -> &[MaxNum<N>] {
         &self.true_list
     }
 
@@ -122,7 +123,7 @@ impl<const N: usize> NumCheck<N> {
     }
 
     /// chk_list에 포함된 노트만 true이며 그 외엔 false입니다.
-    pub fn set_to_chk_list(&mut self, chk_list: &ArrayVector<MaxNum<N>, N>) {
+    pub fn set_to_chk_list(&mut self, chk_list: &[MaxNum<N>]) {
         self.true_cnt = 0;
         self.chk_list = ArrayNote::new([None; N]);
         self.true_list.clear();
@@ -165,7 +166,7 @@ impl<const N: usize> NumCheck<N> {
     }
 
     /// 지정된 리스트의 값을 모두 false로 지정합니다.
-    pub fn set_to_false_list(&mut self, list: &ArrayVector<MaxNum<N>, N>) {
+    pub fn set_to_false_list(&mut self, list: &[MaxNum<N>]) {
         for i in list {
             self.set_false(*i);
         }

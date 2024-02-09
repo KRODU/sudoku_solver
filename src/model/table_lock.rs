@@ -68,6 +68,7 @@ impl<const N: usize> TableLock<N> {
         }
     }
 
+    /// 테이블 전체 NumCheck가 올바른지 검사합니다. 릴리즈 빌드에서는 검사를 생략합니다.
     #[cfg(not(debug_assertions))]
     pub fn table_debug_validater(&self) {}
 
@@ -78,7 +79,7 @@ impl<const N: usize> TableLock<N> {
             // MaxNum<N>의 값은 N보다 작은 것이 보장됨
             self.table
                 .cells
-                .get_unchecked(x.get_value() * N + y.get_value())
+                .get_unchecked(x.get_value() + y.get_value() * N)
         }
     }
 
@@ -89,12 +90,12 @@ impl<const N: usize> TableLock<N> {
 
         let read = self.read_lock();
 
-        for x in MaxNum::<N>::iter() {
+        for y in MaxNum::<N>::iter() {
             for _ in 0..rec_size {
                 row_string.push(String::with_capacity(N * 2));
             }
 
-            for y in MaxNum::<N>::iter() {
+            for x in MaxNum::<N>::iter() {
                 let cell = read.read_from_coordinate(x, y);
                 let mut write_row_cursor = 0;
                 for n in MaxNum::<N>::iter() {
@@ -243,24 +244,166 @@ impl<'a, 'b, const N: usize> TableLockReadGuard<'a, 'b, N> {
     fn make_string(&self, final_fn: impl Fn(&NumCheck<N>) -> Option<MaxNum<N>>) -> String {
         let mut some = 0u32;
         let mut none = 0u32;
-        let mut ret = String::new();
+        let mut ret = String::with_capacity(N * N * 5);
+
+        let table = &self.table_lock.table;
+
+        // 첫 줄
+        ret.push('╔');
+        ret.push('═');
+
         for x in MaxNum::<N>::iter() {
-            for y in MaxNum::<N>::iter() {
+            if x == MaxNum::<N>::MAX {
+                ret.push('╗');
+            } else {
+                let next_cell = table.get_from_coordi(x.offset(1).unwrap(), MaxNum::<N>::MIN);
+                let this_cell = table.get_from_coordi(x, MaxNum::<N>::MIN);
+
+                if next_cell.rep_zone() == this_cell.rep_zone() {
+                    ret.push('═');
+                } else {
+                    ret.push('╦');
+                }
+
+                ret.push('═');
+            }
+        }
+
+        for y in MaxNum::<N>::iter() {
+            // 첫 줄에선 이 코드를 실행하지 않음.
+            if y != MaxNum::<N>::MIN {
+                for x in MaxNum::<N>::iter() {
+                    let this_cell = table.get_from_coordi(x, y.offset(-1).unwrap());
+                    let next_y = table.get_from_coordi(x, y);
+                    if x == MaxNum::<N>::MIN {
+                        if this_cell.rep_zone() == next_y.rep_zone() {
+                            ret.push('║');
+                            ret.push('╌');
+                            ret.push('╌');
+                        } else {
+                            ret.push('╠');
+                            ret.push('═');
+                            ret.push('═');
+                        }
+
+                        continue;
+                    }
+                    if x == MaxNum::<N>::MAX {
+                        if this_cell.rep_zone() == next_y.rep_zone() {
+                            ret.push('╌');
+                            ret.push('║');
+                        } else {
+                            ret.push('═');
+                            ret.push('╣');
+                        }
+                        continue;
+                    }
+                    let next_x = table.get_from_coordi(x.offset(1).unwrap(), y.offset(-1).unwrap());
+                    let next_xy = table.get_from_coordi(x.offset(1).unwrap(), y);
+
+                    let up_side = this_cell.rep_zone() == next_x.rep_zone();
+                    let left_side = this_cell.rep_zone() == next_y.rep_zone();
+                    let right_side = next_x.rep_zone() == next_xy.rep_zone();
+                    let down_side = next_y.rep_zone() == next_xy.rep_zone();
+
+                    match (up_side, left_side, right_side, down_side) {
+                        (true, true, true, true) => {
+                            ret.push('╌');
+                            ret.push('╌')
+                        }
+                        (false, false, false, false) => {
+                            ret.push('═');
+                            ret.push('╬');
+                        }
+                        (true, false, false, true) => {
+                            ret.push('═');
+                            ret.push('═');
+                        }
+                        (false, true, true, false) => {
+                            ret.push('╌');
+                            ret.push('║');
+                        }
+                        (true, true, false, false) => {
+                            ret.push('╌');
+                            ret.push('═');
+                        }
+                        (false, false, false, true) => {
+                            ret.push('═');
+                            ret.push('╩');
+                        }
+                        (true, false, true, false) => {
+                            ret.push('═');
+                            ret.push('╗');
+                        }
+                        (false, false, true, true) => {
+                            ret.push('═');
+                            ret.push('╝');
+                        }
+                        (false, true, false, true) => {
+                            ret.push('╌');
+                            ret.push('╚');
+                        }
+                        (true, false, false, false) => {
+                            ret.push('═');
+                            ret.push('╦');
+                        }
+                        _ => {
+                            ret.push(' ');
+                            ret.push(' ')
+                        }
+                    }
+                }
+            }
+            ret.push('\n');
+            ret.push('║');
+
+            for x in MaxNum::<N>::iter() {
                 let cell = self.read_from_coordinate(x, y);
                 let final_num = final_fn(cell);
                 if let Some(num) = final_num {
-                    ret.push_str((num.get_value() + 1).to_string().as_str());
+                    ret.push(num.get_char());
                     some += 1;
                 } else {
                     ret.push(' ');
                     none += 1;
                 }
 
-                ret.push('\t');
+                if x == MaxNum::<N>::MAX {
+                    ret.push('║');
+                } else {
+                    let next_cell = table.get_from_coordi(x.offset(1).unwrap(), y);
+                    let this_cell = table.get_from_coordi(x, y);
+
+                    if this_cell.rep_zone() == next_cell.rep_zone() {
+                        ret.push('┆');
+                    } else {
+                        ret.push('║');
+                    }
+                }
             }
-            ret.pop();
             ret.push('\n');
         }
+
+        // 마지막 줄
+        ret.push('╚');
+        ret.push('═');
+        for x in MaxNum::<N>::iter() {
+            if x == MaxNum::<N>::MAX {
+                ret.push('╝');
+            } else {
+                let next_cell = table.get_from_coordi(x.offset(1).unwrap(), MaxNum::<N>::MAX);
+                let this_cell = table.get_from_coordi(x, MaxNum::<N>::MAX);
+
+                if next_cell.rep_zone() == this_cell.rep_zone() {
+                    ret.push('═');
+                } else {
+                    ret.push('╩');
+                }
+
+                ret.push('═');
+            }
+        }
+        ret.push('\n');
         ret.push_str("some: ");
         ret.push_str(&some.to_string());
         ret.push('\t');

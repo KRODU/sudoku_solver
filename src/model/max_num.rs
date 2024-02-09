@@ -1,5 +1,4 @@
 use std::fmt::{Debug, Display, Formatter};
-use std::hash::Hash;
 use std::hint::unreachable_unchecked;
 use std::ops::{Bound, RangeBounds};
 
@@ -9,6 +8,10 @@ pub struct MaxNum<const N: usize> {
 }
 
 impl<const N: usize> MaxNum<N> {
+    pub const MAX_VAL: usize = N - 1;
+    pub const MAX: MaxNum<N> = MaxNum::new(Self::MAX_VAL);
+    pub const MIN: MaxNum<N> = MaxNum::new(0);
+
     /// num의 값은 num < N을 충족해야 함. 그렇지 않을 경우 panic
     #[must_use]
     pub const fn new(num: usize) -> Self {
@@ -26,10 +29,12 @@ impl<const N: usize> MaxNum<N> {
         }
     }
 
-    /// MaxNum에 value를 더한 값을 반환합니다. N을 초과하게 될 경우 None
+    /// MaxNum에 value를 더한 값을 반환합니다. N을 초과하거나 오버플로가 발생한 경우 None
     #[must_use]
-    pub const fn offset(&self, value: i64) -> Option<MaxNum<N>> {
-        MaxNum::new_optional((self.get_value() as i64 + value) as usize)
+    pub fn offset(&self, value: i64) -> Option<MaxNum<N>> {
+        let this_val: i64 = self.get_value().try_into().ok()?;
+        let next_val: i64 = this_val.checked_add(value)?;
+        MaxNum::new_optional(next_val.try_into().ok()?)
     }
 
     /// # Safety
@@ -53,9 +58,9 @@ impl<const N: usize> MaxNum<N> {
     #[must_use]
     #[inline]
     pub const fn get_char(&self) -> char {
-        const CHAR_ARR: [char; 27] = [
-            '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F', 'G',
-            'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q',
+        const CHAR_ARR: [char; 31] = [
+            '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
+            'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V',
         ];
         CHAR_ARR[self.get_value()]
     }
@@ -136,12 +141,6 @@ impl<const N: usize> Debug for MaxNum<N> {
 impl<const N: usize> Display for MaxNum<N> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.get_char())
-    }
-}
-
-impl<const N: usize> Hash for MaxNum<N> {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.num.hash(state);
     }
 }
 

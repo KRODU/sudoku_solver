@@ -28,12 +28,6 @@ impl PartialEq for SolverSimple {
 
 impl Eq for SolverSimple {}
 
-impl std::hash::Hash for SolverSimple {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        core::mem::discriminant(self).hash(state);
-    }
-}
-
 impl IndexKey for SolverSimple {
     fn index(&self) -> u16 {
         *self as u16

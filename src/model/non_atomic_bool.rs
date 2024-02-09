@@ -8,7 +8,7 @@ impl NonAtomicBool {
     #[inline]
     pub const fn new(value: bool) -> Self {
         Self {
-            bool: UnsafeCell::new(if value { 1 } else { 0 }),
+            bool: UnsafeCell::new(value as u8),
         }
     }
 

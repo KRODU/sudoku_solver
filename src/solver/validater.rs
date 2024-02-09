@@ -1,30 +1,20 @@
 use super::{solver_simple::SolverSimple, Solver};
 use crate::model::{
-    array_note::ArrayNote, cell::Cell, non_atomic_bool::NonAtomicBool,
-    table_lock::TableLockReadGuard, zone::ZoneType,
+    array_note::ArrayNote, cell::Cell, table_lock::TableLockReadGuard, zone::ZoneType,
 };
 
 impl<'a, const N: usize> Solver<'a, N> {
     pub fn validater(&self) -> Option<&Cell<N>> {
         let read = self.table.read_lock();
-        let is_break = NonAtomicBool::new(false);
-
-        self.validater_inner(&read, &is_break)
+        self.validater_inner(&read)
     }
 
     /// 현재 스도쿠 퍼즐의 유효성 검사하여 에러셀을 반환.
     /// 에러셀이 없다면 None
-    pub(crate) fn validater_inner(
-        &self,
-        read: &TableLockReadGuard<N>,
-        is_break: &NonAtomicBool,
-    ) -> Option<&Cell<N>> {
+    pub(crate) fn validater_inner(&self, read: &TableLockReadGuard<N>) -> Option<&Cell<N>> {
         let mut unique_chk_arr: ArrayNote<bool, N>;
 
         for (zone, cells) in self.zone_cache.zone() {
-            if is_break.get() {
-                break;
-            }
             if self
                 .zone_cache
                 .checked_zone_get_bool(zone, SolverSimple::Validate)
@@ -76,12 +66,12 @@ impl<'a, const N: usize> Solver<'a, N> {
 
                     // cell이 모두 확정된 경우 cell_total과 sum은 같아야 함.
                     if all_final {
-                        if cell_total != *sum {
+                        if cell_total != sum {
                             return Some(cells[0]);
                         }
                         // 미확정 cell이 있는 경우 cell_total과 sum은 다를 수 있음.
                         // 이 경우에도 cell_total이 sum을 넘어서면 안 됨
-                    } else if cell_total > *sum {
+                    } else if cell_total > sum {
                         return Some(cells[0]);
                     }
                 }

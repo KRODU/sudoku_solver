@@ -1,8 +1,5 @@
 use crate::model::index_key_map::IndexKey;
-use std::{
-    fmt::Debug,
-    hash::{Hash, Hasher},
-};
+use std::fmt::Debug;
 
 #[derive(PartialOrd, Ord, Debug, Clone, Copy)]
 pub enum ZoneType {
@@ -23,12 +20,6 @@ impl PartialEq for ZoneType {
 }
 
 impl Eq for ZoneType {}
-
-impl Hash for ZoneType {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        core::mem::discriminant(self).hash(state);
-    }
-}
 
 impl Debug for Zone {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -68,8 +59,8 @@ impl Zone {
 
     #[must_use]
     #[inline]
-    pub fn get_zone_type(&self) -> &ZoneType {
-        &self.zone_type
+    pub fn get_zone_type(&self) -> ZoneType {
+        self.zone_type
     }
 }
 
@@ -80,12 +71,6 @@ impl PartialEq for Zone {
 }
 
 impl Eq for Zone {}
-
-impl std::hash::Hash for Zone {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        state.write_u16(self.z);
-    }
-}
 
 impl PartialOrd for Zone {
     #[inline]

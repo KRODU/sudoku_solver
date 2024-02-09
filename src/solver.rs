@@ -88,7 +88,7 @@ impl<'a, const N: usize> Solver<'a, N> {
             s.spawn_fifo(|_| {
                 // print!("VAL ");
                 // 먼저 오류가 있는지 체크하여 있을 경우 롤백
-                error_cell = self.validater_inner(&read, &is_break);
+                error_cell = self.validater_inner(&read);
                 if error_cell.is_some() {
                     is_break.set(true);
                 }
