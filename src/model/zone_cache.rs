@@ -26,13 +26,12 @@ impl<'a, const N: usize> ZoneCache<'a, N> {
                 continue;
             };
 
-            if c.len() != N {
-                panic!(
-                    "Unique 타입의 개수는 퍼즐 사이즈와 동일해야 함! 사이즈:{}, 실제 갯수: {}",
-                    N,
-                    c.len()
-                )
-            }
+            assert_eq!(
+                N,
+                c.len(),
+                "Unique 타입의 개수는 퍼즐 사이즈와 동일해야 함. zone: {}",
+                z.get_zone_num()
+            );
         }
 
         let connect_zone = ZoneCache::<N>::get_connected_zone(&zone);

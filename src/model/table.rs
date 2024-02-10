@@ -79,6 +79,46 @@ impl Table<16> {
     }
 }
 
+impl Table<32> {
+    /// 32X32 스도쿠 구조입니다.
+    pub fn new_default_32() -> TableLock<32> {
+        let mut zone: Vec<usize> = Vec::with_capacity(1024);
+        let mut zone_row = [
+            1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4,
+            4, 4, 4,
+        ];
+        for _ in 0..8 {
+            for _ in 0..4 {
+                zone.extend_from_slice(&zone_row);
+            }
+
+            for z in zone_row.iter_mut() {
+                *z += 4;
+            }
+        }
+
+        let mut cells: Vec<Vec<Cell<32>>> = Vec::with_capacity(32);
+        for y in 0..32 {
+            let mut row: Vec<Cell<32>> = Vec::with_capacity(32);
+            for x in 0..32 {
+                let index = zone[x + y * 32];
+
+                let this_zone = vec![
+                    Zone::new_unique_from_usize(index),
+                    Zone::new_unique_from_usize(x + 33),
+                    Zone::new_unique_from_usize(y + 65),
+                ];
+
+                let cell = Cell::new(x, y, this_zone);
+                row.push(cell);
+            }
+            cells.push(row);
+        }
+
+        Table::new_with_vec_cells(cells)
+    }
+}
+
 impl<const N: usize> Table<N> {
     pub fn new_with_vec_cells(cells: Vec<Vec<Cell<N>>>) -> TableLock<N> {
         let mut ret: Vec<Cell<N>> = Vec::with_capacity(N * N);

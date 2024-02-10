@@ -32,7 +32,11 @@ impl<const N: usize> Cell<N> {
             _pin: PhantomPinned,
         };
 
-        assert_eq!(ret.zone_set.iter().count(), ret.zone_vec.len());
+        assert_eq!(
+            ret.zone_set.iter().count(),
+            ret.zone_vec.len(),
+            "cell에 중복되는 zone이 있음. x:{x}, y:{y}"
+        );
         ret
     }
 
