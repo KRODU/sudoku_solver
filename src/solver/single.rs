@@ -35,7 +35,7 @@ impl<'a, const N: usize> Solver<'a, N> {
                 }
 
                 for c in cells {
-                    let Some(final_num) = read.read_from_cell(c).get_final_num() else {
+                    let Some(final_num) = read.read_from_cell(c).final_num() else {
                         continue;
                     };
                     let mut effect_cells: Vec<(&Cell<N>, ArrayVector<MaxNum<N>, N>)> = Vec::new();

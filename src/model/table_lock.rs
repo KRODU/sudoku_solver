@@ -140,7 +140,7 @@ impl<const N: usize> Deref for TableLock<N> {
 impl<const N: usize> Display for TableLock<N> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let read = self.read_lock();
-        let ret = read.make_string(NumCheck::get_final_num);
+        let ret = read.make_string(NumCheck::final_num);
         write!(f, "{ret}")
     }
 }
@@ -420,7 +420,7 @@ impl<'a, 'b, const N: usize> TableLockReadGuard<'a, 'b, N> {
 
 impl<'a, 'b, const N: usize> Display for TableLockReadGuard<'a, 'b, N> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let ret = self.make_string(NumCheck::get_final_num);
+        let ret = self.make_string(NumCheck::final_num);
         write!(f, "{ret}")
     }
 }

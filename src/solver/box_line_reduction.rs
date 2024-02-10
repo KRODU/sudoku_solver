@@ -45,7 +45,7 @@ impl<'a, const N: usize> Solver<'a, N> {
                         .iter()
                         .fold(NumCheck::new_with_false(), |mut h, c| {
                             let cell_read = read.read_from_cell(c);
-                            if cell_read.get_true_cnt() > 1 {
+                            if cell_read.true_cnt() > 1 {
                                 cell_read.union_note_num_check(&mut h);
                             }
                             h

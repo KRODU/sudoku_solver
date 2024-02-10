@@ -17,7 +17,7 @@ impl<'a, const N: usize> Solver<'a, N> {
         // 이렇게하면 나중에 rollback이 필요할 가능성을 조금이라도 줄일 수 있음
         for c in self.table {
             let b = write.read_from_cell(c);
-            let true_cnt = b.get_true_cnt();
+            let true_cnt = b.true_cnt();
             if true_cnt <= 1 || true_cnt > minimum_note_cnt {
                 continue;
             }

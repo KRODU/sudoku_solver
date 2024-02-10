@@ -29,7 +29,7 @@ impl<'a, const N: usize> Solver<'a, N> {
 
                     for c in cells {
                         let chk_borr = read.read_from_cell(c);
-                        if let Some(num) = chk_borr.get_final_num() {
+                        if let Some(num) = chk_borr.final_num() {
                             if unique_chk_arr[num] {
                                 return Some(c);
                             }
@@ -37,7 +37,7 @@ impl<'a, const N: usize> Solver<'a, N> {
                         }
 
                         // 가능한 숫자가 하나도 없는 cell이 존재하는지 확인
-                        if chk_borr.get_true_cnt() == 0 {
+                        if chk_borr.true_cnt() == 0 {
                             return Some(c);
                         }
                     }
@@ -50,7 +50,7 @@ impl<'a, const N: usize> Solver<'a, N> {
                     for c in cells {
                         let read = read.read_from_cell(c);
 
-                        if let Some(num) = read.get_final_num() {
+                        if let Some(num) = read.final_num() {
                             cell_total += num.get_value() + 1; // 값은 0부터 시작하므로 1을 더해야 함.
                         } else {
                             all_final = false;

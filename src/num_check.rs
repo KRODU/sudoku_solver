@@ -14,14 +14,14 @@ pub struct NumCheck<const N: usize> {
     final_num: Option<MaxNum<N>>,
     /// 완성된 스도쿠에 구멍을 뚫는 경우, 본래 정답을 fixed_final_num에 저장해놓음.
     fixed_final_num: Option<MaxNum<N>>,
+    // 비트 연산을 위한 변수. 참인 경우 1, 거짓인 경우 0
+    bit_flag: u64,
 }
 
 impl<const N: usize> NumCheck<N> {
     #[must_use]
     pub fn new_with_true() -> NumCheck<N> {
-        if N <= 1 {
-            panic!("스도쿠 퍼즐의 크기는 최소 2이상이어야 합니다.")
-        }
+        Self::assert_size();
 
         let mut chk_list = [None; N];
         let mut true_list = ArrayVector::new();
@@ -37,15 +37,13 @@ impl<const N: usize> NumCheck<N> {
             true_cnt: N,
             final_num: None,
             fixed_final_num: None,
+            bit_flag: u64::MAX,
         }
     }
 
     #[must_use]
     pub const fn new_with_false() -> NumCheck<N> {
-        if N <= 1 {
-            panic!("스도쿠 퍼즐의 크기는 최소 2이상이어야 합니다.")
-        }
-
+        Self::assert_size();
         let true_list = ArrayVector::new();
 
         NumCheck {
@@ -54,7 +52,14 @@ impl<const N: usize> NumCheck<N> {
             true_cnt: N,
             final_num: None,
             fixed_final_num: None,
+            bit_flag: u64::MIN,
         }
+    }
+
+    #[inline]
+    const fn assert_size() {
+        assert!(N > 1, "스도쿠의 크기는 최소 2이상이어야 합니다.");
+        assert!(N <= 64, "스도쿠의 크기는 64를 초과할 수 없습니다.");
     }
 
     /// num의 노트값이 true인지를 반환합니다.
@@ -90,6 +95,7 @@ impl<const N: usize> NumCheck<N> {
         }
     }
 
+    #[inline]
     pub fn set_true(&mut self, num: MaxNum<N>) {
         if self.chk_list[num].is_some() {
             return;
@@ -101,10 +107,12 @@ impl<const N: usize> NumCheck<N> {
             self.true_list.push_unchecked(num);
         }
         self.chk_list[num] = Some(self.true_list.len() - 1);
+        self.bit_flag |= 1 << num.get_value();
 
         self.set_to_final_num();
     }
 
+    #[inline]
     pub fn set_false(&mut self, num: MaxNum<N>) {
         let Some(remove_index) = self.chk_list[num] else {
             return;
@@ -118,6 +126,7 @@ impl<const N: usize> NumCheck<N> {
             self.chk_list[*swap_node] = Some(remove_index);
         }
         self.chk_list[num] = None;
+        self.bit_flag &= !(1 << num.get_value());
 
         self.set_to_final_num();
     }
@@ -127,6 +136,7 @@ impl<const N: usize> NumCheck<N> {
         self.true_cnt = 0;
         self.chk_list = ArrayNote::new([None; N]);
         self.true_list.clear();
+        self.bit_flag = u64::MIN;
 
         for &n in chk_list {
             if self.chk_list[n].is_some() {
@@ -139,16 +149,19 @@ impl<const N: usize> NumCheck<N> {
                 self.true_list.push_unchecked(n);
             }
             self.true_cnt += 1;
+            self.bit_flag |= 1 << n.get_value();
         }
 
         self.set_to_final_num();
     }
 
     // 모든 노트를 false로 설정합니다.
+    #[inline]
     pub fn set_all_false(&mut self) {
         self.true_cnt = 0;
         self.chk_list.set([None; N]);
         self.true_list.clear();
+        self.bit_flag = u64::MIN;
         self.final_num = None;
     }
 
@@ -160,12 +173,16 @@ impl<const N: usize> NumCheck<N> {
         self.true_list.clear();
         self.true_list.push(value);
 
+        self.bit_flag = u64::MIN;
+        self.bit_flag |= 1 << value.get_value();
+
         self.true_cnt = 1;
 
         self.final_num = Some(value);
     }
 
     /// 지정된 리스트의 값을 모두 false로 지정합니다.
+    #[inline]
     pub fn set_to_false_list(&mut self, list: &[MaxNum<N>]) {
         for i in list {
             self.set_false(*i);
@@ -198,7 +215,7 @@ impl<const N: usize> NumCheck<N> {
 
     /// 최종 값을 반환합니다. 확정되지 않은 경우 None 입니다.
     #[must_use]
-    pub fn get_final_num(&self) -> Option<MaxNum<N>> {
+    pub fn final_num(&self) -> Option<MaxNum<N>> {
         self.final_num
     }
 
@@ -237,10 +254,17 @@ impl<const N: usize> NumCheck<N> {
 
     #[must_use]
     #[inline]
-    pub fn get_true_cnt(&self) -> usize {
+    pub fn true_cnt(&self) -> usize {
         self.true_cnt
     }
 
+    #[must_use]
+    #[inline]
+    pub fn bit_flag(&self) -> u64 {
+        self.bit_flag
+    }
+
+    /// 이 NumCheck가 올바른지 검사합니다. 기본적으로 디버그 빌드에서 동작합니다.
     pub fn validater(&self) {
         assert_eq!(self.true_cnt, self.true_list.len());
         assert_eq!(
@@ -256,6 +280,12 @@ impl<const N: usize> NumCheck<N> {
         for n in MaxNum::<N>::iter() {
             if let Some(index) = self.chk_list[n] {
                 assert_eq!(self.true_list[index], n);
+            }
+
+            if self.bit_flag & (1 << n.get_value()) != 0 {
+                assert!(self.chk_list[n].is_some());
+            } else {
+                assert!(self.chk_list[n].is_none());
             }
         }
     }

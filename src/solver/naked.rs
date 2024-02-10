@@ -7,7 +7,6 @@ use crate::model::array_vector::ArrayVector;
 use crate::{
     combinations::Combination,
     model::{
-        array_note::ArrayNote,
         cell::Cell,
         max_num::MaxNum,
         non_atomic_bool::NonAtomicBool,
@@ -65,7 +64,7 @@ impl<'a, const N: usize> Solver<'a, N> {
                 cells
                     .iter()
                     .copied()
-                    .filter(|c| read.read_from_cell(c).get_true_cnt() > 1),
+                    .filter(|c| read.read_from_cell(c).true_cnt() > 1),
             );
             non_final_cells
         };
@@ -77,7 +76,7 @@ impl<'a, const N: usize> Solver<'a, N> {
             comp_cell_target.extend(
                 non_final_cells
                     .iter()
-                    .filter(|c| read.read_from_cell(c).get_true_cnt() <= i),
+                    .filter(|c| read.read_from_cell(c).true_cnt() <= i),
             );
 
             let mut comb_iter = Combination::new(&comp_cell_target, i);
@@ -88,24 +87,17 @@ impl<'a, const N: usize> Solver<'a, N> {
                 }
 
                 debug_assert_eq!(i, arr.len());
-                let mut union_node = ArrayNote::new([false; N]);
-                let mut union_node_true_cnt = 0;
+                let mut union_bit_flag = u64::MIN;
                 for c in arr {
                     let b = read.read_from_cell(c);
+                    union_bit_flag |= b.bit_flag();
 
-                    for &true_note in b.get_true_list() {
-                        if union_node[true_note] {
-                            continue;
-                        } else {
-                            union_node[true_note] = true;
-                            union_node_true_cnt += 1;
-
-                            if union_node_true_cnt > i {
-                                continue 'comb_loop;
-                            }
-                        }
+                    if union_bit_flag.count_ones() > i as u32 {
+                        continue 'comb_loop;
                     }
                 }
+
+                let union_node_true_cnt = union_bit_flag.count_ones() as usize;
 
                 if union_node_true_cnt != i {
                     continue 'comb_loop;
@@ -125,7 +117,7 @@ impl<'a, const N: usize> Solver<'a, N> {
                     let b = read.read_from_cell(zone_cell);
                     let mut inter: ArrayVector<MaxNum<N>, N> = ArrayVector::new();
                     for &true_note in b.get_true_list() {
-                        if union_node[true_note] {
+                        if union_bit_flag & (1 << true_note.get_value()) != 0 {
                             inter.push(true_note);
                         }
                     }
@@ -142,11 +134,16 @@ impl<'a, const N: usize> Solver<'a, N> {
 
                 // effect_cells에 값이 존재하는 경우 제거한 노트를 발견한 것임.
                 if !effect_cells.is_empty() {
-                    let union_node_array_vec = union_node.bool_array_note_to_array_vec();
-                    debug_assert_eq!(union_node_array_vec.len(), union_node_true_cnt);
+                    let mut found_chks: ArrayVector<MaxNum<N>, N> = ArrayVector::new();
+                    for n in MaxNum::<N>::iter() {
+                        if union_bit_flag & (1 << n.get_value()) != 0 {
+                            found_chks.push(n);
+                        }
+                    }
+                    debug_assert_eq!(found_chks.len(), union_node_true_cnt);
                     return Some(SolverResult {
                         solver_type: SolverResultDetail::Naked {
-                            found_chks: union_node_array_vec,
+                            found_chks,
                             found_cell: arr.iter().map(|c| **c).collect(),
                         },
                         effect_cells,

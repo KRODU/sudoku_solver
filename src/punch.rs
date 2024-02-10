@@ -82,7 +82,7 @@ impl<'a, const N: usize> Punch<'a, N> {
                         continue;
                     }
 
-                    if let Some(final_num) = read.read_from_cell(zone_cell).get_final_num() {
+                    if let Some(final_num) = read.read_from_cell(zone_cell).final_num() {
                         cell_chk.set_false(final_num);
                     }
                 }
