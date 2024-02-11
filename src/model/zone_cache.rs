@@ -10,9 +10,11 @@ use enum_iterator::cardinality;
 use rayon::slice::ParallelSliceMut;
 
 pub struct ZoneCache<'a, const N: usize> {
-    // Zone과 Zone에 속한 Cell 목록을 Vec로 정렬
+    /// Zone과 Zone에 속한 Cell 목록을 Vec로 정렬
     zone: IndexKeyMap<Zone, Vec<&'a Cell<N>>>,
+    /// 각 Zone이 다른 어떤 Zone들과 연결되어있는지를 캐시해놓음.
     connect_zone: IndexKeyMap<Zone, IndexKeySet<Zone>>,
+    /// 각 Solver에서 확인이 끝난 Zone은 이곳에 저장되어, 다른 변경이 있기 전까진 체크 대상에서 제외됩니다.
     checked_zone: IndexKeyMap<Zone, IndexKeyMap<SolverSimple, NonAtomicBool>>,
 }
 

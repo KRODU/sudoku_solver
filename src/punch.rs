@@ -11,6 +11,7 @@ use crate::{
 };
 use rand::{rngs::SmallRng, seq::SliceRandom};
 
+/// 완성된 스도쿠에 구멍을 뚫어 문제를 만듭니다.
 pub struct Punch<'a, const N: usize> {
     table: &'a TableLock<N>,
     rng: SmallRng,

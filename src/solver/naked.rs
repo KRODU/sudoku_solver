@@ -15,7 +15,10 @@ use crate::{
     },
 };
 use rayon::ScopeFifo;
-use std::sync::Mutex;
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Mutex,
+};
 
 impl<'a, const N: usize> Solver<'a, N> {
     pub fn naked<'scope, 'b: 'scope>(
@@ -51,9 +54,9 @@ impl<'a, const N: usize> Solver<'a, N> {
         read: &'b TableLockReadGuard<N>,
         result_list: &'b Mutex<Vec<SolverResult<'a, N>>>,
         is_break: &'b NonAtomicBool,
-    ) -> Option<SolverResult<'a, N>> {
+    ) {
         if is_break.get() {
-            return None;
+            return;
         }
         let non_final_cells = {
             let mut non_final_cells: Vec<&Cell<N>> = Vec::with_capacity(cells.len());
@@ -67,6 +70,9 @@ impl<'a, const N: usize> Solver<'a, N> {
         };
 
         let non_final_cells = &non_final_cells;
+
+        let find_some = AtomicBool::new(false);
+        let find_some = &find_some;
 
         rayon::scope_fifo(|s| {
             for i in 2..N / 2 {
@@ -153,6 +159,7 @@ impl<'a, const N: usize> Solver<'a, N> {
 
                             let mut result_list_lock = result_list.lock().unwrap();
                             result_list_lock.push(result);
+                            find_some.store(true, Ordering::SeqCst);
                             return;
                         }
                     }
@@ -160,8 +167,10 @@ impl<'a, const N: usize> Solver<'a, N> {
             }
         });
 
-        self.zone_cache
-            .checked_zone_set_bool_true(*zone, SolverSimple::Naked);
-        None
+        // 아무것도 찾지 못한 경우에만 zone_cache 업데이트
+        if !find_some.load(Ordering::SeqCst) {
+            self.zone_cache
+                .checked_zone_set_bool_true(*zone, SolverSimple::Naked);
+        }
     }
 }

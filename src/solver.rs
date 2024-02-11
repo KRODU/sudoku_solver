@@ -145,6 +145,8 @@ impl<'a, const N: usize> Solver<'a, N> {
             for (c, effect_note) in &mut solver_result.effect_cells {
                 let cell = write.write_from_cell(c);
 
+                // 멀티 스레딩 방식으로 체크하기 때문에 동일한 결과가 중복되어 나올 수 있음.
+                // 여기서 중복되는 결과를 제거.
                 effect_note.r_loop_swap_remove(|&n| !cell.get_chk(n));
 
                 if effect_note.is_empty() {
@@ -156,6 +158,8 @@ impl<'a, const N: usize> Solver<'a, N> {
 
                 cell.set_to_false_list(effect_note);
 
+                // 변경된 Cell의 checked_zone 캐시를 초기화
+                // changed_zone_set에 이미 초기화한 Zone을 넣어서 중복 초기화 방지
                 for zone in &c.zone_vec {
                     if !changed_zone_set.contains(zone) {
                         self.zone_cache.checked_zone()[zone]
@@ -203,6 +207,7 @@ impl<'a, const N: usize> Solver<'a, N> {
                 write.write_from_cell(c).set_to_chk_list(backup);
             }
 
+            // Rollback된 Cell의 checked_zone 캐시를 초기화
             self.zone_cache
                 .checked_zone_clear(history.backup_chk.iter().map(|(c, _)| *c));
 

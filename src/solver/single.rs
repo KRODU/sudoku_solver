@@ -88,6 +88,9 @@ impl<'a, const N: usize> Solver<'a, N> {
 
                         let mut lock = result_list.lock().unwrap();
                         lock.push(solver_result);
+                        // 찾은 경우엔 zone_cache 업데이트를 생략.
+                        // 여기서 return 해야 밑에서 zone_cache 업데이트를 안 함
+                        return;
                     }
                 }
 
