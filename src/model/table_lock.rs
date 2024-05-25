@@ -449,9 +449,7 @@ impl<'a, 'b, 'c, const N: usize> Iterator for ReadCellIter<'a, 'b, 'c, N> {
     type Item = (&'a Cell<N>, &'a NumCheck<N>);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let Some(cell) = self.cells.get(self.index) else {
-            return None;
-        };
+        let cell = self.cells.get(self.index)?;
         self.index += 1;
 
         unsafe { Some((cell, self.read.read_from_cell_unchecked(cell))) }
@@ -534,9 +532,7 @@ impl<'a, 'b, 'c, const N: usize> Iterator for WriteCellIter<'a, 'b, 'c, N> {
     type Item = (&'a Cell<N>, &'a mut NumCheck<N>);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let Some(cell) = self.write.table_lock.table.cells.get(self.index) else {
-            return None;
-        };
+        let cell = self.write.table_lock.table.cells.get(self.index)?;
         self.index += 1;
 
         unsafe { Some((cell, self.write.write_from_cell_unchecked(cell))) }
