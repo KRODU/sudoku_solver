@@ -1,7 +1,7 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 use rand::{RngCore, SeedableRng};
 use std::hint::black_box;
-use sudoku_solver_lib::{self, model::table::Table, solver::Solver};
+use sudoku_solver_lib::{self, model::table::Table, solver::{GeneralSolve, Solver}};
 
 fn bench_sudoku(c: &mut Criterion) {
     let mut rng = rand::rngs::SmallRng::from_entropy();
