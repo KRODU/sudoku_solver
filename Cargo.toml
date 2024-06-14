@@ -15,7 +15,7 @@ path = "src/main.rs"
 
 [dependencies]
 rand = { version = "0.8", features = ["std_rng", "small_rng"] }
-enum-iterator = "1"
+enum-iterator = "2"
 rayon = "1"
 
 [dev-dependencies]
