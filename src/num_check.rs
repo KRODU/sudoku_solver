@@ -58,8 +58,8 @@ impl<const N: usize> NumCheck<N> {
 
     #[inline]
     const fn assert_size() {
-        assert!(N > 1, "스도쿠의 크기는 최소 2이상이어야 합니다.");
-        assert!(N <= 64, "스도쿠의 크기는 64를 초과할 수 없습니다.");
+        const { assert!(N > 1, "스도쿠의 크기는 최소 2이상이어야 합니다.") };
+        const { assert!(N <= 64, "스도쿠의 크기는 64를 초과할 수 없습니다.") };
     }
 
     /// num의 노트값이 true인지를 반환합니다.

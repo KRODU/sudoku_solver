@@ -16,7 +16,7 @@ pub struct ArrayVector<T, const N: usize> {
 impl<T, const N: usize> ArrayVector<T, N> {
     pub const fn new() -> Self {
         Self {
-            arr: unsafe { MaybeUninit::<[MaybeUninit<T>; N]>::uninit().assume_init() },
+            arr: [const { MaybeUninit::uninit() }; N],
             len: 0,
         }
     }
