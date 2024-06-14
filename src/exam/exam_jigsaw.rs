@@ -2,7 +2,7 @@ use sudoku_solver_lib::model::cell::Cell;
 use sudoku_solver_lib::model::table::Table;
 use sudoku_solver_lib::model::table_lock::TableLock;
 use sudoku_solver_lib::model::zone::Zone;
-use sudoku_solver_lib::solver::Solver;
+use sudoku_solver_lib::solver::{GeneralSolve, Solver};
 
 pub fn new_jigsaw() -> TableLock<9> {
     let zone: [usize; 81] = [

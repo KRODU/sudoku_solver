@@ -35,100 +35,46 @@ pub struct Solver<'a, const N: usize> {
     zone_cache: ZoneCache<'a, N>,
 }
 
-impl<'a, const N: usize> Solver<'a, N> {
+pub trait GeneralSolve<'a> {
     /// 제한시간 내에 스도쿠를 모두 채우려고 시도합니다.
     ///
     /// 풀리지 않고 남은 cell의 개수를 반환합니다.
     /// 제한시간을 초과했거나 풀 수 없는 문제인 경우 1이상일 수 있습니다.
-    pub fn fill_puzzle_with_timeout(&mut self, timeout: Duration) -> usize {
-        let start = Instant::now();
-
-        loop {
-            let unsolved_cell_cnt = self.get_unsolved_cell_cnt();
-            if unsolved_cell_cnt == 0 {
-                break;
-            }
-
-            // println!("{}", self.t);
-            // println!("-----------------------------");
-            // timeout 또는 모든 문제를 풀 수 없는 경우 return
-            if (Instant::now() - start) >= timeout || !self.fill_once() {
-                return unsolved_cell_cnt;
-            }
-        }
-
-        0
-    }
+    fn fill_puzzle_with_timeout(&mut self, timeout: Duration) -> usize;
 
     /// solver를 적용하여 문제를 풉니다. solver가 풀지 못한 경우 guess합니다.
-    pub fn fill_once(&mut self) -> bool {
-        if self.solve() {
-            true
-        } else {
-            // 푸는게 실패할 경우 guess를 적용
-            if self.guess_random() {
-                self.guess_cnt += 1;
-                true
-            } else {
-                false
-            }
-        }
-    }
+    fn fill_once(&mut self) -> bool;
 
     /// solver를 적용하여 문제를 풉니다. 문제는 푼 경우 true, 풀지 못한 경우 false를 반환합니다.
-    pub fn solve(&mut self) -> bool {
-        let read = self.table.read_lock();
-        self.table.table_debug_validater();
+    fn solve(&mut self) -> bool;
 
-        let result_list: Mutex<Vec<SolverResult<N>>> = Mutex::new(Vec::new());
-        let mut error_cell: Option<&Cell<N>> = None;
-        let is_break = NonAtomicBool::new(false);
+    /// 이 스도쿠 퍼즐의 미완성 Cell 개수 반환
+    #[must_use]
+    fn get_unsolved_cell_cnt(&self) -> usize;
 
-        rayon::scope_fifo(|s| {
-            s.spawn_fifo(|_| {
-                // print!("VAL ");
-                // 먼저 오류가 있는지 체크하여 있을 경우 롤백
-                error_cell = self.validater_inner(&read);
-                if error_cell.is_some() {
-                    is_break.set(true);
-                }
-            });
+    #[must_use]
+    fn get_random_seed(&self) -> u64;
 
-            s.spawn_fifo(|s| {
-                // Single Solver 적용
-                // print!("SINGLE ");
-                self.single(&read, s, &result_list, &is_break);
-            });
+    fn set_random_seed(&mut self, rand_seed: u64);
 
-            s.spawn_fifo(|s| {
-                // Naked Solver 적용
-                // print!("NAKED ");
-                self.naked(&read, s, &result_list, &is_break);
-            });
+    /// Get the solver's solve cnt.
+    #[must_use]
+    fn solve_cnt(&self, result_simple: SolverSimple) -> u32;
 
-            s.spawn_fifo(|s| {
-                // print!("BLR ");
-                // Box Line Reduction Solver 적용
-                self.box_line_reduction(&read, s, &result_list, &is_break);
-            });
+    /// Get the solver's guess cnt.
+    #[must_use]
+    fn guess_cnt(&self) -> u32;
 
-            false
-        });
+    /// Get the solver's guess rollback cnt.
+    #[must_use]
+    fn guess_backtrace_rollback_cnt(&self) -> u32;
 
-        if error_cell.is_some() {
-            // println!("ROLLBACK");
-            return self.history_rollback_last_guess(read);
-        }
+    /// Get the solver's guess rollback cnt.
+    #[must_use]
+    fn guess_rollback_cnt(&self) -> u32;
+}
 
-        let result_list = result_list.into_inner().unwrap();
-        if result_list.is_empty() {
-            false
-        } else {
-            self.solve_result_commit(read, result_list);
-            true
-        }
-    }
-
+impl<'a, const N: usize> Solver<'a, N> {
     /// 스도푸를 푼 경우 해당 결과를 적용합니다.
     fn solve_result_commit(
         &mut self,
@@ -238,17 +184,7 @@ impl<'a, const N: usize> Solver<'a, N> {
         true
     }
 
-    /// 이 스도쿠 퍼즐의 미완성 Cell 개수 반환
-    #[must_use]
-    pub fn get_unsolved_cell_cnt(&self) -> usize {
-        let read = self.table.read_lock();
-        self.table
-            .into_iter()
-            .filter(|c| !read.read_from_cell(c).is_final_num())
-            .count()
-    }
-
-    // TableLock을 mut로 받을 필요는 없으나, 동일한 Table에 대해 여러 Solver를 생성하는 것을 방지하기 위해 일부러 mut로 받음
+    /// TableLock을 mut로 받을 필요는 없으나, 동일한 Table에 대해 여러 Solver를 생성하는 것을 방지하기 위해 일부러 mut로 받음
     #[must_use]
     pub fn new(t: &'a mut TableLock<N>) -> Self {
         let rand_seed = rand::rngs::OsRng.next_u64();
@@ -276,7 +212,7 @@ impl<'a, const N: usize> Solver<'a, N> {
     }
 
     #[must_use]
-    pub(crate) fn new_with_cache(t: &'a TableLock<N>, zone_cache: ZoneCache<'a, N>) -> Self {
+    pub fn new_with_cache(t: &'a TableLock<N>, zone_cache: ZoneCache<'a, N>) -> Self {
         let mut solve_cnt: IndexKeyMap<SolverSimple, u32> = IndexKeyMap::new();
         for n in all::<SolverSimple>() {
             solve_cnt.insert(n, 0u32);
@@ -308,16 +244,121 @@ impl<'a, const N: usize> Solver<'a, N> {
     }
 
     #[must_use]
-    pub fn get_random_seed(&self) -> u64 {
-        self.rand_seed
-    }
-
-    #[must_use]
     pub fn get_solver_history(&self) -> &Vec<SolverHistory<'a, N>> {
         &self.solver_history_stack
     }
+}
 
-    pub fn set_random_seed(&mut self, rand_seed: u64) {
+impl<'a, const N: usize> GeneralSolve<'a> for Solver<'a, N> {
+    /// 제한시간 내에 스도쿠를 모두 채우려고 시도합니다.
+    ///
+    /// 풀리지 않고 남은 cell의 개수를 반환합니다.
+    /// 제한시간을 초과했거나 풀 수 없는 문제인 경우 1이상일 수 있습니다.
+    fn fill_puzzle_with_timeout(&mut self, timeout: Duration) -> usize {
+        let start = Instant::now();
+
+        loop {
+            let unsolved_cell_cnt = self.get_unsolved_cell_cnt();
+            if unsolved_cell_cnt == 0 {
+                break;
+            }
+
+            // println!("{}", self.t);
+            // println!("-----------------------------");
+            // timeout 또는 모든 문제를 풀 수 없는 경우 return
+            if (Instant::now() - start) >= timeout || !self.fill_once() {
+                return unsolved_cell_cnt;
+            }
+        }
+
+        0
+    }
+
+    /// solver를 적용하여 문제를 풉니다. solver가 풀지 못한 경우 guess합니다.
+    fn fill_once(&mut self) -> bool {
+        if self.solve() {
+            true
+        } else {
+            // 푸는게 실패할 경우 guess를 적용
+            if self.guess_random() {
+                self.guess_cnt += 1;
+                true
+            } else {
+                false
+            }
+        }
+    }
+
+    /// solver를 적용하여 문제를 풉니다. 문제는 푼 경우 true, 풀지 못한 경우 false를 반환합니다.
+    fn solve(&mut self) -> bool {
+        let read = self.table.read_lock();
+        self.table.table_debug_validater();
+
+        let result_list: Mutex<Vec<SolverResult<N>>> = Mutex::new(Vec::new());
+        let mut error_cell: Option<&Cell<N>> = None;
+        let is_break = NonAtomicBool::new(false);
+
+        rayon::scope_fifo(|s| {
+            s.spawn_fifo(|_| {
+                // print!("VAL ");
+                // 먼저 오류가 있는지 체크하여 있을 경우 롤백
+                error_cell = self.validater_inner(&read);
+                if error_cell.is_some() {
+                    is_break.set(true);
+                }
+            });
+
+            s.spawn_fifo(|s| {
+                // Single Solver 적용
+                // print!("SINGLE ");
+                self.single(&read, s, &result_list, &is_break);
+            });
+
+            s.spawn_fifo(|s| {
+                // Naked Solver 적용
+                // print!("NAKED ");
+                self.naked(&read, s, &result_list, &is_break);
+            });
+
+            s.spawn_fifo(|s| {
+                // print!("BLR ");
+                // Box Line Reduction Solver 적용
+                self.box_line_reduction(&read, s, &result_list, &is_break);
+            });
+
+            false
+        });
+
+        if error_cell.is_some() {
+            // println!("ROLLBACK");
+            return self.history_rollback_last_guess(read);
+        }
+
+        let result_list = result_list.into_inner().unwrap();
+        if result_list.is_empty() {
+            false
+        } else {
+            self.solve_result_commit(read, result_list);
+            true
+        }
+    }
+
+    /// 이 스도쿠 퍼즐의 미완성 Cell 개수 반환
+    #[must_use]
+    fn get_unsolved_cell_cnt(&self) -> usize {
+        let read = self.table.read_lock();
+        self.table
+            .into_iter()
+            .filter(|c| !read.read_from_cell(c).is_final_num())
+            .count()
+    }
+
+    #[must_use]
+    fn get_random_seed(&self) -> u64 {
+        self.rand_seed
+    }
+
+    fn set_random_seed(&mut self, rand_seed: u64) {
         self.rng = SmallRng::seed_from_u64(rand_seed);
         self.rand_seed = rand_seed;
     }
@@ -325,28 +366,28 @@ impl<'a, const N: usize> Solver<'a, N> {
     /// Get the solver's solve cnt.
     #[must_use]
     #[inline]
-    pub fn solve_cnt(&self, result_simple: SolverSimple) -> u32 {
+    fn solve_cnt(&self, result_simple: SolverSimple) -> u32 {
         self.solve_cnt[&result_simple]
     }
 
     /// Get the solver's guess cnt.
     #[must_use]
     #[inline]
-    pub fn guess_cnt(&self) -> u32 {
+    fn guess_cnt(&self) -> u32 {
         self.guess_cnt
     }
 
     /// Get the solver's guess rollback cnt.
     #[must_use]
     #[inline]
-    pub fn guess_backtrace_rollback_cnt(&self) -> u32 {
+    fn guess_backtrace_rollback_cnt(&self) -> u32 {
         self.guess_backtrace_rollback_cnt
     }
 
     /// Get the solver's guess rollback cnt.
     #[must_use]
     #[inline]
-    pub fn guess_rollback_cnt(&self) -> u32 {
+    fn guess_rollback_cnt(&self) -> u32 {
         self.guess_rollback_cnt
     }
 }

@@ -9,7 +9,7 @@ use std::time::Instant;
 use sudoku_solver_lib::model::max_num::MaxNum;
 use sudoku_solver_lib::model::table::Table;
 use sudoku_solver_lib::solver::solver_simple::SolverSimple;
-use sudoku_solver_lib::solver::Solver;
+use sudoku_solver_lib::solver::{GeneralSolve, Solver};
 
 const TEST_SAME_PUZZLE: bool = false;
 const TEST_SAME_PUZZLE_HISTORY: bool = false;

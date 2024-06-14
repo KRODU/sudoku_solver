@@ -8,7 +8,7 @@ Rust로 작성된 스도쿠를 생성하거나, 기존 퍼즐을 풀기 위한 �
 
 ```rust
 use sudoku_solver_lib::model::table::Table;
-use sudoku_solver_lib::solver::Solver;
+use sudoku_solver_lib::solver::{GeneralSolve, Solver};
 
 fn main() {
     let mut t = Table::new_default_16(); // 16x16 스도쿠 구조. 9x9를 생성하기 위해선 Table::new_default_9()을 사용.
@@ -175,7 +175,7 @@ use sudoku_solver_lib::model::cell::Cell;
 use sudoku_solver_lib::model::table::Table;
 use sudoku_solver_lib::model::table_lock::TableLock;
 use sudoku_solver_lib::model::zone::Zone;
-use sudoku_solver_lib::solver::Solver;
+use sudoku_solver_lib::solver::{GeneralSolve, Solver};
 
 pub fn new_jigsaw() -> TableLock<9> {
     let zone: [usize; 81] = [
