@@ -76,6 +76,7 @@ impl<'a, const N: usize> Solver<'a, N> {
 
         rayon::scope_fifo(|s| {
             for i in 2..N / 2 {
+                let i_u32 = i as u32;
                 s.spawn_fifo(move |_| {
                     let mut comp_cell_target: Vec<&Cell<N>> =
                         Vec::with_capacity(non_final_cells.len());
@@ -99,14 +100,14 @@ impl<'a, const N: usize> Solver<'a, N> {
                             let b = read.read_from_cell(c);
                             union_bit_flag |= b.bit_flag();
 
-                            if union_bit_flag.count_ones() > i as u32 {
+                            if union_bit_flag.count_ones() > i_u32 {
                                 continue 'comb_loop;
                             }
                         }
 
-                        let union_node_true_cnt = union_bit_flag.count_ones() as usize;
+                        let union_node_true_cnt = union_bit_flag.count_ones();
 
-                        if union_node_true_cnt != i {
+                        if union_node_true_cnt != i_u32 {
                             continue 'comb_loop;
                         }
 
@@ -148,7 +149,7 @@ impl<'a, const N: usize> Solver<'a, N> {
                                     found_chks.push(n);
                                 }
                             }
-                            debug_assert_eq!(found_chks.len(), union_node_true_cnt);
+                            debug_assert_eq!(found_chks.len(), union_node_true_cnt as usize);
                             let result = SolverResult {
                                 solver_type: SolverResultDetail::Naked {
                                     found_chks,
