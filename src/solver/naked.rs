@@ -160,7 +160,7 @@ impl<'a, const N: usize> Solver<'a, N> {
 
                             let mut result_list_lock = result_list.lock().unwrap();
                             result_list_lock.push(result);
-                            find_some.store(true, Ordering::Release);
+                            find_some.store(true, Ordering::Relaxed);
                             return;
                         }
                     }
@@ -169,7 +169,7 @@ impl<'a, const N: usize> Solver<'a, N> {
         });
 
         // 아무것도 찾지 못한 경우에만 zone_cache 업데이트
-        if !find_some.load(Ordering::Acquire) {
+        if !find_some.load(Ordering::Relaxed) {
             self.zone_cache
                 .checked_zone_set_bool_true(*zone, SolverSimple::Naked);
         }
