@@ -9,7 +9,7 @@ use crate::{
     model::{
         cell::Cell,
         max_num::MaxNum,
-        non_atomic_bool::NonAtomicBool,
+        relaxed_bool::RelaxedBool,
         table_lock::TableLockReadGuard,
         zone::{Zone, ZoneType},
     },
@@ -26,7 +26,7 @@ impl<'a, const N: usize> Solver<'a, N> {
         read: &'b TableLockReadGuard<N>,
         s: &ScopeFifo<'scope>,
         result_list: &'b Mutex<Vec<SolverResult<'a, N>>>,
-        is_break: &'b NonAtomicBool,
+        is_break: &'b RelaxedBool,
     ) {
         for (zone, cells) in self.zone_cache.zone() {
             let ZoneType::Unique = zone.get_zone_type() else {
@@ -53,7 +53,7 @@ impl<'a, const N: usize> Solver<'a, N> {
         cells: &'b Vec<&'a Cell<N>>,
         read: &'b TableLockReadGuard<N>,
         result_list: &'b Mutex<Vec<SolverResult<'a, N>>>,
-        is_break: &'b NonAtomicBool,
+        is_break: &'b RelaxedBool,
     ) {
         if is_break.get() {
             return;

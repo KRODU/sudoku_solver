@@ -3,7 +3,7 @@ use super::solver_simple::SolverSimple;
 use super::Solver;
 use crate::model::array_vector::ArrayVector;
 use crate::model::max_num::MaxNum;
-use crate::model::non_atomic_bool::NonAtomicBool;
+use crate::model::relaxed_bool::RelaxedBool;
 use crate::model::table_lock::TableLockReadGuard;
 use crate::model::{cell::Cell, zone::ZoneType};
 use rayon::ScopeFifo;
@@ -15,7 +15,7 @@ impl<'a, const N: usize> Solver<'a, N> {
         read: &'b TableLockReadGuard<N>,
         s: &ScopeFifo<'scope>,
         result_list: &'b Mutex<Vec<SolverResult<'a, N>>>,
-        is_break: &'b NonAtomicBool,
+        is_break: &'b RelaxedBool,
     ) {
         for (zone, cells) in self.zone_cache.zone() {
             let ZoneType::Unique = zone.get_zone_type() else {

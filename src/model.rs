@@ -3,7 +3,7 @@ pub mod array_vector;
 pub mod cell;
 pub mod index_key_map;
 pub mod max_num;
-pub mod non_atomic_bool;
+pub mod relaxed_bool;
 pub mod table;
 pub mod table_lock;
 pub mod unsafe_cell_sync;

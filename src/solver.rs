@@ -11,7 +11,7 @@ use self::solver_simple::SolverSimple;
 use crate::model::array_vector::ArrayVector;
 use crate::model::index_key_map::{IndexKeyMap, IndexKeySet};
 use crate::model::max_num::MaxNum;
-use crate::model::non_atomic_bool::NonAtomicBool;
+use crate::model::relaxed_bool::RelaxedBool;
 use crate::model::table_lock::{TableLock, TableLockReadGuard};
 use crate::model::zone_cache::ZoneCache;
 use crate::model::{cell::Cell, zone::Zone};
@@ -296,7 +296,7 @@ impl<'a, const N: usize> GeneralSolve<'a> for Solver<'a, N> {
 
         let result_list: Mutex<Vec<SolverResult<N>>> = Mutex::new(Vec::new());
         let mut error_cell: Option<&Cell<N>> = None;
-        let is_break = NonAtomicBool::new(false);
+        let is_break = RelaxedBool::new(false);
 
         rayon::scope_fifo(|s| {
             s.spawn_fifo(|_| {

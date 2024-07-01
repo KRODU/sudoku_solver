@@ -1,7 +1,7 @@
 use super::{
     cell::Cell,
     index_key_map::{IndexKeyMap, IndexKeySet},
-    non_atomic_bool::NonAtomicBool,
+    relaxed_bool::RelaxedBool,
     table_lock::TableLock,
     zone::{Zone, ZoneType},
 };
@@ -15,7 +15,7 @@ pub struct ZoneCache<'a, const N: usize> {
     /// 각 Zone이 다른 어떤 Zone들과 연결되어있는지를 캐시해놓음.
     connect_zone: IndexKeyMap<Zone, IndexKeySet<Zone>>,
     /// 각 Solver에서 확인이 끝난 Zone은 이곳에 저장되어, 다른 변경이 있기 전까진 체크 대상에서 제외됩니다.
-    checked_zone: IndexKeyMap<Zone, IndexKeyMap<SolverSimple, NonAtomicBool>>,
+    checked_zone: IndexKeyMap<Zone, IndexKeyMap<SolverSimple, RelaxedBool>>,
 }
 
 impl<'a, const N: usize> ZoneCache<'a, N> {
@@ -38,7 +38,7 @@ impl<'a, const N: usize> ZoneCache<'a, N> {
 
         let connect_zone = ZoneCache::<N>::get_connected_zone(&zone);
 
-        let mut checked_zone: IndexKeyMap<Zone, IndexKeyMap<SolverSimple, NonAtomicBool>> =
+        let mut checked_zone: IndexKeyMap<Zone, IndexKeyMap<SolverSimple, RelaxedBool>> =
             IndexKeyMap::with_capacity(zone_cnt);
         for (z, _) in &zone {
             checked_zone.insert(
@@ -49,7 +49,7 @@ impl<'a, const N: usize> ZoneCache<'a, N> {
 
         for (_, check_map) in checked_zone.iter_mut() {
             for n in enum_iterator::all::<SolverSimple>() {
-                check_map.insert(n, NonAtomicBool::new(false));
+                check_map.insert(n, RelaxedBool::new(false));
             }
         }
 
@@ -146,7 +146,7 @@ impl<'a, const N: usize> ZoneCache<'a, N> {
 
     #[must_use]
     #[inline]
-    pub fn checked_zone(&self) -> &IndexKeyMap<Zone, IndexKeyMap<SolverSimple, NonAtomicBool>> {
+    pub fn checked_zone(&self) -> &IndexKeyMap<Zone, IndexKeyMap<SolverSimple, RelaxedBool>> {
         &self.checked_zone
     }
 }

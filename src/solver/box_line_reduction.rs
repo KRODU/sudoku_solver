@@ -4,7 +4,7 @@ use super::{
     Solver,
 };
 use crate::model::{
-    array_vector::ArrayVector, cell::Cell, max_num::MaxNum, non_atomic_bool::NonAtomicBool,
+    array_vector::ArrayVector, cell::Cell, max_num::MaxNum, relaxed_bool::RelaxedBool,
     table_lock::TableLockReadGuard, zone::ZoneType,
 };
 use crate::num_check::NumCheck;
@@ -17,7 +17,7 @@ impl<'a, const N: usize> Solver<'a, N> {
         read: &'b TableLockReadGuard<N>,
         s: &ScopeFifo<'scope>,
         result_list: &'b Mutex<Vec<SolverResult<'a, N>>>,
-        is_break: &'b NonAtomicBool,
+        is_break: &'b RelaxedBool,
     ) {
         for (z1, z1_cells) in self.zone_cache.zone() {
             let ZoneType::Unique = z1.get_zone_type() else {
