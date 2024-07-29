@@ -14,12 +14,12 @@ name = "sudoku_solver"
 path = "src/main.rs"
 
 [dependencies]
-rand = { version = "0.8", features = ["std_rng", "small_rng"] }
-enum-iterator = "2"
-rayon = "1"
+rand = { version = "*", features = ["std_rng", "small_rng"] }
+enum-iterator = "*"
+rayon = "*"
 
 [dev-dependencies]
-criterion = "0.5"
+criterion = "*"
 
 [[bench]]
 name = "sudoku_benchmark"
