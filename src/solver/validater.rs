@@ -3,7 +3,7 @@ use crate::model::{
     array_note::ArrayNote, cell::Cell, table_lock::TableLockReadGuard, zone::ZoneType,
 };
 
-impl<'a, const N: usize> Solver<'a, N> {
+impl<const N: usize> Solver<'_, N> {
     pub fn validater(&self) -> Option<&Cell<N>> {
         let read = self.table.read_lock();
         self.validater_inner(&read)

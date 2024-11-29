@@ -392,15 +392,15 @@ impl<'a, const N: usize> GeneralSolve<'a> for Solver<'a, N> {
     }
 }
 
-impl<'a, const N: usize> PartialEq for Solver<'a, N> {
+impl<const N: usize> PartialEq for Solver<'_, N> {
     fn eq(&self, other: &Self) -> bool {
         self.table == other.table
     }
 }
 
-impl<'a, const N: usize> Eq for Solver<'a, N> {}
+impl<const N: usize> Eq for Solver<'_, N> {}
 
-impl<'a, const N: usize> Debug for Solver<'a, N> {
+impl<const N: usize> Debug for Solver<'_, N> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Solver").field("t", &self.table).finish()
     }

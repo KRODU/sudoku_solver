@@ -61,7 +61,7 @@ impl<'a, const N: usize> ZoneCache<'a, N> {
     }
 
     #[must_use]
-    fn get_zone_map(t: &'a TableLock<N>) -> IndexKeyMap<Zone, Vec<&Cell<N>>> {
+    fn get_zone_map(t: &'a TableLock<N>) -> IndexKeyMap<Zone, Vec<&'a Cell<N>>> {
         let mut index_vec: IndexKeyMap<Zone, Vec<&Cell<N>>> = IndexKeyMap::with_capacity(N * N);
         for cell in t {
             for z in &cell.zone_vec {

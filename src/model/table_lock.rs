@@ -201,7 +201,7 @@ pub struct TableLockReadGuard<'a, 'b, const N: usize> {
     _read_guard: RwLockReadGuard<'b, ()>,
 }
 
-impl<'a, 'b, const N: usize> TableLockReadGuard<'a, 'b, N> {
+impl<'a, const N: usize> TableLockReadGuard<'a, '_, N> {
     #[must_use]
     #[inline]
     pub fn read_from_cell(&self, cell: &Cell<N>) -> &'a NumCheck<N> {
@@ -418,7 +418,7 @@ impl<'a, 'b, const N: usize> TableLockReadGuard<'a, 'b, N> {
     }
 }
 
-impl<'a, 'b, const N: usize> Display for TableLockReadGuard<'a, 'b, N> {
+impl<const N: usize> Display for TableLockReadGuard<'_, '_, N> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let ret = self.make_string(NumCheck::final_num);
         write!(f, "{ret}")
@@ -445,7 +445,7 @@ pub struct ReadCellIter<'a, 'b, 'c, const N: usize> {
     cells: &'a [Cell<N>],
 }
 
-impl<'a, 'b, 'c, const N: usize> Iterator for ReadCellIter<'a, 'b, 'c, N> {
+impl<'a, const N: usize> Iterator for ReadCellIter<'a, '_, '_, N> {
     type Item = (&'a Cell<N>, &'a NumCheck<N>);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -461,7 +461,7 @@ pub struct TableLockWriteGuard<'a, 'b, const N: usize> {
     _write_guard: RwLockWriteGuard<'b, ()>,
 }
 
-impl<'a, 'b, const N: usize> TableLockWriteGuard<'a, 'b, N> {
+impl<'a, const N: usize> TableLockWriteGuard<'a, '_, N> {
     #[must_use]
     #[inline]
     pub fn read_from_cell(&self, cell: &Cell<N>) -> &NumCheck<N> {
@@ -528,7 +528,7 @@ pub struct WriteCellIter<'a, 'b, 'c, const N: usize> {
     index: usize,
 }
 
-impl<'a, 'b, 'c, const N: usize> Iterator for WriteCellIter<'a, 'b, 'c, N> {
+impl<'a, const N: usize> Iterator for WriteCellIter<'a, '_, '_, N> {
     type Item = (&'a Cell<N>, &'a mut NumCheck<N>);
 
     fn next(&mut self) -> Option<Self::Item> {
