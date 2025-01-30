@@ -3,7 +3,7 @@ use super::Solver;
 use crate::model::cell::Cell;
 use crate::model::max_num::MaxNum;
 use crate::model::table_lock::TableLockWriteGuard;
-use rand::seq::SliceRandom;
+use rand::seq::IndexedRandom;
 use rayon::slice::ParallelSliceMut;
 
 impl<'a, const N: usize> Solver<'a, N> {

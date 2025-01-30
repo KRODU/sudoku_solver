@@ -9,7 +9,7 @@ use crate::{
     num_check::NumCheck,
     solver::Solver,
 };
-use rand::{rngs::SmallRng, seq::SliceRandom};
+use rand::{rngs::SmallRng, seq::IndexedRandom};
 
 /// 완성된 스도쿠에 구멍을 뚫어 문제를 만듭니다.
 pub struct Punch<'a, const N: usize> {
