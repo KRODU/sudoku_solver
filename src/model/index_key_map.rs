@@ -69,10 +69,9 @@ where
     pub fn get(&self, k: &K) -> Option<&V> {
         let index = k.index() as usize;
 
-        if let Some(Some((_, v))) = self.arr.get(index) {
-            Some(v)
-        } else {
-            None
+        match self.arr.get(index) {
+            Some(Some((_, v))) => Some(v),
+            _ => None,
         }
     }
 
@@ -81,10 +80,9 @@ where
     pub fn get_mut(&mut self, k: &K) -> Option<&mut V> {
         let index = k.index() as usize;
 
-        if let Some(Some((_, v))) = self.arr.get_mut(index) {
-            Some(v)
-        } else {
-            None
+        match self.arr.get_mut(index) {
+            Some(Some((_, v))) => Some(v),
+            _ => None,
         }
     }
 
@@ -124,11 +122,12 @@ where
             }
 
             self.arr.push(Some((k, f())));
-            if let Some(Some((_, v))) = self.arr.last_mut() {
-                v
-            } else {
-                debug_assert!(false, "unreachable");
-                unsafe { unreachable_unchecked() }
+            match self.arr.last_mut() {
+                Some(Some((_, v))) => v,
+                _ => {
+                    debug_assert!(false, "unreachable");
+                    unsafe { unreachable_unchecked() }
+                }
             }
         } else {
             let mut_index = &mut self.arr[index];
@@ -167,10 +166,11 @@ where
     fn index(&self, k: &K) -> &Self::Output {
         let index = k.index() as usize;
 
-        if let Some((_, v)) = &self.arr[index] {
-            v
-        } else {
-            panic!("key not found in ZoneKeyMap");
+        match &self.arr[index] {
+            Some((_, v)) => v,
+            _ => {
+                panic!("key not found in ZoneKeyMap");
+            }
         }
     }
 }

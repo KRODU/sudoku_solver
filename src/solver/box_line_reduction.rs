@@ -1,7 +1,7 @@
 use super::{
+    Solver,
     solver_history::{SolverResult, SolverResultDetail},
     solver_simple::SolverSimple,
-    Solver,
 };
 use crate::model::{
     array_vector::ArrayVector, cell::Cell, max_num::MaxNum, relaxed_bool::RelaxedBool,

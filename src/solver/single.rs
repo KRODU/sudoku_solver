@@ -1,6 +1,6 @@
+use super::Solver;
 use super::solver_history::{SolverResult, SolverResultDetail};
 use super::solver_simple::SolverSimple;
-use super::Solver;
 use crate::model::array_vector::ArrayVector;
 use crate::model::max_num::MaxNum;
 use crate::model::relaxed_bool::RelaxedBool;

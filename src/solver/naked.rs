@@ -1,7 +1,7 @@
 use super::{
+    Solver,
     solver_history::{SolverResult, SolverResultDetail},
     solver_simple::SolverSimple,
-    Solver,
 };
 use crate::model::array_vector::ArrayVector;
 use crate::{
@@ -16,8 +16,8 @@ use crate::{
 };
 use rayon::ScopeFifo;
 use std::sync::{
-    atomic::{AtomicBool, Ordering},
     Mutex,
+    atomic::{AtomicBool, Ordering},
 };
 
 impl<'a, const N: usize> Solver<'a, N> {

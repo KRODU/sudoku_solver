@@ -1,4 +1,4 @@
-use super::{solver_simple::SolverSimple, Solver};
+use super::{Solver, solver_simple::SolverSimple};
 use crate::model::{
     array_note::ArrayNote, cell::Cell, table_lock::TableLockReadGuard, zone::ZoneType,
 };

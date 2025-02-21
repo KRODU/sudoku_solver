@@ -15,7 +15,7 @@ const TEST_SAME_PUZZLE: bool = false;
 const TEST_SAME_PUZZLE_HISTORY: bool = false;
 
 fn main() {
-    std::env::set_var("RUST_BACKTRACE", "full");
+    unsafe { std::env::set_var("RUST_BACKTRACE", "full") };
 
     let seed_arg = std::env::args().find_map(|arg| arg.parse::<u64>().ok());
 

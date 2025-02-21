@@ -22,11 +22,7 @@ impl<const N: usize> MaxNum<N> {
     /// num의 값은 num < N을 충족해야 함. 그렇지 않을 경우 None
     #[must_use]
     pub const fn new_optional(num: usize) -> Option<Self> {
-        if num < N {
-            Some(Self { num })
-        } else {
-            None
-        }
+        if num < N { Some(Self { num }) } else { None }
     }
 
     /// MaxNum에 value를 더한 값을 반환합니다. N을 초과하거나 오버플로가 발생한 경우 None

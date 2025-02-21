@@ -1,5 +1,5 @@
-use super::solver_history::{SolverHistory, SolverHistoryType};
 use super::Solver;
+use super::solver_history::{SolverHistory, SolverHistoryType};
 use crate::model::cell::Cell;
 use crate::model::max_num::MaxNum;
 use crate::model::table_lock::TableLockWriteGuard;
