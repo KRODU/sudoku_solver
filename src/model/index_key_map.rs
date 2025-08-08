@@ -1,4 +1,7 @@
-use std::{hint::unreachable_unchecked, ops::Index};
+use std::{
+    hint::unreachable_unchecked,
+    ops::{Index, IndexMut},
+};
 
 pub trait IndexKey {
     fn index(&self) -> u16;
@@ -172,6 +175,21 @@ where
                 panic!("key not found in ZoneKeyMap");
             }
         }
+    }
+}
+
+impl<K, V> IndexMut<&K> for IndexKeyMap<K, V>
+where
+    K: IndexKey,
+{
+    fn index_mut(&mut self, index: &K) -> &mut Self::Output {
+        &mut self
+            .arr
+            .get_mut(index.index() as usize)
+            .expect("key not found in ZoneKeyMap")
+            .as_mut()
+            .expect("key not found in ZoneKeyMap")
+            .1
     }
 }
 

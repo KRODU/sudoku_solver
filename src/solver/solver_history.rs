@@ -37,6 +37,12 @@ pub enum SolverHistoryType<'a, const N: usize> {
         cell: &'a Cell<N>,
         except_num: MaxNum<N>,
     },
+
+    /// 퍼즐의 초기화를 나타냅니다.
+    Init,
+
+    /// 퍼즐을 풀 때 commit 단위를 나타냅니다.
+    Commit,
 }
 
 #[derive(Debug, Clone)]

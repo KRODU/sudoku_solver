@@ -16,6 +16,10 @@ pub struct ZoneCache<'a, const N: usize> {
     connect_zone: IndexKeyMap<Zone, IndexKeySet<Zone>>,
     /// 각 Solver에서 확인이 끝난 Zone은 이곳에 저장되어, 다른 변경이 있기 전까진 체크 대상에서 제외됩니다.
     checked_zone: IndexKeyMap<Zone, IndexKeyMap<SolverSimple, RelaxedBool>>,
+    /// 미자막으로 수정된 Cell 목록
+    last_changed_list: IndexKeyMap<Zone, Vec<&'a Cell<N>>>,
+    /// 마지막으로 수정된 Cell 목록 플래그
+    last_changed_flag: Vec<usize>,
 }
 
 impl<'a, const N: usize> ZoneCache<'a, N> {
@@ -52,12 +56,71 @@ impl<'a, const N: usize> ZoneCache<'a, N> {
                 check_map.insert(n, RelaxedBool::new(false));
             }
         }
+        let mut last_changed_list = IndexKeyMap::with_capacity(zone.len());
+        for (z, _) in &zone {
+            last_changed_list.insert_new(*z, Vec::with_capacity(N));
+        }
+        let mut last_changed_flag = vec![0usize; N * N];
+        let read = t.read_lock();
 
+        for c in t {
+            if read.read_from_cell(c).true_cnt() != N {
+                for z in c.get_zone() {
+                    last_changed_list[z].push(c);
+                    last_changed_flag[c.y.get_value() * N + c.x.get_value()] += 1;
+                }
+            }
+        }
         ZoneCache {
             zone,
             connect_zone,
             checked_zone,
+            last_changed_list,
+            last_changed_flag,
         }
+    }
+
+    pub fn last_changed_list_clear(&mut self) {
+        for (z, chk) in &self.checked_zone {
+            if !self.last_changed_list[z].is_empty() && chk.iter().all(|(_, b)| b.get()) {
+                for &c in &self.last_changed_list[z] {
+                    let index = c.y.get_value() * N + c.x.get_value();
+                    self.last_changed_flag[index] -= 1;
+                }
+                self.last_changed_list[z].clear();
+            }
+        }
+
+        #[cfg(debug_assertions)]
+        self.validate_last_changed();
+    }
+
+    pub fn push_last_changed_cell(&mut self, c: &'a Cell<N>) {
+        let index = c.y.get_value() * N + c.x.get_value();
+
+        if self.last_changed_flag[index] > 0 {
+            return;
+        }
+
+        for z in c.get_zone() {
+            self.last_changed_list[z].push(c);
+            self.last_changed_flag[index] += 1;
+        }
+
+        #[cfg(debug_assertions)]
+        self.validate_last_changed();
+    }
+
+    #[cfg(debug_assertions)]
+    fn validate_last_changed(&self) {
+        let mut last_changed_comp = vec![0usize; N * N];
+        for (z, c_list) in &self.last_changed_list {
+            for &c in c_list {
+                assert!(c.zone_set.contains(z));
+                last_changed_comp[c.y.get_value() * N + c.x.get_value()] += 1;
+            }
+        }
+        assert_eq!(last_changed_comp, self.last_changed_flag);
     }
 
     #[must_use]

@@ -85,5 +85,11 @@ impl<'a, const N: usize> Solver<'a, N> {
         };
 
         self.solver_history_stack.push(history);
+        self.zone_cache.last_changed_list_clear();
+        self.zone_cache.push_last_changed_cell(cell);
+        self.solver_history_stack.push(SolverHistory {
+            history_type: SolverHistoryType::Commit,
+            backup_chk: Vec::new(),
+        });
     }
 }

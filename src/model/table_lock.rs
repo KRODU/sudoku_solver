@@ -68,10 +68,6 @@ impl<const N: usize> TableLock<N> {
         }
     }
 
-    /// 테이블 전체 NumCheck가 올바른지 검사합니다. 릴리즈 빌드에서는 검사를 생략합니다.
-    #[cfg(not(debug_assertions))]
-    pub fn table_debug_validater(&self) {}
-
     #[must_use]
     #[inline]
     pub fn get_cell_from_coordinate(&self, x: MaxNum<N>, y: MaxNum<N>) -> &Cell<N> {

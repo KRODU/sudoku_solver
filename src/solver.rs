@@ -83,6 +83,9 @@ impl<'a, const N: usize> Solver<'a, N> {
     ) {
         let mut write = read.upgrade_to_write();
         let mut changed_zone_set: IndexKeySet<Zone> = IndexKeySet::new();
+        let mut commit_flag = false;
+
+        self.zone_cache.last_changed_list_clear();
 
         for mut solver_result in result {
             let mut backup_chk: Vec<(&'a Cell<N>, ArrayVector<MaxNum<N>, N>)> =
@@ -101,6 +104,7 @@ impl<'a, const N: usize> Solver<'a, N> {
 
                 let backup = cell.clone_chk_list_rand();
                 backup_chk.push((c, backup));
+                self.zone_cache.push_last_changed_cell(c);
 
                 cell.set_to_false_list(effect_note);
 
@@ -130,6 +134,14 @@ impl<'a, const N: usize> Solver<'a, N> {
             self.solver_history_stack.push(SolverHistory {
                 history_type: SolverHistoryType::Solve { solver_result },
                 backup_chk,
+            });
+            commit_flag = true;
+        }
+
+        if commit_flag {
+            self.solver_history_stack.push(SolverHistory {
+                history_type: SolverHistoryType::Commit,
+                backup_chk: Vec::new(),
             });
         }
     }
@@ -168,7 +180,22 @@ impl<'a, const N: usize> Solver<'a, N> {
 
                 let backup_chk_list = mut_chk.clone_chk_list_rand();
                 let backup = vec![(cell, backup_chk_list)];
+                // guess가 실패했기 때문에 guess한 숫자를 false로 지정
                 mut_chk.set_false(final_num);
+
+                self.zone_cache.last_changed_list_clear();
+                for h in self.solver_history_stack.iter().rev() {
+                    if matches!(h.history_type, SolverHistoryType::Commit) {
+                        break;
+                    }
+
+                    for (c, _) in &h.backup_chk {
+                        self.zone_cache.push_last_changed_cell(c);
+                    }
+
+                    self.zone_cache
+                        .checked_zone_clear(h.backup_chk.iter().map(|(c_in, _)| *c_in));
+                }
 
                 self.solver_history_stack.push(SolverHistory {
                     history_type: SolverHistoryType::GuessBacktrace {
@@ -292,6 +319,7 @@ impl<'a, const N: usize> GeneralSolve<'a> for Solver<'a, N> {
     /// solver를 적용하여 문제를 풉니다. 문제는 푼 경우 true, 풀지 못한 경우 false를 반환합니다.
     fn solve(&mut self) -> bool {
         let read = self.table.read_lock();
+        #[cfg(debug_assertions)]
         self.table.table_debug_validater();
 
         let result_list: Mutex<Vec<SolverResult<N>>> = Mutex::new(Vec::new());
@@ -344,7 +372,6 @@ impl<'a, const N: usize> GeneralSolve<'a> for Solver<'a, N> {
     }
 
     /// 이 스도쿠 퍼즐의 미완성 Cell 개수 반환
-    #[must_use]
     fn get_unsolved_cell_cnt(&self) -> usize {
         let read = self.table.read_lock();
         self.table
@@ -353,7 +380,6 @@ impl<'a, const N: usize> GeneralSolve<'a> for Solver<'a, N> {
             .count()
     }
 
-    #[must_use]
     fn get_random_seed(&self) -> u64 {
         self.rand_seed
     }
@@ -364,28 +390,24 @@ impl<'a, const N: usize> GeneralSolve<'a> for Solver<'a, N> {
     }
 
     /// Get the solver's solve cnt.
-    #[must_use]
     #[inline]
     fn solve_cnt(&self, result_simple: SolverSimple) -> u32 {
         self.solve_cnt[&result_simple]
     }
 
     /// Get the solver's guess cnt.
-    #[must_use]
     #[inline]
     fn guess_cnt(&self) -> u32 {
         self.guess_cnt
     }
 
     /// Get the solver's guess rollback cnt.
-    #[must_use]
     #[inline]
     fn guess_backtrace_rollback_cnt(&self) -> u32 {
         self.guess_backtrace_rollback_cnt
     }
 
     /// Get the solver's guess rollback cnt.
-    #[must_use]
     #[inline]
     fn guess_rollback_cnt(&self) -> u32 {
         self.guess_rollback_cnt
