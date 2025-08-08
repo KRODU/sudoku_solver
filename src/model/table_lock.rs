@@ -31,7 +31,7 @@ impl<const N: usize> TableLock<N> {
     }
 
     #[inline]
-    pub fn read_lock(&self) -> TableLockReadGuard<N> {
+    pub fn read_lock(&self) -> TableLockReadGuard<'_, '_, N> {
         TableLockReadGuard {
             table_lock: self,
             _read_guard: self.lock.read().unwrap_or_else(|err| err.into_inner()),
@@ -39,7 +39,7 @@ impl<const N: usize> TableLock<N> {
     }
 
     #[inline]
-    pub fn write_lock(&self) -> TableLockWriteGuard<N> {
+    pub fn write_lock(&self) -> TableLockWriteGuard<'_, '_, N> {
         TableLockWriteGuard {
             table_lock: self,
             _write_guard: self.lock.write().unwrap_or_else(|err| err.into_inner()),

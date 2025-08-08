@@ -101,8 +101,8 @@ fn test_same_puzzle_history() {
             solver2_history.clear();
             solver3_history.clear();
 
-            let last_left = format!("{:?}", t2);
-            let last_right = format!("{:?}", t3);
+            let last_left = format!("{t2:?}");
+            let last_right = format!("{t3:?}");
 
             let mut solver2 = Solver::new(&mut t2);
             if solver2.validater().is_some() {
@@ -160,23 +160,23 @@ fn test_same_puzzle_history() {
                     let r2 = t3_read.read_from_coordinate(x, y);
 
                     if !r1.is_same_note(r2) {
-                        wrtie_log(format!(" left Cell: {:?}", r1), &mut writer);
+                        wrtie_log(format!(" left Cell: {r1:?}"), &mut writer);
                         wrtie_log(String::new(), &mut writer);
-                        wrtie_log(format!("right: Cell {:?}", r2), &mut writer);
+                        wrtie_log(format!("right: Cell {r2:?}"), &mut writer);
                         diff_found = true;
                     }
                 }
             }
 
             if diff_found {
-                wrtie_log(format!("left: {:?}", t2), &mut writer);
-                wrtie_log(format!("right: {:?}", t3), &mut writer);
-                wrtie_log(format!("left: {}", solver2_history), &mut writer);
+                wrtie_log(format!("left: {t2:?}"), &mut writer);
+                wrtie_log(format!("right: {t3:?}"), &mut writer);
+                wrtie_log(format!("left: {solver2_history}"), &mut writer);
                 wrtie_log(String::new(), &mut writer);
-                wrtie_log(format!("right: {}", solver3_history), &mut writer);
-                wrtie_log(format!("left_last: {}", last_left), &mut writer);
+                wrtie_log(format!("right: {solver3_history}"), &mut writer);
+                wrtie_log(format!("left_last: {last_left}"), &mut writer);
                 wrtie_log(String::new(), &mut writer);
-                wrtie_log(format!("right_last: {}", last_right), &mut writer);
+                wrtie_log(format!("right_last: {last_right}"), &mut writer);
                 panic!("TABLE_NOT_SAME");
             }
         }
