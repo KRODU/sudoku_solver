@@ -34,13 +34,13 @@ impl<'a, const N: usize> Solver<'a, N> {
                     return;
                 }
 
-                for (c, _) in cells {
+                for c in cells {
                     let Some(final_num) = read.read_from_cell(c).final_num() else {
                         continue;
                     };
                     let mut effect_cells: Vec<(&Cell<N>, ArrayVector<MaxNum<N>, N>)> = Vec::new();
 
-                    for (c_comp, _) in cells {
+                    for c_comp in cells {
                         // 노트가 확정된 경우 Zone을 순회하면서 해당 노트를 가진 cell이 있나 찾음
 
                         // 나 자신은 비교 대상에서 제외
@@ -67,7 +67,7 @@ impl<'a, const N: usize> Solver<'a, N> {
                                 continue;
                             }
 
-                            for (c_comp, _) in &self.zone_cache.zone()[z2] {
+                            for c_comp in &self.zone_cache.zone()[z2] {
                                 if c_comp == c {
                                     continue;
                                 }

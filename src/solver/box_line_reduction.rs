@@ -43,7 +43,7 @@ impl<'a, const N: usize> Solver<'a, N> {
                 let current_zone_union_note =
                     z1_cells
                         .iter()
-                        .fold(NumCheck::new_with_false(), |mut h, (c, _)| {
+                        .fold(NumCheck::new_with_false(), |mut h, c| {
                             let cell_read = read.read_from_cell(c);
                             if cell_read.true_cnt() > 1 {
                                 cell_read.union_note_num_check(&mut h);
@@ -63,7 +63,7 @@ impl<'a, const N: usize> Solver<'a, N> {
                     let z2_cells = &self.zone_cache.zone()[&z2];
 
                     for &note in &current_zone_union_note {
-                        let target_this_note = !z1_cells.iter().any(|(c, _)| {
+                        let target_this_note = !z1_cells.iter().any(|c| {
                             if c.zone_set.contains(&z2) {
                                 return false;
                             }
@@ -75,7 +75,7 @@ impl<'a, const N: usize> Solver<'a, N> {
                             let mut effect_cells: Vec<(&'a Cell<N>, ArrayVector<MaxNum<N>, N>)> =
                                 Vec::new();
 
-                            for (z2_cell, _) in z2_cells {
+                            for z2_cell in z2_cells {
                                 if z2_cell.zone_set.contains(z1) {
                                     continue;
                                 }

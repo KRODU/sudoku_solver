@@ -14,7 +14,7 @@ impl<'a, const N: usize> Punch<'a, N> {
             }
 
             'zone_iter: for zone in cell.get_zone() {
-                for &(zone_in_cell, _) in &zone_cache.zone()[zone] {
+                for &zone_in_cell in &zone_cache.zone()[zone] {
                     if cell == zone_in_cell {
                         continue;
                     }

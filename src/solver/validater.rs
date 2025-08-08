@@ -1,19 +1,17 @@
 use super::{Solver, solver_simple::SolverSimple};
 use crate::model::{
-    array_note::ArrayNote,
-    table_lock::TableLockReadGuard,
-    zone::{Zone, ZoneType},
+    array_note::ArrayNote, cell::Cell, table_lock::TableLockReadGuard, zone::ZoneType,
 };
 
 impl<const N: usize> Solver<'_, N> {
-    pub fn validater(&self) -> Option<&Zone> {
+    pub fn validater(&self) -> Option<&Cell<N>> {
         let read = self.table.read_lock();
         self.validater_inner(&read)
     }
 
     /// 현재 스도쿠 퍼즐의 유효성 검사하여 에러셀을 반환.
     /// 에러셀이 없다면 None
-    pub(crate) fn validater_inner(&self, read: &TableLockReadGuard<N>) -> Option<&Zone> {
+    pub(crate) fn validater_inner(&self, read: &TableLockReadGuard<N>) -> Option<&Cell<N>> {
         let mut unique_chk_arr: ArrayNote<bool, N>;
 
         for (zone, cells) in self.zone_cache.zone() {
@@ -29,18 +27,18 @@ impl<const N: usize> Solver<'_, N> {
                 ZoneType::Unique => {
                     unique_chk_arr = ArrayNote::new([false; N]);
 
-                    for (c, _) in cells {
+                    for c in cells {
                         let chk_borr = read.read_from_cell(c);
                         if let Some(num) = chk_borr.final_num() {
                             if unique_chk_arr[num] {
-                                return Some(zone);
+                                return Some(c);
                             }
                             unique_chk_arr[num] = true;
                         }
 
                         // 가능한 숫자가 하나도 없는 cell이 존재하는지 확인
                         if chk_borr.true_cnt() == 0 {
-                            return Some(zone);
+                            return Some(c);
                         }
                     }
                 }
@@ -49,7 +47,7 @@ impl<const N: usize> Solver<'_, N> {
                     let mut cell_total = 0;
                     let mut all_final = true;
 
-                    for (c, _) in cells {
+                    for c in cells {
                         let read = read.read_from_cell(c);
 
                         if let Some(num) = read.final_num() {
@@ -59,7 +57,7 @@ impl<const N: usize> Solver<'_, N> {
 
                             // cell의 값이 확정되지 않은 경우 사용 가능한 노트 중 가장 작은 값을 total_sum에 더함
                             let Some(minimum) = read.get_minimum_chk() else {
-                                return Some(zone);
+                                return Some(c);
                             };
 
                             cell_total += minimum.get_value() + 1; // 값은 0부터 시작하므로 1을 더해야 함.
@@ -69,12 +67,12 @@ impl<const N: usize> Solver<'_, N> {
                     // cell이 모두 확정된 경우 cell_total과 sum은 같아야 함.
                     if all_final {
                         if cell_total != sum {
-                            return Some(zone);
+                            return Some(cells[0]);
                         }
                         // 미확정 cell이 있는 경우 cell_total과 sum은 다를 수 있음.
                         // 이 경우에도 cell_total이 sum을 넘어서면 안 됨
                     } else if cell_total > sum {
-                        return Some(zone);
+                        return Some(cells[0]);
                     }
                 }
             }
