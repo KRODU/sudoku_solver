@@ -64,7 +64,7 @@ impl<'a, const N: usize> Punch<'a, N> {
         effect_cell.push(pick);
 
         for zone in &pick.zone_vec {
-            for zone_cell in &self.zone_cache.zone()[zone] {
+            for (zone_cell, _) in &self.zone_cache.zone()[zone] {
                 if zone_cell == pick {
                     continue;
                 }
@@ -78,7 +78,7 @@ impl<'a, const N: usize> Punch<'a, N> {
         for cell in effect_cell {
             let mut cell_chk = NumCheck::<N>::new_with_true();
             for zone in &cell.zone_vec {
-                for &zone_cell in &self.zone_cache.zone()[zone] {
+                for &(zone_cell, _) in &self.zone_cache.zone()[zone] {
                     if zone_cell == cell {
                         continue;
                     }

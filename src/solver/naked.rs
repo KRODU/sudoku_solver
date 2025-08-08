@@ -50,7 +50,7 @@ impl<'a, const N: usize> Solver<'a, N> {
     fn naked_number_zone<'b>(
         &self,
         zone: &Zone,
-        cells: &'b Vec<&'a Cell<N>>,
+        cells: &'b Vec<(&'a Cell<N>, RelaxedBool)>,
         read: &'b TableLockReadGuard<N>,
         result_list: &'b Mutex<Vec<SolverResult<'a, N>>>,
         is_break: &'b RelaxedBool,
@@ -63,7 +63,7 @@ impl<'a, const N: usize> Solver<'a, N> {
             non_final_cells.extend(
                 cells
                     .iter()
-                    .copied()
+                    .map(|&(c, _)| c)
                     .filter(|c| read.read_from_cell(c).true_cnt() > 1),
             );
             non_final_cells
@@ -114,7 +114,7 @@ impl<'a, const N: usize> Solver<'a, N> {
                         let mut effect_cells: Vec<(&Cell<N>, ArrayVector<MaxNum<N>, N>)> =
                             Vec::new();
                         // zone을 순회하며 삭제할 노트가 있는지 찾음
-                        for zone_cell in cells {
+                        for (zone_cell, _) in cells {
                             // 순회 대상에서 자기 자신은 제외
                             // combinations 함수는 입력 배열이 정렬되어있을 경우 출력 배열 또한 정렬되어 있음
                             // cells -> comp_cell_target -> combinations 함수로 데이터가 흘러가며 cells가 정렬되어있으니 combinations또한 정렬됨

@@ -295,7 +295,7 @@ impl<'a, const N: usize> GeneralSolve<'a> for Solver<'a, N> {
         self.table.table_debug_validater();
 
         let result_list: Mutex<Vec<SolverResult<N>>> = Mutex::new(Vec::new());
-        let mut error_cell: Option<&Cell<N>> = None;
+        let mut error_cell: Option<&Zone> = None;
         let is_break = RelaxedBool::new(false);
 
         rayon::scope_fifo(|s| {
@@ -344,7 +344,6 @@ impl<'a, const N: usize> GeneralSolve<'a> for Solver<'a, N> {
     }
 
     /// 이 스도쿠 퍼즐의 미완성 Cell 개수 반환
-    #[must_use]
     fn get_unsolved_cell_cnt(&self) -> usize {
         let read = self.table.read_lock();
         self.table
@@ -353,7 +352,6 @@ impl<'a, const N: usize> GeneralSolve<'a> for Solver<'a, N> {
             .count()
     }
 
-    #[must_use]
     fn get_random_seed(&self) -> u64 {
         self.rand_seed
     }
@@ -364,28 +362,24 @@ impl<'a, const N: usize> GeneralSolve<'a> for Solver<'a, N> {
     }
 
     /// Get the solver's solve cnt.
-    #[must_use]
     #[inline]
     fn solve_cnt(&self, result_simple: SolverSimple) -> u32 {
         self.solve_cnt[&result_simple]
     }
 
     /// Get the solver's guess cnt.
-    #[must_use]
     #[inline]
     fn guess_cnt(&self) -> u32 {
         self.guess_cnt
     }
 
     /// Get the solver's guess rollback cnt.
-    #[must_use]
     #[inline]
     fn guess_backtrace_rollback_cnt(&self) -> u32 {
         self.guess_backtrace_rollback_cnt
     }
 
     /// Get the solver's guess rollback cnt.
-    #[must_use]
     #[inline]
     fn guess_rollback_cnt(&self) -> u32 {
         self.guess_rollback_cnt
