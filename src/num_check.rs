@@ -49,7 +49,7 @@ impl<const N: usize> NumCheck<N> {
         NumCheck {
             chk_list: ArrayNote::new([None; N]),
             true_list,
-            true_cnt: N,
+            true_cnt: 0,
             final_num: None,
             fixed_final_num: None,
             bit_flag: u64::MIN,
@@ -332,5 +332,36 @@ impl<const N: usize> Deref for NumCheck<N> {
 
     fn deref(&self) -> &Self::Target {
         self.true_list.get_slice()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::model::max_num::MaxNum;
+
+    #[test]
+    fn new_with_false_initial_state() {
+        let num_check = NumCheck::<9>::new_with_false();
+
+        assert_eq!(num_check.true_cnt(), 0);
+        assert!(!num_check.is_final_num());
+        assert_eq!(num_check.get_minimum_chk(), None);
+        assert_eq!(num_check.bit_flag(), 0);
+        assert!(num_check.get_true_list().is_empty());
+    }
+
+    #[test]
+    fn set_true_from_all_false_sets_final_num() {
+        let mut num_check = NumCheck::<9>::new_with_false();
+        let value = MaxNum::new(3);
+
+        num_check.set_true(value);
+
+        assert_eq!(num_check.true_cnt(), 1);
+        assert!(num_check.is_final_num());
+        assert_eq!(num_check.final_num(), Some(value));
+        assert_eq!(num_check.get_true_list(), &[value]);
+        assert_eq!(num_check.bit_flag(), 1 << value.get_value());
     }
 }
