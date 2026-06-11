@@ -1,5 +1,5 @@
 use criterion::{Criterion, criterion_group, criterion_main};
-use rand::{RngCore, SeedableRng};
+use rand::{Rng, rngs::SmallRng};
 use std::hint::black_box;
 use sudoku_solver_lib::{
     self,
@@ -8,7 +8,7 @@ use sudoku_solver_lib::{
 };
 
 fn bench_sudoku(c: &mut Criterion) {
-    let mut rng = rand::rngs::SmallRng::from_os_rng();
+    let mut rng: SmallRng = rand::make_rng();
     c.bench_function("sudoku_9x9", |b| {
         b.iter(|| {
             let mut t = Table::new_default_9();

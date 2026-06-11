@@ -14,9 +14,10 @@ name = "sudoku_solver"
 path = "src/main.rs"
 
 [dependencies]
-rand = { version = "*", features = ["std_rng", "small_rng"] }
+rand = "*"
 enum-iterator = "*"
 rayon = "*"
+hashbrown = "*"
 
 [dev-dependencies]
 criterion = "*"
@@ -27,7 +28,8 @@ harness = false
 
 [profile.release]
 opt-level = 3
+debug = false
 strip = true
 lto = true 
 codegen-units = 1
-#debug = true
+panic = "abort"

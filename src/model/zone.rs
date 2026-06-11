@@ -1,16 +1,11 @@
 use crate::model::index_key_map::IndexKey;
 use std::fmt::Debug;
 
-#[derive(PartialOrd, Ord, Debug, Clone, Copy)]
+#[derive(Default, PartialOrd, Ord, Debug, Clone, Copy)]
 pub enum ZoneType {
+    #[default]
     Unique,
     Sum { sum: usize },
-}
-
-impl Default for ZoneType {
-    fn default() -> Self {
-        Self::Unique
-    }
 }
 
 impl PartialEq for ZoneType {
