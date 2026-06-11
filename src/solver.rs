@@ -165,6 +165,10 @@ impl<'a, const N: usize> Solver<'a, N> {
                 write.write_from_cell(c).set_to_chk_list(backup);
             }
 
+            self.zone_cache.naked_full_scan_required_set_true_by_cells(
+                history.backup_chk.iter().map(|(c, _)| *c),
+            );
+
             // Rollback된 Cell의 checked_zone 캐시를 초기화
             self.zone_cache
                 .checked_zone_clear(history.backup_chk.iter().map(|(c, _)| *c));

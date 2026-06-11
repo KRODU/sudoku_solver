@@ -5,7 +5,9 @@ use std::fmt::Debug;
 pub enum ZoneType {
     #[default]
     Unique,
-    Sum { sum: usize },
+    Sum {
+        sum: usize,
+    },
 }
 
 impl PartialEq for ZoneType {

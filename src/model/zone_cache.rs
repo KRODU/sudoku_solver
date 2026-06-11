@@ -16,6 +16,7 @@ pub struct ZoneCache<'a, const N: usize> {
     connect_zone: IndexKeyMap<Zone, IndexKeySet<Zone>>,
     /// 각 Solver에서 확인이 끝난 Zone은 이곳에 저장되어, 다른 변경이 있기 전까진 체크 대상에서 제외됩니다.
     checked_zone: IndexKeyMap<Zone, IndexKeyMap<SolverSimple, RelaxedBool>>,
+    naked_full_scan_required: IndexKeyMap<Zone, RelaxedBool>,
     /// 미자막으로 수정된 Cell 목록
     last_changed_list: IndexKeyMap<Zone, Vec<&'a Cell<N>>>,
     /// 마지막으로 수정된 Cell 목록 플래그
@@ -56,6 +57,11 @@ impl<'a, const N: usize> ZoneCache<'a, N> {
                 check_map.insert(n, RelaxedBool::new(false));
             }
         }
+        let mut naked_full_scan_required = IndexKeyMap::with_capacity(zone_cnt);
+        for (z, _) in &zone {
+            naked_full_scan_required.insert(*z, RelaxedBool::new(true));
+        }
+
         let mut last_changed_list = IndexKeyMap::with_capacity(zone.len());
         for (z, _) in &zone {
             last_changed_list.insert_new(*z, Vec::with_capacity(N));
@@ -75,6 +81,7 @@ impl<'a, const N: usize> ZoneCache<'a, N> {
             zone,
             connect_zone,
             checked_zone,
+            naked_full_scan_required,
             last_changed_list,
             last_changed_flag,
         }
@@ -172,6 +179,42 @@ impl<'a, const N: usize> ZoneCache<'a, N> {
         self.checked_zone[&z][&solver].set(true);
     }
 
+    #[must_use]
+    #[inline]
+    pub fn naked_full_scan_required(&self, z: &Zone) -> bool {
+        self.naked_full_scan_required[z].get()
+    }
+
+    #[inline]
+    pub fn naked_full_scan_required_set_false(&self, z: Zone) {
+        self.naked_full_scan_required[&z].set(false);
+    }
+
+    #[inline]
+    pub fn naked_full_scan_required_set_true_by_cells<'b>(
+        &self,
+        cells: impl Iterator<Item = &'b Cell<N>>,
+    ) {
+        let mut changed_zone_set: IndexKeySet<Zone> = IndexKeySet::new();
+
+        for c in cells {
+            for z in &c.zone_vec {
+                if changed_zone_set.contains(z) {
+                    continue;
+                }
+
+                self.naked_full_scan_required[z].set(true);
+                changed_zone_set.insert(*z);
+            }
+        }
+    }
+
+    #[must_use]
+    #[inline]
+    pub fn last_changed_cells(&self, z: &Zone) -> &[&'a Cell<N>] {
+        &self.last_changed_list[z]
+    }
+
     /// 특정 zone에 대한 checked를 모두 초기화
     pub fn checked_zone_clear<'b>(&self, cells: impl Iterator<Item = &'b Cell<N>>) {
         let mut changed_zone_set: IndexKeySet<Zone> = IndexKeySet::new();
@@ -193,6 +236,9 @@ impl<'a, const N: usize> ZoneCache<'a, N> {
         for (_, map) in &self.checked_zone {
             map.iter().for_each(|(_, value)| value.set(false));
         }
+        for (_, value) in &self.naked_full_scan_required {
+            value.set(true);
+        }
     }
 
     #[must_use]
@@ -211,5 +257,33 @@ impl<'a, const N: usize> ZoneCache<'a, N> {
     #[inline]
     pub fn checked_zone(&self) -> &IndexKeyMap<Zone, IndexKeyMap<SolverSimple, RelaxedBool>> {
         &self.checked_zone
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::model::table::Table;
+
+    #[test]
+    fn naked_full_scan_required_tracks_zone_state() {
+        let table = Table::new_default_9();
+        let zone_cache = ZoneCache::new(&table);
+        let (zone, cells) = zone_cache.zone().iter().next().unwrap();
+        let zone = *zone;
+        let cell = cells[0];
+
+        assert!(zone_cache.naked_full_scan_required(&zone));
+        assert!(zone_cache.last_changed_cells(&zone).is_empty());
+
+        zone_cache.naked_full_scan_required_set_false(zone);
+        assert!(!zone_cache.naked_full_scan_required(&zone));
+
+        zone_cache.checked_zone_all_clear();
+        assert!(zone_cache.naked_full_scan_required(&zone));
+
+        zone_cache.naked_full_scan_required_set_false(zone);
+        zone_cache.naked_full_scan_required_set_true_by_cells(std::iter::once(cell));
+        assert!(zone_cache.naked_full_scan_required(&zone));
     }
 }

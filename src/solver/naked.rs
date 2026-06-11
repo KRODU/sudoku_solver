@@ -5,7 +5,7 @@ use super::{
 };
 use crate::model::array_vector::ArrayVector;
 use crate::{
-    combinations::Combination,
+    combinations::{Combination, TwoGroupCombination},
     model::{
         cell::Cell,
         max_num::MaxNum,
@@ -47,6 +47,95 @@ impl<'a, const N: usize> Solver<'a, N> {
     }
 
     #[inline]
+    fn find_naked_from_combination<'b>(
+        &self,
+        arr: &[&&'a Cell<N>],
+        cells: &[&'a Cell<N>],
+        read: &'b TableLockReadGuard<N>,
+        result_list: &'b Mutex<Vec<SolverResult<'a, N>>>,
+        is_break: &'b RelaxedBool,
+        i: usize,
+        i_u32: u32,
+        arr_is_sorted: bool,
+    ) -> bool {
+        if is_break.get() {
+            return false;
+        }
+
+        debug_assert_eq!(i, arr.len());
+        let mut union_bit_flag = u64::MIN;
+        for c in arr {
+            let b = read.read_from_cell(**c);
+            union_bit_flag |= b.bit_flag();
+
+            if union_bit_flag.count_ones() > i_u32 {
+                return false;
+            }
+        }
+
+        let union_node_true_cnt = union_bit_flag.count_ones();
+        if union_node_true_cnt != i_u32 {
+            return false;
+        }
+
+        let mut effect_cells: Vec<(&Cell<N>, ArrayVector<MaxNum<N>, N>)> = Vec::new();
+        for zone_cell in cells {
+            let found_cell_contains_zone_cell = if arr_is_sorted {
+                arr.binary_search(&zone_cell).is_ok()
+            } else {
+                arr.iter().any(|c| **c == *zone_cell)
+            };
+
+            if found_cell_contains_zone_cell {
+                continue;
+            }
+
+            let b = read.read_from_cell(zone_cell);
+            let mut inter: ArrayVector<MaxNum<N>, N> = ArrayVector::new();
+            for &true_note in b.get_true_list() {
+                if union_bit_flag & (1 << true_note.get_value()) != 0 {
+                    inter.push(true_note);
+                }
+            }
+
+            if !inter.is_empty() {
+                is_break.set(true);
+                if effect_cells.is_empty() {
+                    effect_cells.reserve_exact(N);
+                }
+                effect_cells.push((zone_cell, inter));
+            }
+        }
+
+        if effect_cells.is_empty() {
+            return false;
+        }
+
+        let mut found_chks: ArrayVector<MaxNum<N>, N> = ArrayVector::new();
+        for n in MaxNum::<N>::iter() {
+            if union_bit_flag & (1 << n.get_value()) != 0 {
+                found_chks.push(n);
+            }
+        }
+        debug_assert_eq!(found_chks.len(), union_node_true_cnt as usize);
+
+        let mut found_cell: Vec<&Cell<N>> = arr.iter().map(|c| **c).collect();
+        found_cell.sort_unstable();
+
+        let result = SolverResult {
+            solver_type: SolverResultDetail::Naked {
+                found_chks,
+                found_cell,
+            },
+            effect_cells,
+        };
+
+        let mut result_list_lock = result_list.lock().unwrap();
+        result_list_lock.push(result);
+        true
+    }
+
+    #[inline]
     fn naked_number_zone<'b>(
         &self,
         zone: &Zone,
@@ -58,21 +147,20 @@ impl<'a, const N: usize> Solver<'a, N> {
         if is_break.get() {
             return;
         }
-        let non_final_cells = {
-            let mut non_final_cells: Vec<&Cell<N>> = Vec::with_capacity(cells.len());
-            non_final_cells.extend(
-                cells
-                    .iter()
-                    .copied()
-                    .filter(|c| read.read_from_cell(c).true_cnt() > 1),
-            );
-            non_final_cells
-        };
 
+        let mut non_final_cells: Vec<&Cell<N>> = Vec::with_capacity(cells.len());
+        non_final_cells.extend(
+            cells
+                .iter()
+                .copied()
+                .filter(|c| read.read_from_cell(c).true_cnt() > 1),
+        );
         let non_final_cells = &non_final_cells;
 
         let find_some = AtomicBool::new(false);
         let find_some = &find_some;
+        let full_scan_required = self.zone_cache.naked_full_scan_required(zone);
+        let last_changed_cells = self.zone_cache.last_changed_cells(zone);
 
         rayon::scope_fifo(|s| {
             for i in 2..N / 2 {
@@ -80,98 +168,87 @@ impl<'a, const N: usize> Solver<'a, N> {
                 s.spawn_fifo(move |_| {
                     let mut comp_cell_target: Vec<&Cell<N>> =
                         Vec::with_capacity(non_final_cells.len());
-                    // 검증대상 cell 필터링 후 처리. 이렇게 하면 처리 시간을 많이 줄일 수 있음.
                     comp_cell_target.extend(
                         non_final_cells
                             .iter()
+                            .copied()
                             .filter(|c| read.read_from_cell(c).true_cnt() <= i),
                     );
 
-                    let mut comb_iter = Combination::new(&comp_cell_target, i);
+                    if full_scan_required {
+                        let mut comb_iter = Combination::new(&comp_cell_target, i);
 
-                    'comb_loop: while let Some(arr) = comb_iter.next_comb() {
-                        if is_break.get() {
+                        while let Some(arr) = comb_iter.next_comb() {
+                            if self.find_naked_from_combination(
+                                arr,
+                                cells,
+                                read,
+                                result_list,
+                                is_break,
+                                i,
+                                i_u32,
+                                true,
+                            ) {
+                                find_some.store(true, Ordering::Relaxed);
+                                return;
+                            }
+
+                            if is_break.get() {
+                                return;
+                            }
+                        }
+                    } else {
+                        let mut mandatory_group: Vec<&Cell<N>> = Vec::with_capacity(
+                            last_changed_cells.len().min(comp_cell_target.len()),
+                        );
+                        let mut optional_group: Vec<&Cell<N>> =
+                            Vec::with_capacity(comp_cell_target.len());
+
+                        for &cell in &comp_cell_target {
+                            if last_changed_cells.contains(&cell) {
+                                mandatory_group.push(cell);
+                            } else {
+                                optional_group.push(cell);
+                            }
+                        }
+
+                        if mandatory_group.is_empty() {
                             return;
                         }
 
-                        debug_assert_eq!(i, arr.len());
-                        let mut union_bit_flag = u64::MIN;
-                        for c in arr {
-                            let b = read.read_from_cell(c);
-                            union_bit_flag |= b.bit_flag();
+                        let mut comb_iter =
+                            TwoGroupCombination::new(&mandatory_group, &optional_group, i);
 
-                            if union_bit_flag.count_ones() > i_u32 {
-                                continue 'comb_loop;
-                            }
-                        }
-
-                        let union_node_true_cnt = union_bit_flag.count_ones();
-
-                        if union_node_true_cnt != i_u32 {
-                            continue 'comb_loop;
-                        }
-
-                        let mut effect_cells: Vec<(&Cell<N>, ArrayVector<MaxNum<N>, N>)> =
-                            Vec::new();
-                        // zone을 순회하며 삭제할 노트가 있는지 찾음
-                        for zone_cell in cells {
-                            // 순회 대상에서 자기 자신은 제외
-                            // combinations 함수는 입력 배열이 정렬되어있을 경우 출력 배열 또한 정렬되어 있음
-                            // cells -> comp_cell_target -> combinations 함수로 데이터가 흘러가며 cells가 정렬되어있으니 combinations또한 정렬됨
-                            if arr.binary_search(&zone_cell).is_ok() {
-                                continue;
-                            }
-                            debug_assert!(!arr.contains(&zone_cell)); // 실수로 버그를 도입할 수 있으니 이중체크..
-
-                            let b = read.read_from_cell(zone_cell);
-                            let mut inter: ArrayVector<MaxNum<N>, N> = ArrayVector::new();
-                            for &true_note in b.get_true_list() {
-                                if union_bit_flag & (1 << true_note.get_value()) != 0 {
-                                    inter.push(true_note);
-                                }
+                        while let Some(arr) = comb_iter.next_comb() {
+                            if self.find_naked_from_combination(
+                                arr,
+                                cells,
+                                read,
+                                result_list,
+                                is_break,
+                                i,
+                                i_u32,
+                                false,
+                            ) {
+                                find_some.store(true, Ordering::Relaxed);
+                                return;
                             }
 
-                            // 제거할 노트를 발견한 경우
-                            if !inter.is_empty() {
-                                is_break.set(true);
-                                if effect_cells.is_empty() {
-                                    effect_cells.reserve_exact(N);
-                                }
-                                effect_cells.push((zone_cell, inter));
+                            if is_break.get() {
+                                return;
                             }
-                        }
-
-                        // effect_cells에 값이 존재하는 경우 제거한 노트를 발견한 것임.
-                        if !effect_cells.is_empty() {
-                            let mut found_chks: ArrayVector<MaxNum<N>, N> = ArrayVector::new();
-                            for n in MaxNum::<N>::iter() {
-                                if union_bit_flag & (1 << n.get_value()) != 0 {
-                                    found_chks.push(n);
-                                }
-                            }
-                            debug_assert_eq!(found_chks.len(), union_node_true_cnt as usize);
-                            let result = SolverResult {
-                                solver_type: SolverResultDetail::Naked {
-                                    found_chks,
-                                    found_cell: arr.iter().map(|c| **c).collect(),
-                                },
-                                effect_cells,
-                            };
-
-                            let mut result_list_lock = result_list.lock().unwrap();
-                            result_list_lock.push(result);
-                            find_some.store(true, Ordering::Relaxed);
-                            return;
                         }
                     }
                 });
             }
         });
 
-        // 아무것도 찾지 못한 경우에만 zone_cache 업데이트
-        if !find_some.load(Ordering::Relaxed) {
+        if !find_some.load(Ordering::Relaxed) && !is_break.get() {
             self.zone_cache
                 .checked_zone_set_bool_true(*zone, SolverSimple::Naked);
+            if full_scan_required {
+                self.zone_cache.naked_full_scan_required_set_false(*zone);
+            }
         }
     }
 }
